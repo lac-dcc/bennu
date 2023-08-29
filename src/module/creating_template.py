@@ -71,12 +71,9 @@ class Template_autotvm():
         '''
         name = f'CHW'
         self.cfg.define_knob(name, [0, 1])
-        if self.cfg[name].val == 0:
-            #self.tensor = self.sch.cache_write(self.tensor, 'global')
-            pass
-        else:
+        if self.cfg[name].val != 0:
             self.tensor = self.sch.cache_write(self.tensor, 'local')
-
+        
 
     def print(self):
         '''
@@ -89,7 +86,18 @@ class Template_autotvm():
         '''
             RE: ReorderStep
         ''' 
-        pass
+        name = f'RE_0'
+        self.cfg.define_knob(name, [0, 1, 2, 3])
+
+        print(len(self.order))
+
+        '''
+        x0, x1, re, x2, y2 = self.order
+        if self.cfg[name].val == 0:
+            self.sch[self.tensor].reorder(x0, x1, re, x2, y2)
+        elif self.cfg[name].val == 1:
+            self.sch[self.tensor].reorder(x0, x1, re, x2, y2)
+        '''
 
 
     def SP(self, iter_id, lengths):
@@ -108,7 +116,11 @@ class Template_autotvm():
             x1, y1 = self.sch[self.tensor].split(y0, self.cfg[name].val)
             name = f'SP_{iter_id}_2'
             x2, y2 = self.sch[self.tensor].split(y1, self.cfg[name].val)
+
+            reduce_axis = self.sch[self.tensor].op.reduce_axis
+
             # TODO: best order.
+            self.order.append([x0, reduce_axis[0], x1, x2, y2])
             # this order is not the best, but get good result
             #if reduce_axis is None:
             #    self.order.append([x0, x1, x2, y2])
