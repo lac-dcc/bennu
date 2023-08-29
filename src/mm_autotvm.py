@@ -8,7 +8,7 @@ import tvm.testing
 
 from tvm import autotvm
 from utils import get_best_time
-from module.creating_template import Template_ansor
+from module.creating_template import Template_autotvm
 
 
 @autotvm.template("matmul")  # 1. use a decorator
@@ -22,7 +22,7 @@ def matmul(N, L, M, dtype):
 
     cfg = autotvm.get_config()
     args = [A, B, C]
-    tensors = [C]
+    tensors = C
 
     # Config: [[], 
     #   [['CHW', 2, 'local'], 
@@ -39,7 +39,7 @@ def matmul(N, L, M, dtype):
     #   ['PR', 2, 0, 'auto_unroll_max_step$512'], 
     #   ['AN', 2, 9, 2]]]
 
-    bn = 32
+    #bn = 32
     #kfactor = 4
     # Blocking by loop tiling
     #mo, no, mi, ni = s[C].tile(C.op.axis[0], C.op.axis[1], bn, bn)
@@ -59,11 +59,11 @@ def matmul(N, L, M, dtype):
     # Write cache is computed at no
     #s[CC].compute_at(s[C], no)
 
-    ta = Template_ansor(s, tensors, cfg, args)
-    ta.space(["CHW", 0, 'local']) # Error!
-    ta.space(["SP", 0, 0, 1000, [20, 1, 20], 0])
-    ta.space(['SP', 0, 1, 700, [1, 700, 1], 1])
-    ta.space(['SP', 0, 2, 800, [5], 1])
+    ta = Template_autotvm(s, tensors, cfg, args)
+    ta.CHW()
+    ta.SP(0, 3)
+    ta.SP(1, 3)
+    ta.SP(2, 1)
 
     #ta.print()
 

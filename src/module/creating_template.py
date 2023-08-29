@@ -11,7 +11,7 @@ CA: ComputeAtStep
 CI: ComputeInlineStep
 CR: ComputeRootStep
 CHR: CacheReadStep
-CHW: CacheWriteStep
+
 RF: RfactorStep
 '''
 
@@ -25,11 +25,11 @@ RF: RfactorStep
 import tvm
 from tvm import autotvm
 
-class Template_ansor():
+class Template_autotvm():
 
     cfg = None
     sch = None
-    tensors = [None]
+    tensor = None
     args = [None]
     search_space = [1, 2, 4, 8, 16, 32, 46, 64]
     axis = None
@@ -38,30 +38,23 @@ class Template_ansor():
 
     def __init__(self, s, t, c, a) -> None:
         self.sch = s
-        self.tensors = t
+        self.tensor = t
         self.cfg = c
         self.args = a
-    
-    def ret(self):
-        return self.sch, self.args
 
-    def space(self, values):
-        type = values[0]
-        if type == "SP":
-            assert len(values) == 6
-            stage_id = values[1]
-            iter_id = values[2]
-            loop_extent = values[3]
-            lengths = values[4]
-            inner_to_outer = values[5]
-            self.SP(type, stage_id, iter_id, loop_extent, lengths, inner_to_outer)
-        elif type == "CHW":
-            assert len(values) == 3
-            stage_id = values[1]
-            scope_name = values[2]
-            self.CHW(type, stage_id, scope_name)
-        else:
-            raise("Not implemented space search")
+        self.axis = []
+        for t in self.sch[self.tensor].op.axis:
+            self.axis.append(t)
+        for t in self.sch[self.tensor].op.reduce_axis:
+            self.axis.append(t)
+        print(self.axis)
+
+    def ret(self):
+        '''
+            return function
+        '''
+        return self.sch, self.args
+    
 
     def limited_interval(self, max_value, interval):
         new_interval = []
@@ -72,64 +65,66 @@ class Template_ansor():
         return new_interval
 
 
-    def CHW(self, type, stage_id, scope_name):
-        name = type + "_" + str(stage_id)
+    def CHW(self):
+        '''
+            CHW: CacheWriteStep
+        '''
+        name = f'CHW'
         self.cfg.define_knob(name, [0, 1])
-        if self.cfg[name].val != 0:
-            self.tensors[stage_id] = self.sch.cache_write(self.tensors[stage_id], scope_name)
+        if self.cfg[name].val == 0:
+            #self.tensor = self.sch.cache_write(self.tensor, 'global')
+            pass
+        else:
+            self.tensor = self.sch.cache_write(self.tensor, 'local')
 
 
     def print(self):
+        '''
+            Print tensor function
+        '''
         print(tvm.lower(self.sch, self.args))
 
     
-    def RE(self, type, iter_id):
+    def RE(self):
         '''
             RE: ReorderStep
         ''' 
         pass
 
 
-    def SP(self, type, stage_id, iter_id, loop_extent, lengths, inner_to_outer):
+    def SP(self, iter_id, lengths):
         '''
             SP: SplitStep
-            ("SP", stage_id, iter_id, loop_extent, lengths, inner_to_outer)
         '''
-        t = self.tensors[stage_id]
-        axis = self.sch[t].op.axis
-        reduce_axis = self.sch[t].op.reduce_axis if len(self.sch[t].op.reduce_axis) > 0 else None
-
-        print(axis)
-        print(reduce_axis)
-
-        for i in range(len(lengths)):
-            name = type + "_%d_%d" % (iter_id, i)
-            # define search space
+        for i in range(lengths):
+            name = f'SP_{iter_id}_{i}'
             self.cfg.define_knob(name, self.search_space)
 
         # schedule according to config
-        if len(lengths) == 3:
-            name = type + "_%d_%d" % (iter_id, 0)
-            x0, y0 = self.sch[t].split(axis[iter_id], self.cfg[name].val)
-            name = type + "_%d_%d" % (iter_id, 1)
-            x1, y1 = self.sch[t].split(y0, self.cfg[name].val)
-            name = type + "_%d_%d" % (iter_id, 2)
-            x2, y2 = self.sch[t].split(y1, self.cfg[name].val)
+        if lengths == 3:
+            name = f'SP_{iter_id}_0'
+            x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
+            name = f'SP_{iter_id}_1'
+            x1, y1 = self.sch[self.tensor].split(y0, self.cfg[name].val)
+            name = f'SP_{iter_id}_2'
+            x2, y2 = self.sch[self.tensor].split(y1, self.cfg[name].val)
             # TODO: best order.
             # this order is not the best, but get good result
-            if reduce_axis == None:
-                self.order.append([x0, x1, x2, y2])
-                #self.sch[t].reorder(x0, x1, x2, y2)
-            else:
-                self.order.append([x0, reduce_axis[0], x1, x2, y2])
-                #self.sch[t].reorder(x0, reduce_axis[0], x1, x2, y2)
-        elif len(lengths) == 1:
-            name = type + "_%d_%d" % (iter_id, 0)
-            x0, y0 = self.sch[t].split(axis[iter_id], self.cfg[name].val)
+            #if reduce_axis is None:
+            #    self.order.append([x0, x1, x2, y2])
+            #    #self.sch[t].reorder(x0, x1, x2, y2)
+            #else:
+            #    self.order.append([x0, reduce_axis[0], x1, x2, y2])
+            #    #self.sch[t].reorder(x0, reduce_axis[0], x1, x2, y2)
+        elif lengths == 1:
+            name = f'SP_{iter_id}_0'
+            x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
             # TODO: best order.
             # this order is not the best, but get good result
-            if reduce_axis == None:
-                self.sch[t].reorder(x0, y0)
-            else:
-                self.sch[t].reorder(x0, reduce_axis[0], y0)
+            #if reduce_axis is None:
+            #    self.order.append([x0, y0])
+            #    #self.sch[t].reorder(x0, y0)
+            #else:
+            #    self.order.append([x0, reduce_axis[0], y0])
+            #    #self.sch[t].reorder(x0, reduce_axis[0], y0)
 
