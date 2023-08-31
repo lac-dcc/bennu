@@ -101,7 +101,7 @@ if __name__ == "__main__":
         runner=autotvm.LocalRunner(number=5, repeat=3)
     )
 
-    tuner = autotvm.tuner.RandomTuner(task)
+    tuner = autotvm.tuner.DropletTuner(task)
     tuner.tune(
         n_trial=100,
         measure_option=measure_option,
