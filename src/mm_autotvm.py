@@ -1,5 +1,5 @@
 import logging
-import sys
+import sys, os
 
 import numpy as np
 import tvm
@@ -20,7 +20,6 @@ def matmul(N, L, M, dtype):
     C = te.compute((N, M), lambda i, j: te.sum(A[i, k] * B[k, j], axis=k), name="C")
     s = te.create_schedule(C.op)
 
-    cfg = autotvm.get_config()
     args = [A, B, C]
     tensors = C
 
@@ -59,35 +58,16 @@ def matmul(N, L, M, dtype):
     # Write cache is computed at no
     #s[CC].compute_at(s[C], no)
 
-    ta = Template_autotvm(s, tensors, cfg, args)
+    ta = Template_autotvm(s, tensors, args)
     #ta.CHW()
-    ta.SP(0, 3)
-    ta.SP(1, 3)
-    ta.SP(2, 1)
-    ta.RE()
-
+    ta.SP(0, 1)
+    ta.RE(5)
+    #ta.SP(1, 1)
+    #ta.SP(2, 1)
+    #ta.RE()
     #ta.print()
 
-    # schedule
-    #y, x = s[C].op.axis
-    #k = s[C].op.reduce_axis[0]
-
-    # 3. define search space
-    #cfg.define_knob("tile_y", [1, 2, 4, 8, 16])
-    #cfg.define_knob("tile_x", [1, 2, 4, 8, 16])
-
-    # 4. schedule according to config
-    #x0, y0 = s[C].split(y, 20)
-    #x1, y1 = s[C].split(y0, 1)
-    #x2, y2 = s[C].split(y1, 2)
-    #xo, xi = s[C].split(x, cfg["tile_x"].val)
-
-    #print(tvm.lower(s, args))
-
-    #s[C].reorder(yo, xo, k, yi, xi)
-
     return ta.ret()
-    #return s, args
 
 if __name__ == "__main__":
     N, L, M = 1000, 800, 700
@@ -102,15 +82,19 @@ if __name__ == "__main__":
         runner=autotvm.LocalRunner(number=5, repeat=3)
     )
 
+    filename = "matmul.log"
+    if os.path.isfile(filename):
+        os.remove(filename)
+
     tuner = autotvm.tuner.DropletTuner(task)
     tuner.tune(
         n_trial=100,
         measure_option=measure_option,
-        callbacks=[autotvm.callback.log_to_file("matmul.log")],
+        callbacks=[autotvm.callback.log_to_file(filename)],
     )
 
     # apply history best from log file
-    with autotvm.apply_history_best("matmul.log"):
+    with autotvm.apply_history_best(filename):
         with tvm.target.Target("llvm"):
             s, arg_bufs = matmul(N, L, M, "float32")
             func = tvm.build(s, arg_bufs)
@@ -125,6 +109,6 @@ if __name__ == "__main__":
 
     tvm.testing.assert_allclose(c_np, c_tvm.numpy(), rtol=1e-4)
 
-    best_time, best_config = get_best_time("matmul.log")
+    best_time, best_config = get_best_time(filename)
 
     print(best_time, best_config)

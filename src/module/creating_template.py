@@ -18,30 +18,34 @@ RF: RfactorStep
 ## example input
 
 '''
-    ([0.023814, 0.0269994, 0.032609], [[], 
-    [['CHW', 2, 'local'], ['SP', 2, 0, 1000, [20, 1, 2], 1], ['SP', 2, 4, 700, [1, 700, 1], 1], ['SP', 2, 8, 800, [5], 1], ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], ['FSP', 3, 0, 1, 2], ['FSP', 3, 3, 2, 2], ['RE', 3, [0, 3, 1, 4, 2, 5]], ['CA', 2, 3, 3], ['FU', 3, [0, 1, 2]], ['AN', 3, 0, 3], ['PR', 2, 0, 'auto_unroll_max_step$512'], ['AN', 2, 9, 2]]])
+    Time spent: [0.0173736, 0.0208746, 0.0257531]
+    Config: [[], 
+    [['SP', 2, 0, 1000, [5, 25, 4], 1], ['SP', 2, 4, 700, [1, 35, 4], 1], ['SP', 2, 8, 800, [8], 1], 
+    ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
+    ['FU', 2, [0, 1, 2]], 
+    ['AN', 2, 0, 3], 
+    ['PR', 2, 0, 'auto_unroll_max_step$512'], 
+    ['AN', 2, 7, 2]]]    
 '''
 
 import tvm
 from tvm import autotvm
-
-from itertools import permutations
+from module.utils import *
 
 class Template_autotvm():
 
     cfg = None
     sch = None
     tensor = None
-    args = [None]
-    search_space = [1, 2, 4, 8, 16, 32, 46, 64]
+    args = []
+    search_space = [4]
     axis = None
     order = []
 
-
-    def __init__(self, s, t, c, a) -> None:
+    def __init__(self, s, t, a) -> None:
         self.sch = s
         self.tensor = t
-        self.cfg = c
+        self.cfg = autotvm.get_config()
         self.args = a
 
         self.axis = []
@@ -49,7 +53,13 @@ class Template_autotvm():
             self.axis.append(t)
         for t in self.sch[self.tensor].op.reduce_axis:
             self.axis.append(t)
-        print(self.axis)
+        #print(self.axis)
+
+    def add(self, list, elements):
+        for e in elements:
+            if e not in list:
+                #print(e, "inserted", list)
+                list.append(e)
 
     def ret(self):
         '''
@@ -81,26 +91,31 @@ class Template_autotvm():
         '''
             Print tensor function
         '''
-        print(tvm.lower(self.sch, self.args))
+        print(tvm.lower(self.sch, self.args, simple_mode=True))
 
     
-    def RE(self):
+    def RE(self, size_order):
         '''
             RE: ReorderStep
         ''' 
         if len(self.order) == 0:
             return
         name = f'RE_0'
-        size_order = len(self.order)
-        self.cfg.define_knob(name, [i for i in range(size_order*size_order)])
+        
+        self.cfg.define_knob(name, [i for i in range(size_order)])
 
-        perms = self.order
-        for i in range(size_order):
-            for j in range(i, size_order-1):
-                idx = i*size_order+j
-                if self.cfg[name].val == idx:
-                    perms[i], perms[j] = perms[j], perms[i]
-                    self.sch[self.tensor].reorder(*perms)
+        #yo, xo, k, yi, xi = self.order
+        #try:
+        #self.sch[self.tensor].reorder(*self.order)
+        #except:
+        #    print("Received error")
+        #    print(self.order, len(self.order))
+
+        perms = permutation(self.order, size_order)
+        for i, p in enumerate(perms):
+            print(p)
+            if self.cfg[name].val == i:
+                self.sch[self.tensor].reorder(*p)
 
         '''
         x0, x1, re, x2, y2 = self.order
@@ -109,11 +124,14 @@ class Template_autotvm():
         elif self.cfg[name].val == 1:
             self.sch[self.tensor].reorder(x0, x1, re, x2, y2)
         '''
+        #self.order = []
 
 
     def SP(self, iter_id, split_size):
         '''
             SP: SplitStep
+        '''
+
         '''
         for i in range(split_size):
             name = f'SP_{iter_id}_{i}'
@@ -121,6 +139,7 @@ class Template_autotvm():
 
             if i == 0:
                 x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
+                print(x0, y0)
                 if i == split_size-1:
                     self.order.append(x0)
                     self.order.append(y0)
@@ -135,7 +154,27 @@ class Template_autotvm():
                 else:
                     self.order.append(x)
                 yp = y
+        print(self.order)
+        '''
+        self.cfg.define_knob("tile_y", [4, 8, 16])
+        self.cfg.define_knob("tile_x", [4, 8, 16])
 
+        y, x = self.sch[self.tensor].op.axis
+        k = self.sch[self.tensor].op.reduce_axis[0]
+
+        yo, yi = self.sch[self.tensor].split(y, self.cfg["tile_y"].val)
+        xo, xi = self.sch[self.tensor].split(x, self.cfg["tile_x"].val)
+
+        self.order = []
+        self.add(self.order, [yo, xo, k, yi, xi])
+
+        #self.order.append(yo)
+        #self.order.append(xo)
+        #self.order.append(k)
+        #self.order.append(yi)
+        #elf.order.append(xi)
+
+        #self.sch[self.tensor].reorder(yo, xo, k, yi, xi)
         # schedule according to config
         '''
         if split_size == 3:
