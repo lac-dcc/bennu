@@ -25,6 +25,8 @@ RF: RfactorStep
 import tvm
 from tvm import autotvm
 
+from itertools import permutations
+
 class Template_autotvm():
 
     cfg = None
@@ -86,10 +88,19 @@ class Template_autotvm():
         '''
             RE: ReorderStep
         ''' 
+        if len(self.order) == 0:
+            return
         name = f'RE_0'
-        self.cfg.define_knob(name, [0, 1, 2, 3])
+        size_order = len(self.order)
+        self.cfg.define_knob(name, [i for i in range(size_order*size_order)])
 
-        print(len(self.order))
+        perms = self.order
+        for i in range(size_order):
+            for j in range(i, size_order-1):
+                idx = i*size_order+j
+                if self.cfg[name].val == idx:
+                    perms[i], perms[j] = perms[j], perms[i]
+                    self.sch[self.tensor].reorder(*perms)
 
         '''
         x0, x1, re, x2, y2 = self.order
@@ -100,16 +111,34 @@ class Template_autotvm():
         '''
 
 
-    def SP(self, iter_id, lengths):
+    def SP(self, iter_id, split_size):
         '''
             SP: SplitStep
         '''
-        for i in range(lengths):
+        for i in range(split_size):
             name = f'SP_{iter_id}_{i}'
             self.cfg.define_knob(name, self.search_space)
 
+            if i == 0:
+                x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
+                if i == split_size-1:
+                    self.order.append(x0)
+                    self.order.append(y0)
+                else:
+                    self.order.append(x0)
+                yp = y0
+            else:
+                x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
+                if i == split_size-1:
+                    self.order.append(x)
+                    self.order.append(y)
+                else:
+                    self.order.append(x)
+                yp = y
+
         # schedule according to config
-        if lengths == 3:
+        '''
+        if split_size == 3:
             name = f'SP_{iter_id}_0'
             x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
             name = f'SP_{iter_id}_1'
@@ -128,7 +157,7 @@ class Template_autotvm():
             #else:
             #    self.order.append([x0, reduce_axis[0], x1, x2, y2])
             #    #self.sch[t].reorder(x0, reduce_axis[0], x1, x2, y2)
-        elif lengths == 1:
+        elif split_size == 1:
             name = f'SP_{iter_id}_0'
             x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
             # TODO: best order.
@@ -139,4 +168,4 @@ class Template_autotvm():
             #else:
             #    self.order.append([x0, reduce_axis[0], y0])
             #    #self.sch[t].reorder(x0, reduce_axis[0], y0)
-
+        '''

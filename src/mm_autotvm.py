@@ -60,10 +60,11 @@ def matmul(N, L, M, dtype):
     #s[CC].compute_at(s[C], no)
 
     ta = Template_autotvm(s, tensors, cfg, args)
-    ta.CHW()
+    #ta.CHW()
     ta.SP(0, 3)
     ta.SP(1, 3)
     ta.SP(2, 1)
+    ta.RE()
 
     #ta.print()
 
