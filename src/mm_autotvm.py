@@ -1,14 +1,17 @@
 import logging
 import sys, os
 
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
 import numpy as np
 import tvm
 from tvm import te
 import tvm.testing
 
 from tvm import autotvm
-from utils import get_best_time
-from module.creating_template import Template_autotvm
+from src.module.utils import get_best_time
+from src.module.creating_template import Template_autotvm
 
 
 @autotvm.template("matmul")  # 1. use a decorator
@@ -61,7 +64,7 @@ def matmul(N, L, M, dtype):
     ta = Template_autotvm(s, tensors, args)
     #ta.CHW()
     ta.SP(0, 1)
-    ta.RE(5)
+    ta.RE(100)
     #ta.SP(1, 1)
     #ta.SP(2, 1)
     #ta.RE()

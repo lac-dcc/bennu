@@ -28,9 +28,11 @@ RF: RfactorStep
     ['AN', 2, 7, 2]]]    
 '''
 
+import sys, os
+
 import tvm
 from tvm import autotvm
-from module.utils import *
+from src.module.utils import *
 
 class Template_autotvm():
 
@@ -113,7 +115,6 @@ class Template_autotvm():
 
         perms = permutation(self.order, size_order)
         for i, p in enumerate(perms):
-            print(p)
             if self.cfg[name].val == i:
                 self.sch[self.tensor].reorder(*p)
 
