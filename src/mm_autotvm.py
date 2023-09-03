@@ -21,8 +21,8 @@ def matmul(N, L, M, dtype):
 
     k = te.reduce_axis((0, L), name="k")
     C = te.compute((N, M), lambda i, j: te.sum(A[i, k] * B[k, j], axis=k), name="C")
+    
     s = te.create_schedule(C.op)
-
     args = [A, B, C]
     tensors = C
 
@@ -41,30 +41,11 @@ def matmul(N, L, M, dtype):
     #   ['PR', 2, 0, 'auto_unroll_max_step$512'], 
     #   ['AN', 2, 9, 2]]]
 
-    #bn = 32
-    #kfactor = 4
-    # Blocking by loop tiling
-    #mo, no, mi, ni = s[C].tile(C.op.axis[0], C.op.axis[1], bn, bn)
-    #(kaxis,) = s[C].op.reduce_axis
-    #ko, ki = s[C].split(kaxis, factor=kfactor)
-
-    # Hoist reduction domain outside the blocking loop
-    #s[C].reorder(mo, no, ko, ki, mi, ni)
-
-    #cfg.define_knob(["CHW", 0, 1])
-    #if cfg["CHW"].val != 0:
-    #    C = s.cache_write(C, "local")
-    #print(tvm.lower(s, args))
-
-    #mo, no, mi, ni = s[C].tile(C.op.axis[0], C.op.axis[1], bn, bn)
-
-    # Write cache is computed at no
-    #s[CC].compute_at(s[C], no)
-
     ta = Template_autotvm(s, tensors, args)
-    #ta.CHW()
-    ta.SP(0, 1)
-    ta.RE(100)
+    ta.CHW()
+    ta.SP([2,2,1])
+    #ta.RE(100)
+    ta.RE_fixed([0,1,4,2,3])
     #ta.SP(1, 1)
     #ta.SP(2, 1)
     #ta.RE()
