@@ -135,6 +135,7 @@ class Template_autotvm():
                         else:
                             self.add(self.order, [x])
                         yp = y
+        self.axis = self.order # update the tensor's axis 
 
 def AN(self):
     '''
@@ -147,6 +148,11 @@ def FU(self):
         FU: FuseStep
     '''
     pass
+
+def FU_fixed(self, list_fuse):
+    for i in range(len(list_fuse)-1):
+        fused = self.sch[self.tensor].fuse(self.axis[list_fuse[i]], self.axis[list_fuse[i+1]])
+        # TODO: update self.axis
 
 def PR(self):
     '''
