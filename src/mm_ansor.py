@@ -3,7 +3,7 @@ import numpy as np
 import time
 import tvm
 from tvm import te, auto_scheduler
-import module.utils as utils
+import src.module.utils as utils
 
 @auto_scheduler.register_workload
 def matmul(N, L, M, dtype="float32"):
