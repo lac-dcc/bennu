@@ -82,7 +82,7 @@ class Template_autotvm():
 
     def RE_fixed(self, list_order):
         '''
-            RE_fixed:
+            RE_fixed: Reorder step with a list
         '''
         assert len(list_order) == len(self.order)
         p = []
@@ -147,9 +147,18 @@ def FU(self):
     '''
         FU: FuseStep
     '''
-    pass
+    name = f'FU_0'
+    size_fusion = len(self.axis)-1
+    self.cfg.define_knob(name, [i for i in range(size_fusion)])
+
+    for i in range(size_fusion+1):
+        if cfg[name].val == i:
+            self.sch[self.tensor].compute_at(self.axis[i], self.axis[i+1])
 
 def FU_fixed(self, list_fuse):
+    '''
+        FU_fixed: Fuse step with a list
+    '''
     for i in range(len(list_fuse)-1):
         fused = self.sch[self.tensor].fuse(self.axis[list_fuse[i]], self.axis[list_fuse[i+1]])
         # TODO: update self.axis
