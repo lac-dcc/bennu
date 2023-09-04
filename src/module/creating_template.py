@@ -1,20 +1,3 @@
-'''
-AN: AnnotationStep
-FU: FuseStep
-PR: PragmaStep
-RE: ReorderStep
-
-FSP: FollowSplitStep
-FFSP: FollowFusedSplitStep
-SA: StorageAlignStep
-CA: ComputeAtStep
-CI: ComputeInlineStep
-CR: ComputeRootStep
-CHR: CacheReadStep
-
-RF: RfactorStep
-'''
-
 ## example input
 
 '''
@@ -152,57 +135,69 @@ class Template_autotvm():
                         else:
                             self.add(self.order, [x])
                         yp = y
-        #print(self.order)
-        '''
-        self.cfg.define_knob("tile_y", [4, 8, 16])
-        self.cfg.define_knob("tile_x", [4, 8, 16])
 
-        y, x = self.sch[self.tensor].op.axis
-        k = self.sch[self.tensor].op.reduce_axis[0]
+def AN(self):
+    '''
+        AN: AnnotationStep
+    '''
+    pass
 
-        yo, yi = self.sch[self.tensor].split(y, self.cfg["tile_y"].val)
-        xo, xi = self.sch[self.tensor].split(x, self.cfg["tile_x"].val)
+def FU(self):
+    '''
+        FU: FuseStep
+    '''
+    pass
 
-        self.order = []
-        self.add(self.order, [yo, xo, k, yi, xi])
+def PR(self):
+    '''
+        PR: PragmaStep
+    '''
+    pass
 
-        #self.order.append(yo)
-        #self.order.append(xo)
-        #self.order.append(k)
-        #self.order.append(yi)
-        #elf.order.append(xi)
+def FSP(self):
+    '''
+        FSP: FollowSplitStep
+    '''
+    pass
 
-        #self.sch[self.tensor].reorder(yo, xo, k, yi, xi)
-        # schedule according to config
-        
-        if split_size == 3:
-            name = f'SP_{iter_id}_0'
-            x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
-            name = f'SP_{iter_id}_1'
-            x1, y1 = self.sch[self.tensor].split(y0, self.cfg[name].val)
-            name = f'SP_{iter_id}_2'
-            x2, y2 = self.sch[self.tensor].split(y1, self.cfg[name].val)
+def FFSP(self):
+    '''
+        FFSP: FollowFusedSplitStep
+    '''
+    pass
 
-            reduce_axis = self.sch[self.tensor].op.reduce_axis
+def SA(self):
+    '''
+        SA: StorageAlignStep
+    '''
+    pass
 
-            # TODO: best order.
-            self.order.append([x0, reduce_axis[0], x1, x2, y2])
-            # this order is not the best, but get good result
-            #if reduce_axis is None:
-            #    self.order.append([x0, x1, x2, y2])
-            #    #self.sch[t].reorder(x0, x1, x2, y2)
-            #else:
-            #    self.order.append([x0, reduce_axis[0], x1, x2, y2])
-            #    #self.sch[t].reorder(x0, reduce_axis[0], x1, x2, y2)
-        elif split_size == 1:
-            name = f'SP_{iter_id}_0'
-            x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
-            # TODO: best order.
-            # this order is not the best, but get good result
-            #if reduce_axis is None:
-            #    self.order.append([x0, y0])
-            #    #self.sch[t].reorder(x0, y0)
-            #else:
-            #    self.order.append([x0, reduce_axis[0], y0])
-            #    #self.sch[t].reorder(x0, reduce_axis[0], y0)
-        '''
+def CA(self):
+    '''
+        CA: ComputeAtStep
+    '''
+    pass
+
+def CI(self):
+    '''
+        CI: ComputeInlineStep
+    '''
+    pass
+
+def CR(self):
+    '''
+        CR: ComputeRootStep
+    '''
+    pass
+
+def CHR(self):
+    '''
+        CHR: CacheReadStep
+    '''
+    pass
+
+def RF(self):
+    '''
+        RF: RfactorStep
+    '''
+    pass
