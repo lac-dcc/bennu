@@ -172,11 +172,12 @@ class Template_autotvm():
         '''
         pass
 
-    def PR_fixed(self, size):
+    def PR_fixed(self, var, pragma_type, size):
         '''
             PR: PragmaStep
         '''
-        print(self.axis)
+        assert var < len(self.axis)
+        self.sch[self.tensor].pragma(self.axis[var], pragma_type, size)
 
     def FSP(self):
         '''
