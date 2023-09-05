@@ -9,6 +9,22 @@ def permutation(arr, limit):
         result.append(list(perm))
     return result
 
+def add(list, elements):
+    for e in elements:
+        if e not in list:
+            list.append(e)
+
+def update(list, list_remove):
+    pass
+
+def limited_interval(self, max_value, interval):
+        new_interval = []
+        for elem in interval:
+            if max_value <= elem:
+                continue
+            new_interval.append(elem)
+        return new_interval
+
 def get_best_time(log):
     import json
 

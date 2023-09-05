@@ -38,26 +38,11 @@ class Template_autotvm():
         for t in self.sch[self.tensor].op.reduce_axis:
             self.axis.append(t)
 
-    def add(self, list, elements):
-        for e in elements:
-            if e not in list:
-                list.append(e)
-
     def ret(self):
         '''
             return function
         '''
         return self.sch, self.args
-    
-
-    def limited_interval(self, max_value, interval):
-        new_interval = []
-        for elem in interval:
-            if max_value <= elem:
-                continue
-            new_interval.append(elem)
-        return new_interval
-
 
     def CHW(self):
         '''
@@ -114,7 +99,7 @@ class Template_autotvm():
             split_size = list_iter_id[iter_id]
             if split_size == 0:
                 k = self.axis[iter_id]
-                self.add(order, [k])
+                add(order, [k])
             else:
                 for i in range(split_size):
                     name = f'SP_{iter_id}_{i}'
@@ -123,16 +108,16 @@ class Template_autotvm():
                     if i == 0:
                         x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
                         if i == split_size-1:
-                            self.add(order, [x0, y0])
+                            add(order, [x0, y0])
                         else:
-                            self.add(order, [x0])
+                            add(order, [x0])
                         yp = y0
                     else:
                         x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
                         if i == split_size-1:
-                            self.add(order, [x, y])
+                            add(order, [x, y])
                         else:
-                            self.add(order, [x])
+                            add(order, [x])
                         yp = y
         self.axis = order # update the tensor's axis 
 
