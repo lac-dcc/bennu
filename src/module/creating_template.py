@@ -23,7 +23,7 @@ class Template_autotvm():
     sch = None
     tensor = None
     args = []
-    search_space = [1, 2, 4, 8, 16, 24, 32]
+    search_space = [2, 4, 8, 16] # TODO: Find best values 
     axis = None
 
     def __init__(self, schedule, tensor, args) -> None:
@@ -49,9 +49,9 @@ class Template_autotvm():
             CHW: CacheWriteStep
         '''
         name = f'CHW'
-        self.cfg.define_knob(name, [0, 1])
-        if self.cfg[name].val != 0:
-            CC = self.sch.cache_write(self.tensor, 'local')
+        self.cfg.define_knob(name, [[0], [1]])
+        if self.cfg[name].val != [0]:
+            CC = self.sch[self.tensor].cache_write(self.tensor, 'local')
             print(self.tensor)
         
 
@@ -78,7 +78,7 @@ class Template_autotvm():
         ''' 
         if len(self.axis) == 0:
             return
-        name = f'RE_0'
+        name = f'RE_{0}'
         
         self.cfg.define_knob(name, [i for i in range(size_order)])
 
@@ -86,21 +86,6 @@ class Template_autotvm():
         for i, p in enumerate(perms):
             if self.cfg[name].val == i:
                 self.sch[self.tensor].reorder(*p)
-
-
-    def SP_test(self, list):
-        '''
-            This is a test, only to see if I can do 
-            the representation of autotvm close 
-            to Ansor, for example: ['SP_0',[5,10,2]]
-        '''
-        
-        space = [[i,j,k] for i in self.search_space for j in self.search_space for k in self.search_space]
-        
-        order = []
-        for iter_id in list:
-            pass
-
 
     def SP_fixed(self, list_SP):
         '''
@@ -129,32 +114,29 @@ class Template_autotvm():
     def SP(self, list_iter_id):
         '''
             SP: SplitStep
+            Output example: ['SP_0', 'ot', [4,8,16]]
         '''
         order = []
         for iter_id in range(len(list_iter_id)):
+            name = f'SP_{iter_id}'
             split_size = list_iter_id[iter_id]
-            if split_size == 0:
-                k = self.axis[iter_id]
-                add(order, [k])
-            else:
-                for i in range(split_size):
-                    name = f'SP_{iter_id}_{i}'
-                    self.cfg.define_knob(name, self.search_space)
-
-                    if i == 0:
-                        x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
-                        if i == split_size-1:
-                            add(order, [x0, y0])
-                        else:
-                            add(order, [x0])
-                        yp = y0
+            space = generate_space(self.search_space, split_size)
+            self.cfg.define_knob(name, space)
+            for i in range(split_size):
+                if i == 0:
+                    x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val[i])
+                    if i == split_size-1:
+                        add(order, [x0, y0])
                     else:
-                        x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
-                        if i == split_size-1:
-                            add(order, [x, y])
-                        else:
-                            add(order, [x])
-                        yp = y
+                        add(order, [x0])
+                    yp = y0
+                else:
+                    x, y = self.sch[self.tensor].split(yp, self.cfg[name].val[i])
+                    if i == split_size-1:
+                        add(order, [x, y])
+                    else:
+                        add(order, [x])
+                    yp = y
         self.axis = order # update the tensor's axis 
 
     def AN(self):

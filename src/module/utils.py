@@ -1,5 +1,5 @@
 import numpy as np
-from itertools import permutations
+from itertools import permutations, product
 
 def permutation(arr, limit):
     result = []
@@ -13,6 +13,13 @@ def add(list, elements):
     for e in elements:
         if e not in list:
             list.append(e)
+
+def generate_space(values, r):
+    space = []
+    for idx in product(range(len(values)), repeat=r):
+        space.append([values[i] for i in idx])
+    return space
+        
 
 def update(list, list_remove, insert_element, pos):
     # insert the new tensor in the new position
