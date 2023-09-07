@@ -23,14 +23,14 @@ class Template_autotvm():
     sch = None
     tensor = None
     args = []
-    search_space = [4]
+    search_space = [1, 2, 4, 8, 16, 24, 32]
     axis = None
 
-    def __init__(self, s, t, a) -> None:
-        self.sch = s
-        self.tensor = t
+    def __init__(self, schedule, tensor, args) -> None:
+        self.sch = schedule
+        self.tensor = tensor
         self.cfg = autotvm.get_config()
-        self.args = a
+        self.args = args
 
         self.axis = []
         for t in self.sch[self.tensor].op.axis:
@@ -52,8 +52,6 @@ class Template_autotvm():
         self.cfg.define_knob(name, [0, 1])
         if self.cfg[name].val != 0:
             CC = self.sch.cache_write(self.tensor, 'local')
-            #print(CC)
-            #print("----")
             print(self.tensor)
         
 
@@ -89,6 +87,44 @@ class Template_autotvm():
             if self.cfg[name].val == i:
                 self.sch[self.tensor].reorder(*p)
 
+
+    def SP_test(self, list):
+        '''
+            This is a test, only to see if I can do 
+            the representation of autotvm close 
+            to Ansor, for example: ['SP_0',[5,10,2]]
+        '''
+        
+        space = [[i,j,k] for i in self.search_space for j in self.search_space for k in self.search_space]
+        
+        order = []
+        for iter_id in list:
+            pass
+
+
+    def SP_fixed(self, list_SP):
+        '''
+            SP_fixed:
+        '''
+        order = []
+        for iter_id in range(len(list_SP)):
+            split_size = len(list_SP[iter_id])
+            for i in range(split_size):
+                if i == 0:
+                    x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], factor=list_SP[iter_id][i])
+                    if i == split_size-1:
+                        add(order, [x0, y0])
+                    else:
+                        add(order, [x0])
+                    yp = y0
+                else:
+                    x, y = self.sch[self.tensor].split(yp, factor=list_SP[iter_id][i])
+                    if i == split_size-1:
+                        add(order, [x, y])
+                    else:
+                        add(order, [x])
+                    yp = y
+        self.axis = order # update the tensor's axis 
 
     def SP(self, list_iter_id):
         '''
@@ -130,51 +166,55 @@ class Template_autotvm():
     def FU(self):
         '''
             FU: FuseStep
+            Describe: fuse can fuse two consecutive axes of one computation.
         '''
-        name = f'FU_0'
+        # TODO: Grow up the number of fusion, currently only between two tensor 
+        # is possible.
+        name = f'FU_{0}'
         size_fusion = len(self.axis)-1
-        self.cfg.define_knob(name, [i for i in range(size_fusion*size_fusion)])
+        self.cfg.define_knob(name, [i for i in range(size_fusion)])
 
         for i in range(size_fusion):
-            for j in range(size_fusion):
-                if i == j:
-                    continue
-                idx = i*size_fusion+j
-                if self.cfg[name].val == idx:
-                    fused = self.sch[self.tensor].fuse(self.axis[i], self.axis[j])
+            if self.cfg[name].val == i:
+                fused = self.sch[self.tensor].fuse(self.axis[i], self.axis[i+1])
+                update(self.axis, [self.axis[i], self.axis[i+1]], fused, i)
 
     def FU_fixed(self, list_fuse):
         '''
             FU_fixed: Fuse step with a list
         '''
-        i = 0
+        i, pos = 0, 0
         p = self.axis.copy()
         while i < len(list_fuse):
-            #print(p)
-            #print(self.axis)
             if i == 0:
-                pfused = self.sch[self.tensor].fuse(p[list_fuse[i]], p[list_fuse[i+1]])
-                self.axis.remove(p[list_fuse[i]])
-                self.axis.remove(p[list_fuse[i+1]])
-                self.axis.insert(0, pfused)
+                t1 = p[list_fuse[i]]
+                t2 = p[list_fuse[i+1]]
+                pos = list_fuse[i]
+                pfused = self.sch[self.tensor].fuse(t1, t2)
+                update(self.axis, [t1, t2], pfused, pos)
                 i += 1
             else:
-                fused = self.sch[self.tensor].fuse(pfused, p[list_fuse[i]])
-                self.axis.remove(pfused)
-                self.axis.remove(p[list_fuse[i]])
-                self.axis.insert(0, fused)
+                tn = p[list_fuse[i]]
+                fused = self.sch[self.tensor].fuse(pfused, tn)
+                update(self.axis, [pfused, tn], fused, pos)
                 pfused = fused
             i += 1
 
-    def PR(self):
+    def PR(self, var, pragma_type):
         '''
             PR: PragmaStep
         '''
-        pass
+        name = f'PR_{var}_{pragma_type}'
+        pragma_size = [16, 32, 64, 128, 256, 512, 1024]
+        self.cfg.define_knob(name, [i for i in pragma_size])
+        
+        for i in pragma_size:
+            if self.cfg[name].val == i:
+                self.sch[self.tensor].pragma(self.axis[var], pragma_type, self.cfg[name].val)
 
     def PR_fixed(self, var, pragma_type, size):
         '''
-            PR: PragmaStep
+            PR: PragmaStep with fixed values
         '''
         assert var < len(self.axis)
         self.sch[self.tensor].pragma(self.axis[var], pragma_type, size)

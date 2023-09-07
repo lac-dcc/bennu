@@ -14,8 +14,13 @@ def add(list, elements):
         if e not in list:
             list.append(e)
 
-def update(list, list_remove):
-    pass
+def update(list, list_remove, insert_element, pos):
+    # insert the new tensor in the new position
+    list.insert(pos, insert_element)
+    # Removed the old tensors
+    for l in list_remove:
+        list.remove(l)
+    
 
 def limited_interval(self, max_value, interval):
         new_interval = []
