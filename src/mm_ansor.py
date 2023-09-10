@@ -51,7 +51,7 @@ if __name__ == "__main__":
     ## Set Parameters for Auto-Scheduler
     log_file = arch + "_matmul.json"
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=500,  # change this to 20000 to achieve the best performance
+        num_measure_trials=1000,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(number=2, repeat=3),
         measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
         verbose=0
@@ -64,10 +64,10 @@ if __name__ == "__main__":
     task.tune(tune_option)
     end = time.time()
 
+    '''
     # Apply the best schedule
     sch, args = task.apply_best(log_file)
 
-    '''
     ## Check correctness and evaluate performance
     with auto_scheduler.ApplyHistoryBest(log_file):
         func = tvm.build(sch, args, target)

@@ -14,7 +14,7 @@
 import sys, os
 
 import tvm
-from tvm import autotvm
+from tvm import autotvm, te
 from src.module.utils import *
 
 class Template_autotvm():
@@ -23,8 +23,9 @@ class Template_autotvm():
     sch = None
     tensor = None
     args = []
-    search_space = [2, 4, 8, 16] # TODO: Find best values 
+    search_space = [2, 4, 8, 16, 24, 32, 64, 96, 128] # TODO: Find best values 
     axis = None
+    annotation = []
 
     def __init__(self, schedule, tensor, args) -> None:
         self.sch = schedule
@@ -47,12 +48,21 @@ class Template_autotvm():
     def CHW(self):
         '''
             CHW: CacheWriteStep
+            TODO: Not finished yet.
         '''
         name = f'CHW'
-        self.cfg.define_knob(name, [[0], [1]])
-        if self.cfg[name].val != [0]:
-            CC = self.sch[self.tensor].cache_write(self.tensor, 'local')
-            print(self.tensor)
+        self.cfg.define_knob(name, [0, 1])
+        if self.cfg[name].val != 0:
+            new_CC = te.create_schedule(self.tensor.op)
+            CC = new_CC.cache_write(self.tensor, 'local')
+
+            #xo, yo, xi, yi = self.sch[self.tensor].tile(self.axis[0], self.axis[1], x_factor=32, y_factor=32)
+            #self.sch[CC].compute_at(self.sch[self.tensor], xo)
+
+            #self.annotation.append(['CHW', CC])
+            #self.tensor = CC
+            #CC = self.sch.cache_write(self.tensor, "global")
+            print(CC)
         
 
     def print(self):
@@ -185,19 +195,21 @@ class Template_autotvm():
     def PR(self, var, pragma_type):
         '''
             PR: PragmaStep
+            pragma_type options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
         '''
         name = f'PR_{var}_{pragma_type}'
-        pragma_size = [16, 32, 64, 128, 256, 512, 1024]
+        pragma_size = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
         self.cfg.define_knob(name, [i for i in pragma_size])
         
         for i in pragma_size:
             if self.cfg[name].val == i:
                 self.sch[self.tensor].pragma(self.axis[var], pragma_type, self.cfg[name].val)
 
-    def PR_fixed(self, var, pragma_type, size):
+    def PR_fixed(self, list_pragma):
         '''
             PR: PragmaStep with fixed values
         '''
+        var, pragma_type, size = list_pragma
         assert var < len(self.axis)
         self.sch[self.tensor].pragma(self.axis[var], pragma_type, size)
 
@@ -206,6 +218,12 @@ class Template_autotvm():
             FSP: FollowSplitStep
         '''
         pass
+
+    def FSP_fixed(self, list_FSP):
+        '''
+            FSP: FollowSplitStep
+        '''
+        pass 
 
     def FFSP(self):
         '''
