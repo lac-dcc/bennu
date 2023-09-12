@@ -17,6 +17,35 @@ import tvm
 from tvm import autotvm, te
 from src.module.utils import *
 
+''' cfg
+Config: [[], 
+            [
+            ['SP', 2, 0, 1000, [5, 25, 4], 1], 
+            ['SP', 2, 4, 700, [1, 35, 4], 1], ['SP', 2, 8, 800, [8], 1], 
+            ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
+            ['FU', 2, [0, 1, 2]], 
+            ['AN', 2, 0, 3], 
+            ['PR', 2, 0, 'auto_unroll_max_step$512'], 
+            ['AN', 2, 7, 2]]]  
+'''
+def Template_factory(cfg, s, tensors, args):
+    ta = Template_autotvm(s, tensors, args)
+    for field in cfg:
+        if field[0] == 'SP':
+            # collect the SP parameters
+            #ta.SP()
+            # TODO: I need work here on Template_autotvm()
+            pass
+        elif field[0] == 'RE':
+            ta.RE_fixed(field[2]
+        elif field[0] == 'FU':
+            ta.FU_fixed(field[2])
+        elif field[0] == 'PR':
+            #ta.PR_fixed(field[2])
+            pass # I need work here on Template_autotvm()
+        # TODO: Complete with other parameters
+    return ta.ret()
+
 class Template_autotvm():
 
     cfg = None
