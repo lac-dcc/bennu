@@ -12,10 +12,11 @@ import tvm.testing
 from tvm import autotvm
 from src.module.utils import get_best_time
 from src.module.creating_template import Template_autotvm
+from src.module.template_factory import Template_factory
 
 
 @autotvm.template("matmul")  # 1. use a decorator
-def matmul(N, L, M, dtype):
+def matmul(N, L, M, dtype, cfg):
     A = te.placeholder((N, L), name="A", dtype=dtype)
     B = te.placeholder((L, M), name="B", dtype=dtype)
 
@@ -49,9 +50,12 @@ def matmul(N, L, M, dtype):
             ['PR', 2, 0, 'auto_unroll_max_step$512']]]  
     '''
 
+    '''
     ta = Template_autotvm(s, tensors, args)
     #ta.CHW()
-    ta.SP([3, 3, 1])
+    ta.SP(0, 3)
+    ta.SP(1, 3)
+    ta.SP(2, 1)
     #ta.SP_fixed([[5, 25, 4], [1, 35, 4], [8]])
     ta.RE_fixed([0, 4, 1, 5, 8, 2, 6, 9, 3, 7])
     #ta.RE(100)
@@ -65,12 +69,23 @@ def matmul(N, L, M, dtype):
     #ta.SP(2, 1)
     #ta.RE()
     #ta.print()
+    '''
 
-    return ta.ret()
+    return Template_factory(cfg, s, tensors, args)
 
 if __name__ == "__main__":
+
+    if len(sys.argv) > 1:
+        json_file = sys.argv[1]
+    else:
+        print("Example to execute:")
+        print("python3 src/example_build_template.py <file>.json")
+        exit(1)
+
+    best_time, best_config = get_best_time(json_file)
+    
     N, L, M = 1000, 800, 700
-    task = autotvm.task.create("matmul", args=(N, L, M, "float32"), target="llvm")
+    task = autotvm.task.create("matmul", args=(N, L, M, "float32", best_config), target="llvm")
     print(task.config_space)
 
     logging.getLogger("autotvm").setLevel(logging.DEBUG)
@@ -81,21 +96,22 @@ if __name__ == "__main__":
         runner=autotvm.LocalRunner(number=5, repeat=3)
     )
 
-    filename = "matmul.log"
+    filename = "matmul.json"
     if os.path.isfile(filename):
         os.remove(filename)
 
     tuner = autotvm.tuner.DropletTuner(task)
     tuner.tune(
-        n_trial=100,
+        n_trial=1000,
         measure_option=measure_option,
         callbacks=[autotvm.callback.log_to_file(filename)],
     )
 
     # apply history best from log file
+    '''
     with autotvm.apply_history_best(filename):
         with tvm.target.Target("llvm"):
-            s, arg_bufs = matmul(N, L, M, "float32")
+            s, arg_bufs = matmul(N, L, M, "float32", best_config)
             func = tvm.build(s, arg_bufs)
 
     # check correctness
@@ -107,6 +123,7 @@ if __name__ == "__main__":
     func(tvm.nd.array(a_np), tvm.nd.array(b_np), c_tvm)
 
     tvm.testing.assert_allclose(c_np, c_tvm.numpy(), rtol=1e-4)
+    '''
 
     best_time, best_config = get_best_time(filename)
 

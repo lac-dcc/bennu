@@ -57,4 +57,4 @@ def get_best_time(log):
                 best_cfg = data["config"]["entity"]
     f.close()
 
-    return best_avg, best_cfg
+    return best_avg, best_cfg[1]

@@ -28,23 +28,6 @@ Config: [[],
             ['PR', 2, 0, 'auto_unroll_max_step$512'], 
             ['AN', 2, 7, 2]]]  
 '''
-def Template_factory(cfg, s, tensors, args):
-    ta = Template_autotvm(s, tensors, args)
-    for field in cfg:
-        if field[0] == 'SP':
-            # collect the SP parameters
-            #ta.SP()
-            # TODO: I need work here on Template_autotvm()
-            pass
-        elif field[0] == 'RE':
-            ta.RE_fixed(field[2]
-        elif field[0] == 'FU':
-            ta.FU_fixed(field[2])
-        elif field[0] == 'PR':
-            #ta.PR_fixed(field[2])
-            pass # I need work here on Template_autotvm()
-        # TODO: Complete with other parameters
-    return ta.ret()
 
 class Template_autotvm():
 
@@ -104,7 +87,7 @@ class Template_autotvm():
         '''
             RE_fixed: Reorder step with a list
         '''
-        assert len(list_order) == len(self.axis)
+        assert len(list_order) <= len(self.axis)
         p = []
         for ord in list_order:
             p.append(self.axis[ord])
@@ -149,33 +132,36 @@ class Template_autotvm():
                         add(order, [x])
                     yp = y
         self.axis = order # update the tensor's axis 
-
+    
     def SP(self, list_iter_id):
         '''
             SP: SplitStep
-            Output example: ['SP_0', 'ot', [4,8,16]]
         '''
         order = []
         for iter_id in range(len(list_iter_id)):
-            name = f'SP_{iter_id}'
             split_size = list_iter_id[iter_id]
-            space = generate_space(self.search_space, split_size)
-            self.cfg.define_knob(name, space)
-            for i in range(split_size):
-                if i == 0:
-                    x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val[i])
-                    if i == split_size-1:
-                        add(order, [x0, y0])
+            if split_size == 0:
+                k = self.axis[iter_id]
+                add(order, [k])
+            else:
+                for i in range(split_size):
+                    name = f'SP_{iter_id}_{i}'
+                    self.cfg.define_knob(name, self.search_space)
+
+                    if i == 0:
+                        x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
+                        if i == split_size-1:
+                            add(order, [x0, y0])
+                        else:
+                            add(order, [x0])
+                        yp = y0
                     else:
-                        add(order, [x0])
-                    yp = y0
-                else:
-                    x, y = self.sch[self.tensor].split(yp, self.cfg[name].val[i])
-                    if i == split_size-1:
-                        add(order, [x, y])
-                    else:
-                        add(order, [x])
-                    yp = y
+                        x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
+                        if i == split_size-1:
+                            add(order, [x, y])
+                        else:
+                            add(order, [x])
+                        yp = y
         self.axis = order # update the tensor's axis 
 
     def AN(self):
