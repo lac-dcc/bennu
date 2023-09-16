@@ -12,9 +12,8 @@ Config: [[],
     ['AN', 2, 7, 2]]]  
 '''
 
-def Template_factory(cfg, s, tensors, args):
-    print(cfg)
-    ta = Template_autotvm(s, tensors, args)
+def Template_factory(cfg, tensors, args):
+    ta = Template_autotvm(tensors, args)
     list_SP = []
     for i in range(len(cfg)):
         field = cfg[i]
@@ -31,7 +30,8 @@ def Template_factory(cfg, s, tensors, args):
             pragma = field[3].split("$")[0]
             size_pragma = int(field[3].split("$")[1])
             ta.PR_fixed([var, pragma, size_pragma])
-        else:
-            print(f'Method {field[0]} not implemented!')
-        # TODO: Complete with other parameters
+        elif field[0] == 'AN':
+            continue
+        # TODO: Complete with other methods
+        # print(f'Method {field[0]} not implemented yet!')
     return ta.ret()

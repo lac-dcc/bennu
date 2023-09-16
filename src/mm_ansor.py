@@ -3,6 +3,7 @@ import numpy as np
 import time
 import tvm
 from tvm import te, auto_scheduler
+from src.kernels.mm import ansor_mm
 import src.module.utils as utils
 
 @auto_scheduler.register_workload
@@ -43,7 +44,7 @@ if __name__ == "__main__":
     b_np = np.random.uniform(size=(L, M)).astype(np.float32)
     c_np = a_np.dot(b_np)
     
-    task = tvm.auto_scheduler.SearchTask(func=matmul, args=(N, L, M, "float32"), target=target)
+    task = tvm.auto_scheduler.SearchTask(func=ansor_mm, args=(N, L, M, "float32"), target=target)
 
     # Inspect the computational graph
     #print("Computational DAG:", task.compute_dag)

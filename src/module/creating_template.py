@@ -1,16 +1,3 @@
-## example input
-
-'''
-    Time spent: [0.0173736, 0.0208746, 0.0257531]
-    Config: [[], 
-    [['SP', 2, 0, 1000, [5, 25, 4], 1], ['SP', 2, 4, 700, [1, 35, 4], 1], ['SP', 2, 8, 800, [8], 1], 
-    ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
-    ['FU', 2, [0, 1, 2]], 
-    ['AN', 2, 0, 3], 
-    ['PR', 2, 0, 'auto_unroll_max_step$512'], 
-    ['AN', 2, 7, 2]]]    
-'''
-
 import sys, os
 
 import tvm
@@ -39,8 +26,8 @@ class Template_autotvm():
     axis = None
     annotation = []
 
-    def __init__(self, schedule, tensor, args) -> None:
-        self.sch = schedule
+    def __init__(self, tensor, args) -> None:
+        self.sch = te.create_schedule(tensor.op)
         self.tensor = tensor
         self.cfg = autotvm.get_config()
         self.args = args
@@ -231,14 +218,48 @@ class Template_autotvm():
     def FSP(self):
         '''
             FSP: FollowSplitStep
+            stage_id, iter_id, src_step_id, n_split
         '''
         pass
 
     def FSP_fixed(self, list_FSP):
         '''
             FSP: FollowSplitStep
+            stage_id, iter_id, src_step_id, n_split
+
+            ['FSP', 3, 0, 1, 1], 
+            ['FSP', 3, 2, 2, 1], 
+            ['RE', 3, [0, 2, 1, 3]], 
         '''
-        pass 
+        stage_id = list_FSP[0]
+        iter_id = list_FSP[1]
+        src_step_id = list_FSP[2]
+        n_split = list_FSP[3]
+
+        order = self.axis.copy()
+
+        if n_split == 0:
+            k = self.axis[src_step_id]
+            insert(order, [k], src_step_id)
+        else:
+            for i in range(n_split):
+                name = f'FSP_{src_step_id}_{i}'
+                self.cfg.define_knob(name, self.search_space)
+                if i == 0:
+                    x0, y0 = self.sch[self.tensor].split(self.axis[src_step_id], self.cfg[name].val)
+                    if i == n_split-1:
+                        insert(order, [x0, y0], src_step_id)
+                    else:
+                        insert(order, [x0], src_step_id) 
+                    yp = y0
+                else:
+                    x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
+                    if i == n_split-1:
+                        insert(order, [x, y], src_step_id)
+                    else:
+                        insert(order, [x], src_step_id)
+                    yp = y
+        self.axis = order # update the tensor's axis 
 
     def FFSP(self):
         '''

@@ -12,6 +12,7 @@ import tvm.testing
 from tvm import autotvm
 from src.module.utils import get_best_time
 from src.module.creating_template import Template_autotvm
+from src.kernels.mm import autotvm_mm
 
 
 @autotvm.template("matmul")  # 1. use a decorator
@@ -49,19 +50,16 @@ def matmul(N, L, M, dtype):
             ['PR', 2, 0, 'auto_unroll_max_step$512']]]  
     '''
     
-    ta = Template_autotvm(s, tensors, args)
+    ta = Template_autotvm(tensors, args)
     #ta.CHW()
-    ta.SP(0, 3)
-    ta.SP(1, 3)
-    ta.SP(2, 1)
-    #ta.SP_fixed([[5, 25, 4], [1, 35, 4], [8]])
+    ta.SP([3, 3, 1])
     ta.RE_fixed([0, 4, 1, 5, 8, 2, 6, 9, 3, 7])
-    #ta.RE(100)
-    #ta.RE_fixed([0,1,4,2,3])
     ta.FU_fixed([0, 1, 2])
-    #ta.AN()
-    #ta.FU()
-    #ta.PR(0, 'auto_unroll_max_step')
+    #ta.print()
+    ta.FSP_fixed([3, 0, 1, 1])
+    #ta.print()
+    ta.FSP_fixed([3, 2, 2, 1])
+    ta.RE_fixed([0, 2, 1, 3])
     ta.PR_fixed([0, 'auto_unroll_max_step', 512])
     #ta.SP(1, 1)
     #ta.SP(2, 1)
@@ -89,11 +87,12 @@ if __name__ == "__main__":
 
     tuner = autotvm.tuner.DropletTuner(task)
     tuner.tune(
-        n_trial=1000,
+        n_trial=1,
         measure_option=measure_option,
         callbacks=[autotvm.callback.log_to_file(filename)],
     )
 
+    '''
     # apply history best from log file
     with autotvm.apply_history_best(filename):
         with tvm.target.Target("llvm"):
@@ -109,6 +108,7 @@ if __name__ == "__main__":
     func(tvm.nd.array(a_np), tvm.nd.array(b_np), c_tvm)
 
     tvm.testing.assert_allclose(c_np, c_tvm.numpy(), rtol=1e-4)
+    '''
 
     best_time, best_config = get_best_time(filename)
 

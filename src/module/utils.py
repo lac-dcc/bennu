@@ -11,8 +11,15 @@ def permutation(arr, limit):
 
 def add(list, elements):
     for e in elements:
-        if e not in list:
-            list.append(e)
+        list.append(e)
+
+def insert(list, elements, pos):
+    for e in elements:
+        list.insert(pos, e)
+        pos += 1
+    # remove the first element which was splited
+    # from the list
+    del list[pos]
 
 def generate_space(values, r):
     space = []
@@ -49,7 +56,7 @@ def get_best_time(log):
             r = data["r"][0]
             if (np.mean(best_avg) > np.mean(r)):
                 best_avg = r
-                best_cfg = data["i"][1]
+                best_cfg = data["i"][1][1]
         else:
             r = data["result"][0]
             if (np.mean(best_avg) > np.mean(r)):
@@ -57,4 +64,4 @@ def get_best_time(log):
                 best_cfg = data["config"]["entity"]
     f.close()
 
-    return best_avg, best_cfg[1]
+    return best_avg, best_cfg
