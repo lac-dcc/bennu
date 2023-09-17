@@ -29,6 +29,9 @@ if __name__ == "__main__":
     elif arch == "cuda":
         target = tvm.target.Target("cuda")
         dev = tvm.cuda()
+    elif arch == "arm":
+        target = tvm.target.Target("llvm -mcpu=a64fx")
+        dev = tvm.cpu()
     else:
         print("Archtecture doesn't support.")
         exit(0)
