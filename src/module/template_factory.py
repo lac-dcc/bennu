@@ -32,6 +32,8 @@ def Template_factory(cfg, tensors, args):
             ta.PR_fixed([var, pragma, size_pragma])
         elif field[0] == 'AN':
             continue
+        elif field[0] == 'FSP':
+            ta.FSP_fixed(field[1:])
         # TODO: Complete with other methods
         # print(f'Method {field[0]} not implemented yet!')
     return ta.ret()
