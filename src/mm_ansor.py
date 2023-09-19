@@ -3,8 +3,8 @@ import numpy as np
 import time
 import tvm
 from tvm import te, auto_scheduler
-from src.kernels.mm import ansor_mm
-import src.module.utils as utils
+from kernels.mm import ansor_mm
+from module import utils
 
 @auto_scheduler.register_workload
 def matmul(N, L, M, dtype="float32"):
@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     arch = "cpu"
 
-    if len(sys.argv) == 1:
+    if len(sys.argv) == 2:
         arch = sys.argv[1]
 
     if arch == "cpu":

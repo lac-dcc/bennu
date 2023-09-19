@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     tuner = autotvm.tuner.DropletTuner(task)
     tuner.tune(
-        n_trial=1,
+        n_trial=10,
         measure_option=measure_option,
         callbacks=[autotvm.callback.log_to_file(filename)],
     )

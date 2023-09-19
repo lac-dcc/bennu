@@ -34,6 +34,22 @@ def Template_factory(cfg, tensors, args):
             continue
         elif field[0] == 'FSP':
             ta.FSP_fixed(field[1:])
+        elif filed[0] == 'FFSP':
+            pass
+        elif field[0] == 'SA':
+            pass
+        elif field[0] == 'CA':
+            pass
+        elif field[0] == 'CI':
+            pass
+        elif field[0] == 'CR':
+            pass
+        elif field[0] == 'CHR':
+            pass
+        elif field[0] == 'CHW':
+            pass
+        elif field[0] == 'RF':
+            pass
         # TODO: Complete with other methods
         # print(f'Method {field[0]} not implemented yet!')
     return ta.ret()
