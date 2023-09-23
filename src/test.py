@@ -57,12 +57,11 @@ def matmul(N, L, M, dtype):
     ta.FU_fixed([0, 1, 2])
     #ta.print()
     ta.FSP_fixed([3, 0, 1, 1])
-    #ta.print()
     ta.FSP_fixed([3, 2, 2, 1])
     ta.RE_fixed([0, 2, 1, 3])
+    ta.CA_fixed([2, 3, 1])
     ta.PR_fixed([0, 'auto_unroll_max_step', 512])
-    #ta.SP(1, 1)
-    #ta.SP(2, 1)
+    
     #ta.RE()
     #ta.print()
 
