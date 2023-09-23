@@ -1,20 +1,6 @@
-import sys, os
-
 import tvm
 from tvm import autotvm, te
 from src.module.utils import *
-
-''' cfg
-Config: [[], 
-            [
-            ['SP', 2, 0, 1000, [5, 25, 4], 1], 
-            ['SP', 2, 4, 700, [1, 35, 4], 1], ['SP', 2, 8, 800, [8], 1], 
-            ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
-            ['FU', 2, [0, 1, 2]], 
-            ['AN', 2, 0, 3], 
-            ['PR', 2, 0, 'auto_unroll_max_step$512'], 
-            ['AN', 2, 7, 2]]]  
-'''
 
 class Template_autotvm():
 
@@ -383,11 +369,19 @@ class Template_autotvm():
             * \param target_iter_id The index of iterator in target stage that this step will compute at to.
             
             ComputeAtStep(int stage_id, int target_stage_id, int target_iter_id);
+
+            ['CA', 2, 3, 1]
         '''
+        assert len(list_CA) == 3
+        stage_id, target_stage_id, target_iter_id = list_CA
         print(list_CA)
         print(self.axis)
         print(self.tensor)
         print(self.args)
+
+        print(self.args[0].op)
+        print(self.args[1].op)
+        print(self.args[2].op)
         pass
 
     def CI(self):
@@ -429,7 +423,7 @@ class Template_autotvm():
             * \param stage_id The index of the stage to be factored.
             * \param iter_id The index of the iterator to be factored.
             * \param factor_iter_id The position where the new iterator is placed.
-            
+            */
             RfactorStep(int stage_id, int iter_id, int factor_iter_id);
         '''
         pass
