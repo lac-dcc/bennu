@@ -22,11 +22,18 @@ class Template_autotvm():
     sch = None
     tensor = None
     args = []
-    search_space = [2, 4, 8, 16, 24, 32, 64, 96, 128] # TODO: Find best values 
+    #search_space = [2, 4, 8, 16, 24, 32, 64, 96, 128] # TODO: Find best values 
+    search_space = [4] # TODO: Find best values 
     axis = None
     annotation = []
 
     def __init__(self, tensor, args) -> None:
+        '''
+            Initializes the class constructor
+
+            * \param tensor 
+            * \param args
+        '''
         self.sch = te.create_schedule(tensor.op)
         self.tensor = tensor
         self.cfg = autotvm.get_config()
@@ -47,6 +54,12 @@ class Template_autotvm():
     def CHW(self):
         '''
             CHW: CacheWriteStep
+
+            * \param stage_id The index of the stage to be cache_write.
+            * \param scope_name The scope name of the newly added stage.
+            
+            CacheWriteStep(int stage_id, String scope_name)
+
             TODO: Not finished yet.
         '''
         name = f'CHW'
@@ -72,7 +85,12 @@ class Template_autotvm():
 
     def RE_fixed(self, list_order):
         '''
-            RE_fixed: Reorder step with a list
+            RE_fixed: Reorder step with a fixed list
+
+            * \param stage_id The index of the stage to be reordered.
+            * \param after_ids The expected indexes of the iterators after reorder.
+
+            ReorderStep(int stage_id, const Array<Integer>& after_ids);
         '''
         assert len(list_order) <= len(self.axis)
         p = []
@@ -84,6 +102,11 @@ class Template_autotvm():
     def RE(self, size_order):
         '''
             RE: ReorderStep
+
+            * \param stage_id The index of the stage to be reordered.
+            * \param after_ids The expected indexes of the iterators after reorder.
+
+            ReorderStep(int stage_id, const Array<Integer>& after_ids);
         ''' 
         if len(self.axis) == 0:
             return
@@ -98,7 +121,16 @@ class Template_autotvm():
 
     def SP_fixed(self, list_SP):
         '''
-            SP_fixed:
+            SP_fixed: SplitStep
+
+            * \param stage_id The index of the stage to be split.
+            * \param iter_id The index of the iterator to be split.
+            * \param extent The extent length of the axis to split.
+            * \param lengths The multiple split factors. Can be None to be filled by search policy.
+            * \param inner_to_outer The split direction.
+            
+            SplitStep(int stage_id, int iter_id, Optional<PrimExpr> extent,
+                        const Array<Optional<Integer>>& lengths, bool inner_to_outer);
         '''
         order = []
         for iter_id in range(len(list_SP)):
@@ -123,6 +155,15 @@ class Template_autotvm():
     def SP(self, list_iter_id):
         '''
             SP: SplitStep
+    
+            * \param stage_id The index of the stage to be split.
+            * \param iter_id The index of the iterator to be split.
+            * \param extent The extent length of the axis to split.
+            * \param lengths The multiple split factors. Can be None to be filled by search policy.
+            * \param inner_to_outer The split direction.
+            
+            SplitStep(int stage_id, int iter_id, Optional<PrimExpr> extent,
+                        const Array<Optional<Integer>>& lengths, bool inner_to_outer);
         '''
         order = []
         for iter_id in range(len(list_iter_id)):
@@ -154,13 +195,24 @@ class Template_autotvm():
     def AN(self):
         '''
             AN: AnnotationStep
+
+            * \brief The constructor.
+            * \param stage_id The index of the stage to add annotation.
+            * \param iter_id The index of the iterator to add annotation.
+            * \param ann The annotation type of this step.
+            
+            AnnotationStep(int stage_id, int iter_id, IteratorAnnotation ann);
         '''
         pass
 
     def FU(self):
         '''
             FU: FuseStep
-            Describe: fuse can fuse two consecutive axes of one computation.
+            
+            * \param stage_id The index of the stage to be fused.
+            * \param fused_ids The index of the iterators to be fused.
+            
+            FuseStep(int stage_id, const Array<Integer>& fused_ids);
         '''
         # TODO: Grow up the number of fusion, currently only between two tensor 
         # is possible.
@@ -176,6 +228,11 @@ class Template_autotvm():
     def FU_fixed(self, list_fuse):
         '''
             FU_fixed: Fuse step with a list
+
+            * \param stage_id The index of the stage to be fused.
+            * \param fused_ids The index of the iterators to be fused.
+            
+            FuseStep(int stage_id, const Array<Integer>& fused_ids);
         '''
         i, pos = 0, 0
         p = self.axis.copy()
@@ -197,8 +254,14 @@ class Template_autotvm():
     def PR(self, var, pragma_type):
         '''
             PR: PragmaStep
+
+            * \param stage_id The index of the stage to be fused.
+            * \param iter_id The index of the iterator to add pragma.
+            * \param pragma_type The pragma string.
             pragma_type options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
         '''
+        assert pragma_type in ["auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"]
+
         name = f'PR_{var}_{pragma_type}'
         pragma_size = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
         self.cfg.define_knob(name, [i for i in pragma_size])
@@ -210,7 +273,13 @@ class Template_autotvm():
     def PR_fixed(self, list_pragma):
         '''
             PR: PragmaStep with fixed values
+
+            * \param stage_id The index of the stage to be fused.
+            * \param iter_id The index of the iterator to add pragma.
+            * \param pragma_type The pragma string.
+            pragma_type options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
         '''
+        assert len(list_pragma) == 3
         var, pragma_type, size = list_pragma
         assert var < len(self.axis)
         self.sch[self.tensor].pragma(self.axis[var], pragma_type, size)
@@ -218,23 +287,29 @@ class Template_autotvm():
     def FSP(self):
         '''
             FSP: FollowSplitStep
-            stage_id, iter_id, src_step_id, n_split
+            
+            * \param stage_id The index of the stage to be split.
+            * \param iter_id The index of the iterator to be split.
+            * \param src_step_id The index of the split step to be followed in the history.
+            * \param n_split The number of split level.
+            
+            FollowSplitStep(int stage_id, int iter_id, int src_step_id, int n_split)
         '''
         pass
 
     def FSP_fixed(self, list_FSP):
         '''
-            FSP: FollowSplitStep
-            stage_id, iter_id, src_step_id, n_split
-
-            ['FSP', 3, 0, 1, 1], 
-            ['FSP', 3, 2, 2, 1], 
-            ['RE', 3, [0, 2, 1, 3]], 
+            FSP: FollowSplitStep with values fixed
+            
+            * \param stage_id The index of the stage to be split.
+            * \param iter_id The index of the iterator to be split.
+            * \param src_step_id The index of the split step to be followed in the history.
+            * \param n_split The number of split level.
+            
+            FollowSplitStep(int stage_id, int iter_id, int src_step_id, int n_split)
         '''
-        stage_id = list_FSP[0]
-        iter_id = list_FSP[1]
-        src_step_id = list_FSP[2]
-        n_split = list_FSP[3]
+        assert len(list_FSP) == 4
+        stage_id, iter_id, src_step_id, n_split = list_FSP
 
         order = self.axis.copy()
 
@@ -264,41 +339,97 @@ class Template_autotvm():
     def FFSP(self):
         '''
             FFSP: FollowFusedSplitStep
+
+            * \param stage_id The index of the stage to be split.
+            * \param iter_id The index of the iterator to be split.
+            * \param src_step_ids An array of index for split step to be followed in the history.
+            * \param level Use the length in this split level.
+            * \param factor_or_nparts If this is true, use factor. Otherwise, use nparts.
+            
+            FollowFusedSplitStep(int stage_id, int iter_id, const Array<Integer>& src_step_ids, int level,
+                       bool factor_or_nparts);
         '''
         pass
 
     def SA(self):
         '''
             SA: StorageAlignStep
+      
+            * \param stage_id The index of the stage to be aligned.
+            * \param iter_id The index of the iterator to be aligned.
+            * \param factor The factor in alignment specification.
+            * \param offset The offset in the alignment specification.
+
+            StorageAlignStep(int stage_id, int iter_id, int factor, int offset)
         '''
         pass
 
     def CA(self):
         '''
             CA: ComputeAtStep
+            * \param stage_id The index of the source stage.
+            * \param target_stage_id The index of stage that this step will compute at to.
+            * \param target_iter_id The index of iterator in target stage that this step will compute at to.
+            
+            ComputeAtStep(int stage_id, int target_stage_id, int target_iter_id);
         '''
+        pass
+    
+    def CA_fixed(self, list_CA):
+        '''
+            CA: ComputeAtStep with a list fixed
+            * \param stage_id The index of the source stage.
+            * \param target_stage_id The index of stage that this step will compute at to.
+            * \param target_iter_id The index of iterator in target stage that this step will compute at to.
+            
+            ComputeAtStep(int stage_id, int target_stage_id, int target_iter_id);
+        '''
+        print(list_CA)
+        print(self.axis)
+        print(self.tensor)
+        print(self.args)
         pass
 
     def CI(self):
         '''
             CI: ComputeInlineStep
+
+            * \param stage_id The index of the stage to be marked compute inlined.
+            
+            ComputeInlineStep(int stage_id);
         '''
         pass
 
     def CR(self):
         '''
             CR: ComputeRootStep
+
+            * \param stage_id The index of the stage to be marked compute at root.
+            
+            ComputeRootStep(int stage_id);
         '''
         pass
 
     def CHR(self):
         '''
             CHR: CacheReadStep
+
+            * \param stage_id The index of the stage to be cache_read.
+            * \param scope_name The scope name of the newly added stage.
+            * \param reader_stage_ids The indices of reader stages.
+            
+            CacheReadStep(int stage_id, String scope_name, const Array<Integer>& reader_stage_ids);
         '''
         pass
 
     def RF(self):
         '''
             RF: RfactorStep
+
+            * \param stage_id The index of the stage to be factored.
+            * \param iter_id The index of the iterator to be factored.
+            * \param factor_iter_id The position where the new iterator is placed.
+            
+            RfactorStep(int stage_id, int iter_id, int factor_iter_id);
         '''
         pass
