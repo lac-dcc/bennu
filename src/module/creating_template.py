@@ -80,9 +80,12 @@ class Template_autotvm():
             ReorderStep(int stage_id, const Array<Integer>& after_ids);
         '''
         assert len(list_order) <= len(self.axis)
-        p = []
+        p, count = [], 0
         for ord in list_order:
             p.append(self.axis[ord])
+            count += 1
+        for i in range(count, len(self.axis)):
+            p.append(self.axis[i])
         self.sch[self.tensor].reorder(*p)
         self.axis = p
 
@@ -372,7 +375,7 @@ class Template_autotvm():
     
     def CA_fixed(self, list_CA):
         '''
-            CA: ComputeAtStep with a list fixed
+            CA:     Step with a list fixed
             * \param stage_id The index of the source stage.
             * \param target_stage_id The index of stage that this step will compute at to.
             * \param target_iter_id The index of iterator in target stage that this step will compute at to.
@@ -383,14 +386,9 @@ class Template_autotvm():
         '''
         assert len(list_CA) == 3
         stage_id, target_stage_id, target_iter_id = list_CA
-        print(list_CA)
-        print(self.axis)
-        print(self.tensor)
-        print(self.args)
 
-        print(self.args[0].op)
-        print(self.args[1].op)
-        print(self.args[2].op)
+        # TODO: Verify why this get error?
+        #self.sch[self.tensor].compute_at(self.sch[self.tensor], self.axis[target_iter_id])
         pass
 
     def CI(self):
