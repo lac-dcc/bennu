@@ -7,10 +7,12 @@ class Template_autotvm():
     cfg = None
     sch = None
     tensor = None
+    axis = None
+    cache = None
+    cache_axis = None
     args = []
     #search_space = [2, 4, 8, 16, 24, 32, 64, 96, 128] # TODO: Find best values 
     search_space = [4] # TODO: Find best values 
-    axis = None
     annotation = []
 
     def __init__(self, tensor, args) -> None:
@@ -51,19 +53,25 @@ class Template_autotvm():
         assert len(list_CHW) == 2
         stage_id, scope_name = list_CHW
         name = f'CHW'
-        self.cfg.define_knob(name, [None, scope_name])
+        self.cfg.define_knob(name, ["None", scope_name])
         if self.cfg[name].val == scope_name:
-            new_CC = te.create_schedule(self.tensor.op)
-            CC = new_CC.cache_write(self.tensor, scope_name)
+            bn = 32 # size of cache in 32 blocks
 
-            #xo, yo, xi, yi = self.sch[self.tensor].tile(self.axis[0], self.axis[1], x_factor=32, y_factor=32)
-            #self.sch[CC].compute_at(self.sch[self.tensor], xo)
+            self.sch = te.create_schedule(self.tensor.op)
 
-            #self.annotation.append(['CHW', CC])
-            #self.tensor = CC
-            #CC = self.sch.cache_write(self.tensor, "global")
-            print(CC)
-        
+            # Allocate write cache
+            self.cache = self.sch.cache_write(self.tensor, "local")
+            _, n, _, _ = self.sch[self.tensor].tile(self.tensor.op.axis[0], self.tensor.op.axis[1], bn, bn)
+
+            # Write cache is computed at no
+            self.sch[self.cache].compute_at(self.sch[self.tensor], n)
+
+            # New axes
+            self.cache_axis = []
+            for t in self.sch[self.cache].op.axis:
+                self.cache_axis.append(t)
+            for t in self.sch[self.cache].op.reduce_axis:
+                self.cache_axis.append(t)
 
     def print(self):
         '''
@@ -80,17 +88,27 @@ class Template_autotvm():
 
             ReorderStep(int stage_id, const Array<Integer>& after_ids);
         '''
-        assert len(list_order) <= len(self.axis)
+        if self.cfg[f'CHW'].val != 'local':
+            axis = self.axis
+        else:
+            axis = self.cache_axis
+
+        assert len(list_order) <= len(axis)
         print(self.values_space)
 
         p, count = [], 0
         for ord in list_order:
-            p.append(self.axis[ord])
+            p.append(axis[ord])
             count += 1
-        for i in range(count, len(self.axis)):
-            p.append(self.axis[i])
-        self.sch[self.tensor].reorder(*p)
-        self.axis = p
+        for i in range(count, len(axis)):
+            p.append(axis[i])
+        
+        if self.cfg[f'CHW'].val != 'local':
+            self.sch[self.tensor].reorder(*p)
+            self.axis = p
+        else:
+            self.sch[self.cache].reorder(*p)
+            self.cache_axis = p
 
     def RE(self, size_order):
         '''
@@ -154,28 +172,39 @@ class Template_autotvm():
                         const Array<Optional<Integer>>& lengths, bool inner_to_outer);
         '''
         order = []
+
+        if self.cfg[f'CHW'].val != 'local':
+            axis = self.axis
+            tensor = self.tensor
+        else:
+            axis = self.cache_axis
+            tensor = self.cache
+            
         self.values_space = []
         for iter_id in range(len(list_iter_id)):
             split_size = list_iter_id[iter_id]
             if split_size == 0:
-                k = self.axis[iter_id]
+                k = axis[iter_id]
                 add(order, [k])
             else:
                 for i in range(split_size):
                     name = f'SP_{iter_id}_{i}'
                     self.cfg.define_knob(name, self.search_space)
-
                     if i == 0:
-                        x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
+                        x0, y0 = self.sch[tensor].split(axis[iter_id], self.cfg[name].val)
                         self.values_space.append(self.cfg[name].val)
                         add(order, [x0, y0] if i == split_size-1 else [x0])
                         yp = y0
                     else:
-                        x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
+                        x, y = self.sch[tensor].split(yp, self.cfg[name].val)
                         self.values_space.append(self.cfg[name].val)
                         add(order, [x, y] if i == split_size-1 else [x])
                         yp = y
-        self.axis = order # update the tensor's axis 
+        
+        if self.cfg[f'CHW'].val != 'local':
+            self.axis = order
+        else:
+            self.cache_axis = order
 
     def AN(self):
         '''
