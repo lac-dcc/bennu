@@ -97,14 +97,15 @@ class Template_autotvm():
         '''
         assert len(list_order) <= len(self.axis)
 
-        p, count = [], 0
-        for ord in list_order:
-            p.append(self.axis[ord])
-            count += 1
-        for i in range(count, len(self.axis)):
-            p.append(self.axis[i])
-        self.sch[self.tensor].reorder(*p)
-        self.axis = p
+        new_order = []
+        for i in range(len(self.axis)):
+            if i < len(list_order):
+                new_order.append(self.axis[list_order[i]])
+            else:
+                new_order.append(self.axis[i])
+        # Reorder with the new order
+        self.sch[self.tensor].reorder(*new_order)
+        self.axis = new_order
 
     def RE(self, size_order):
         '''
@@ -274,10 +275,13 @@ class Template_autotvm():
             pragma_type options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
         '''
         assert len(list_pragma) == 3
-        assert var < len(self.axis)
 
         var, pragma_type, size = list_pragma
+
+        assert var < len(self.axis)
+
         self.sch[self.tensor].pragma(self.axis[var], pragma_type, size)
+        
 
     def FSP(self):
         '''
@@ -290,7 +294,24 @@ class Template_autotvm():
             
             FollowSplitStep(int stage_id, int iter_id, int src_step_id, int n_split)
         '''
-        pass
+        split_factor = [0, 1, 2, 3, 4]
+        order = self.axis.copy()
+
+        for src_step_id in range(len(self.axis)):
+            for n_split in split_factor:
+                name = f'FSP_{src_step_id}_{n_split}'
+                self.cfg.define_knob(name, self.search_space)
+                if n_split != 0:
+                    for i in range(n_split):
+                        if i == 0:
+                            x0, y0 = self.sch[self.tensor].split(self.axis[src_step_id], self.cfg[name].val)
+                            insert(order, [x0, y0] if i == n_split-1 else [x0], src_step_id)
+                            yp = y0
+                        else:
+                            x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
+                            insert(order, [x, y] if i == n_split-1 else [x], src_step_id)
+                            yp = y
+        self.axis = order # update the tensor's axis 
 
     def FSP_fixed(self, list_FSP):
         '''
@@ -308,10 +329,7 @@ class Template_autotvm():
 
         order = self.axis.copy()
 
-        if n_split == 0:
-            k = self.axis[src_step_id]
-            insert(order, [k], src_step_id)
-        else:
+        if n_split != 0:
             for i in range(n_split):
                 name = f'FSP_{src_step_id}_{i}'
                 self.cfg.define_knob(name, self.search_space)
@@ -378,6 +396,8 @@ class Template_autotvm():
             * \param target_iter_id The index of iterator in target stage that this step will compute at to.
             
             ComputeAtStep(int stage_id, int target_stage_id, int target_iter_id);
+
+            ['CA', 2, 3, 1]
         '''
         pass
     
@@ -395,9 +415,10 @@ class Template_autotvm():
         assert len(list_CA) == 3
         stage_id, target_stage_id, target_iter_id = list_CA
 
-        print(self.axis)
+        #print(self.axis)
         # TODO: Verify why this get error?
-        # self.sch[self.tensor].compute_at(self.sch[self.tensor], self.axis[target_iter_id])
+        #print(self.axis[target_iter_id])
+        #self.sch[self.tensor].compute_at(self.sch[self.tensor], self.axis[target_iter_id])
         pass
 
     def CI(self):
