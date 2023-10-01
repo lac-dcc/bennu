@@ -6,10 +6,9 @@ class Template_autotvm():
 
     cfg = None
     sch = None
+    start_tensor = None
     tensor = None
     axis = None
-    cache = None
-    cache_axis = None
     args = []
     #search_space = [2, 4, 8, 16, 24, 32, 64, 96, 128] # TODO: Find best values 
     search_space = [4] # TODO: Find best values 
@@ -22,15 +21,17 @@ class Template_autotvm():
             * \param tensor 
             * \param args
         '''
+        self.start_tensor = tensor
         self.sch = te.create_schedule(tensor.op)
-        self.tensor = tensor
         self.cfg = autotvm.get_config()
         self.args = args
 
+        # Initialize the axis
+        self.tensor = tensor
         self.axis = []
-        for t in self.sch[self.tensor].op.axis:
+        for t in self.sch[tensor].op.axis:
             self.axis.append(t)
-        for t in self.sch[self.tensor].op.reduce_axis:
+        for t in self.sch[tensor].op.reduce_axis:
             self.axis.append(t)
 
     def ret(self):
@@ -54,24 +55,30 @@ class Template_autotvm():
         stage_id, scope_name = list_CHW
         name = f'CHW'
         self.cfg.define_knob(name, ["None", scope_name])
-        if self.cfg[name].val == scope_name:
-            bn = 32 # size of cache in 32 blocks
 
-            self.sch = te.create_schedule(self.tensor.op)
+        # Rewrite the tensor
+        self.tensor = None
+
+        if self.cfg[name].val == scope_name:
+            # cache size
+            bn = 32 
 
             # Allocate write cache
-            self.cache = self.sch.cache_write(self.tensor, "local")
-            _, n, _, _ = self.sch[self.tensor].tile(self.tensor.op.axis[0], self.tensor.op.axis[1], bn, bn)
+            cache = self.sch.cache_write(self.start_tensor, scope_name)
+            _, no, _, _ = self.sch[self.start_tensor].tile(self.start_tensor.op.axis[0], self.start_tensor.op.axis[1], bn, bn)
 
             # Write cache is computed at no
-            self.sch[self.cache].compute_at(self.sch[self.tensor], n)
-
-            # New axes
-            self.cache_axis = []
-            for t in self.sch[self.cache].op.axis:
-                self.cache_axis.append(t)
-            for t in self.sch[self.cache].op.reduce_axis:
-                self.cache_axis.append(t)
+            self.sch[cache].compute_at(self.sch[self.start_tensor], no)
+            self.tensor = cache
+        else:
+            self.tensor = self.start_tensor
+        
+        # Update the axis
+        self.axis = []
+        for t in self.sch[self.tensor].op.axis:
+            self.axis.append(t)
+        for t in self.sch[self.tensor].op.reduce_axis:
+            self.axis.append(t)
 
     def print(self):
         '''
@@ -88,27 +95,16 @@ class Template_autotvm():
 
             ReorderStep(int stage_id, const Array<Integer>& after_ids);
         '''
-        if self.cfg[f'CHW'].val != 'local':
-            axis = self.axis
-        else:
-            axis = self.cache_axis
-
-        assert len(list_order) <= len(axis)
-        print(self.values_space)
+        assert len(list_order) <= len(self.axis)
 
         p, count = [], 0
         for ord in list_order:
-            p.append(axis[ord])
+            p.append(self.axis[ord])
             count += 1
-        for i in range(count, len(axis)):
-            p.append(axis[i])
-        
-        if self.cfg[f'CHW'].val != 'local':
-            self.sch[self.tensor].reorder(*p)
-            self.axis = p
-        else:
-            self.sch[self.cache].reorder(*p)
-            self.cache_axis = p
+        for i in range(count, len(self.axis)):
+            p.append(self.axis[i])
+        self.sch[self.tensor].reorder(*p)
+        self.axis = p
 
     def RE(self, size_order):
         '''
@@ -144,7 +140,6 @@ class Template_autotvm():
                         const Array<Optional<Integer>>& lengths, bool inner_to_outer);
         '''
         order = []
-        self.values_space = []
         for iter_id in range(len(list_SP)):
             split_size = len(list_SP[iter_id])
             for i in range(split_size):
@@ -172,39 +167,24 @@ class Template_autotvm():
                         const Array<Optional<Integer>>& lengths, bool inner_to_outer);
         '''
         order = []
-
-        if self.cfg[f'CHW'].val != 'local':
-            axis = self.axis
-            tensor = self.tensor
-        else:
-            axis = self.cache_axis
-            tensor = self.cache
-            
-        self.values_space = []
         for iter_id in range(len(list_iter_id)):
             split_size = list_iter_id[iter_id]
             if split_size == 0:
-                k = axis[iter_id]
+                k = self.axis[iter_id]
                 add(order, [k])
             else:
                 for i in range(split_size):
                     name = f'SP_{iter_id}_{i}'
                     self.cfg.define_knob(name, self.search_space)
                     if i == 0:
-                        x0, y0 = self.sch[tensor].split(axis[iter_id], self.cfg[name].val)
-                        self.values_space.append(self.cfg[name].val)
+                        x0, y0 = self.sch[self.tensor].split(self.axis[iter_id], self.cfg[name].val)
                         add(order, [x0, y0] if i == split_size-1 else [x0])
                         yp = y0
                     else:
-                        x, y = self.sch[tensor].split(yp, self.cfg[name].val)
-                        self.values_space.append(self.cfg[name].val)
+                        x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
                         add(order, [x, y] if i == split_size-1 else [x])
                         yp = y
-        
-        if self.cfg[f'CHW'].val != 'local':
-            self.axis = order
-        else:
-            self.cache_axis = order
+        self.axis = order
 
     def AN(self):
         '''
