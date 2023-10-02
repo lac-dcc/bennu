@@ -51,22 +51,52 @@ def matmul(N, L, M, dtype):
     '''
     
     ta = Template_autotvm(tensors, args)
-    #ta.CHW()
+    ta.CHW([2, 'local'])
     ta.SP([3, 3, 1])
     ta.RE_fixed([0, 4, 1, 5, 8, 2, 6, 9, 3, 7])
-    ta.FU_fixed([0, 1, 2])
+    #ta.FU_fixed([0, 1, 2])
     #ta.print()
-    ta.FSP_fixed([3, 0, 1, 1])
-    #ta.print()
-    ta.FSP_fixed([3, 2, 2, 1])
-    ta.RE_fixed([0, 2, 1, 3])
-    ta.PR_fixed([0, 'auto_unroll_max_step', 512])
-    #ta.SP(1, 1)
-    #ta.SP(2, 1)
+    #ta.FSP_fixed([3, 0, 1, 1])
+    #ta.FSP_fixed([3, 2, 2, 1])
+    #ta.RE_fixed([0, 2, 1, 3])
+    #ta.CA_fixed([2, 3, 1])
+    #ta.PR_fixed([0, 'auto_unroll_max_step', 512])
+    
     #ta.RE()
     #ta.print()
 
     return ta.ret()
+    
+    '''
+    bn = 32
+    kfactor = 4
+
+    s = te.create_schedule(C.op)
+
+    # Allocate write cache
+    CC = s.cache_write(C, "local")
+
+    mo, no, mi, ni = s[C].tile(C.op.axis[0], C.op.axis[1], bn, bn)
+
+    # Write cache is computed at no
+    s[CC].compute_at(s[C], no)
+
+    # New inner axes
+    mc, nc = s[CC].op.axis
+
+    (kaxis,) = s[CC].op.reduce_axis
+    ko, ki = s[CC].split(kaxis, factor=kfactor)
+    s[CC].reorder(ko, mc, ki, nc)
+    #s[CC].vectorize(nc)
+
+    # TODO: Add separate optimization step to discuss loop unrolling
+    # unrolling is a loop optimization strategy which can reduce branch
+    # prediction failures and increases the chance of concurrent execution
+    # unroll kfactor loops
+    #s[CC].unroll(ki)
+    '''
+
+    return s, args
 
 if __name__ == "__main__":
     N, L, M = 1000, 800, 700
@@ -85,7 +115,7 @@ if __name__ == "__main__":
     if os.path.isfile(filename):
         os.remove(filename)
 
-    tuner = autotvm.tuner.DropletTuner(task)
+    tuner = autotvm.tuner.GridSearchTuner(task)
     tuner.tune(
         n_trial=10,
         measure_option=measure_option,
