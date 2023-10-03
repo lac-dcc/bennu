@@ -48,8 +48,6 @@ class Template_autotvm():
             * \param scope_name The scope name of the newly added stage.
             
             CacheWriteStep(int stage_id, String scope_name)
-
-            TODO: Not finished yet.
         '''
         assert len(list_CHW) == 2
         stage_id, scope_name = list_CHW
