@@ -185,7 +185,7 @@ class Template_autotvm():
                         yp = y
         self.axis = order
 
-    def AN(self):
+    def AN(self, params):
         '''
             AN: AnnotationStep
 
@@ -196,7 +196,25 @@ class Template_autotvm():
             
             AnnotationStep(int stage_id, int iter_id, IteratorAnnotation ann);
         '''
-        pass
+        assert len(params) == 3
+
+        annotation_string = {0:"for", 1:"unroll", 2:"vectorize", 3:"parallel",
+                             4:"vthread", 5:"blockIdx.x", 6:"threadIdx.x", 7:"blockIdx.y",
+                             8:"threadIdx.y", 9:"blockIdx.z", 10:"threadIdx.z", 11:"tensorize"}
+
+        if params[2] == 1:  # unroll
+            self.sch[self.tensor].unroll(self.axis[params[1]])
+        elif params[2] == 2:  # vectorize
+            self.sch[self.tensor].vectorize(self.axis[params[1]])
+        elif params[2] == 3:  # parallel
+            self.sch[self.tensor].parallel(self.axis[params[1]])
+        elif params[2] in [4, 5, 6, 7, 8, 9, 10]:  # thread and block ids
+            self.sch[self.tensor].bind(self.axis[params[1]], te.thread_axis(annotation_string[params[2]]))
+        elif params[2] == 0:  # for
+            pass  # do nothing in this case
+        else:
+            raise RuntimeError(f"Invalid annotation type {annotation_string[params[2]]}")
+
 
     def FU(self):
         '''
