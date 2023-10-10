@@ -31,7 +31,7 @@ def Template_factory(cfg, tensors, args):
             size_pragma = int(field[3].split("$")[1])
             ta.PR_fixed([var, pragma, size_pragma])
         elif field[0] == 'AN':
-            continue
+            ta.AN(field[1:])
         elif field[0] == 'FSP':
             ta.FSP_fixed(field[1:])
         elif field[0] == 'FFSP':
@@ -39,7 +39,7 @@ def Template_factory(cfg, tensors, args):
         elif field[0] == 'SA':
             pass
         elif field[0] == 'CA':
-            pass
+            ta.CA_fixed(field[1:])
         elif field[0] == 'CI':
             ta.CI()
         elif field[0] == 'CR':

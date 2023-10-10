@@ -431,12 +431,11 @@ class Template_autotvm():
         assert len(list_CA) == 3
         stage_id, target_stage_id, target_iter_id = list_CA
 
-        #print(self.axis)
-        # TODO: Verify why this get error?
-        #print(self.axis[target_iter_id])
-        #self.sch[self.tensor].compute_at(self.sch[self.tensor], self.axis[target_iter_id])
-        pass
-
+        if target_stage_id == len(self.sch.stages):
+            self.sch.stages[stage_id].compute_at(self.sch.stages[-1], self.axis[target_iter_id])
+        else:
+            self.sch.stages[stage_id].compute_at(self.sch.stages[target_stage_id], self.axis[target_iter_id])
+    
     def CI(self):
         '''
             CI: ComputeInlineStep
