@@ -11,8 +11,6 @@ import tvm.testing
 
 from tvm import autotvm
 from src.module.utils import get_best_time
-from src.module.creating_template import Template_autotvm
-from src.module.template_factory import Template_factory
 from src.kernels.mm import autotvm_mm
 
 if __name__ == "__main__":
@@ -25,6 +23,8 @@ if __name__ == "__main__":
         exit(1)
 
     best_time, best_config = get_best_time(json_file)
+
+    print(best_time, best_config)
     
     N, L, M = 1000, 800, 700
     task = autotvm.task.create("autotvm_mm", args=(N, L, M, "float32", best_config), target="llvm")

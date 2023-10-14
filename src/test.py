@@ -14,6 +14,38 @@ from src.module.utils import get_best_time
 from src.module.creating_template import Template_autotvm
 from src.kernels.mm import autotvm_mm
 
+'''
+Example 1:
+    Time spent: [0.0173736, 0.0208746, 0.0257531]
+    Config: [[], 
+    [['SP', 2, 0, 1000, [5, 25, 4], 1], ['SP', 2, 4, 700, [1, 35, 4], 1], ['SP', 2, 8, 800, [8], 1], 
+    ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
+    ['FU', 2, [0, 1, 2]], 
+    ['AN', 2, 0, 3], 
+    ['PR', 2, 0, 'auto_unroll_max_step$512'], 
+    ['AN', 2, 7, 2]]]  
+'''
+def example1(ta):
+    ta.SP([3, 3, 1])
+    ta.RE_fixed([0, 4, 1, 5, 8, 2, 6, 9, 3, 7])
+    ta.FU_fixed([0, 1, 2])
+    ta.AN([2, 0, 3])
+    ta.PR_fixed([2, 0, 'auto_unroll_max_step$512'])
+    ta.AN([2, 7, 2])
+
+'''
+Example 2:
+    Time spent: [0.020076, 0.0222354, 0.0232053]
+    Config: [[], 
+    [['CHW', 2, 'local'], ['SP', 2, 0, 1000, [1, 20, 2], 1], ['SP', 2, 4, 700, [1, 7, 20], 1], ['SP', 2, 8, 800, [10], 1], 
+    ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
+    ['FSP', 3, 0, 1, 1], 
+    ['FSP', 3, 2, 2, 1], 
+    ['RE', 3, [0, 2, 1, 3]], 
+    ['CA', 2, 3, 1], 
+    ['AN', 3, 0, 3], 
+    ['PR', 2, 0, 'auto_unroll_max_step$512']]]  
+'''
 
 @autotvm.template("matmul")  # 1. use a decorator
 def matmul(N, L, M, dtype):
@@ -26,44 +58,9 @@ def matmul(N, L, M, dtype):
     s = te.create_schedule(C.op)
     args = [A, B, C]
     tensors = C
-
-    '''
-        Example 1:
-            Time spent: [0.0173736, 0.0208746, 0.0257531]
-            Config: [[], 
-            [['SP', 2, 0, 1000, [5, 25, 4], 1], ['SP', 2, 4, 700, [1, 35, 4], 1], ['SP', 2, 8, 800, [8], 1], 
-            ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
-            ['FU', 2, [0, 1, 2]], 
-            ['AN', 2, 0, 3], 
-            ['PR', 2, 0, 'auto_unroll_max_step$512'], 
-            ['AN', 2, 7, 2]]]  
-        Example 2:
-            Time spent: [0.020076, 0.0222354, 0.0232053]
-            Config: [[], 
-            [['CHW', 2, 'local'], ['SP', 2, 0, 1000, [1, 20, 2], 1], ['SP', 2, 4, 700, [1, 7, 20], 1], ['SP', 2, 8, 800, [10], 1], 
-            ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
-            ['FSP', 3, 0, 1, 1], 
-            ['FSP', 3, 2, 2, 1], 
-            ['RE', 3, [0, 2, 1, 3]], 
-            ['CA', 2, 3, 1], 
-            ['AN', 3, 0, 3], 
-            ['PR', 2, 0, 'auto_unroll_max_step$512']]]  
-    '''
     
     ta = Template_autotvm(tensors, args)
-    ta.CHW([2, 'local'])
-    ta.SP([3, 3, 1])
-    ta.RE_fixed([0, 4, 1, 5, 8, 2, 6, 9, 3, 7])
-    #ta.FU_fixed([0, 1, 2])
-    #ta.print()
-    #ta.FSP_fixed([3, 0, 1, 1])
-    #ta.FSP_fixed([3, 2, 2, 1])
-    #ta.RE_fixed([0, 2, 1, 3])
-    #ta.CA_fixed([2, 3, 1])
-    #ta.PR_fixed([0, 'auto_unroll_max_step', 512])
-    
-    #ta.RE()
-    #ta.print()
+    example1(ta)
 
     return ta.ret()
     

@@ -26,10 +26,7 @@ def Template_factory(cfg, tensors, args):
         elif field[0] == 'FU':
             ta.FU_fixed(field[2])
         elif field[0] == 'PR':
-            var = field[2]
-            pragma = field[3].split("$")[0]
-            size_pragma = int(field[3].split("$")[1])
-            ta.PR_fixed([var, pragma, size_pragma])
+            ta.PR_fixed(field[1:])
         elif field[0] == 'AN':
             ta.AN(field[1:])
         elif field[0] == 'FSP':

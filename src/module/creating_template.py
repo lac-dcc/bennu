@@ -288,15 +288,14 @@ class Template_autotvm():
             * \param stage_id The index of the stage to be fused.
             * \param iter_id The index of the iterator to add pragma.
             * \param pragma_type The pragma string.
-            pragma_type options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
+            pragma options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
         '''
         assert len(list_pragma) == 3
 
-        var, pragma_type, size = list_pragma
+        stage_id, iter_id, pragma_type = list_pragma
+        pragma, size = pragma_type.split("$")
 
-        assert var < len(self.axis)
-
-        self.sch[self.tensor].pragma(self.axis[var], pragma_type, size)
+        self.sch[self.tensor].pragma(self.axis[iter_id], pragma, int(size))
         
 
     def FSP(self):
