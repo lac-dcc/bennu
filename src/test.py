@@ -27,8 +27,8 @@ Example 1:
 '''
 def example1(ta):
     ta.SP([3, 3, 1])
-    ta.RE_fixed([0, 4, 1, 5, 8, 2, 6, 9, 3, 7])
-    ta.FU_fixed([0, 1, 2])
+    ta.RE_fixed([2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]])
+    ta.FU_fixed([2, [0, 1, 2]])
     ta.AN([2, 0, 3])
     ta.PR_fixed([2, 0, 'auto_unroll_max_step$512'])
     ta.AN([2, 7, 2])
@@ -37,7 +37,8 @@ def example1(ta):
 Example 2:
     Time spent: [0.020076, 0.0222354, 0.0232053]
     Config: [[], 
-    [['CHW', 2, 'local'], ['SP', 2, 0, 1000, [1, 20, 2], 1], ['SP', 2, 4, 700, [1, 7, 20], 1], ['SP', 2, 8, 800, [10], 1], 
+    [['CHW', 2, 'local'], 
+    ['SP', 2, 0, 1000, [1, 20, 2], 1], ['SP', 2, 4, 700, [1, 7, 20], 1], ['SP', 2, 8, 800, [10], 1], 
     ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
     ['FSP', 3, 0, 1, 1], 
     ['FSP', 3, 2, 2, 1], 
@@ -46,6 +47,37 @@ Example 2:
     ['AN', 3, 0, 3], 
     ['PR', 2, 0, 'auto_unroll_max_step$512']]]  
 '''
+
+def example2(ta):
+    ta.CHW([2, 'local'])
+    ta.SP([3, 3, 1])
+    ta.RE_fixed([2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]])
+    ta.FSP_fixed([3, 0, 1, 1])
+    ta.FSP_fixed([3, 2, 2, 1])
+    ta.RE_fixed([3, [0, 2, 1, 3]])
+    #ta.CA_fixed([2, 3, 1])
+    ta.AN([3, 0, 3])
+    ta.PR_fixed([2, 0, 'auto_unroll_max_step$512'])
+
+'''
+Example 3:
+    Time spent: [0.0111473, 0.0110992, 0.0112678] 
+    [['CHW', 2, 'local'], 
+    ['SP', 2, 0, 1000, [1, 40, 5], 1], ['SP', 2, 4, 700, [1, 140, 1], 1], ['SP', 2, 8, 800, [5], 1], 
+    ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
+    ['FSP', 3, 0, 1, 2], 
+    ['FSP', 3, 3, 2, 2], 
+    ['RE', 3, [0, 3, 1, 4, 2, 5]], 
+    ['CA', 2, 3, 3], 
+    ['FU', 3, [0, 1, 2, 3]], 
+    ['AN', 3, 0, 3], 
+    ['PR', 2, 0, 'auto_unroll_max_step$0'], 
+    ['AN', 2, 9, 2]]
+'''
+def example2(ta):
+    ta.CHW([2, 'local'])
+    ta.SP([3, 3, 1])
+
 
 @autotvm.template("matmul")  # 1. use a decorator
 def matmul(N, L, M, dtype):
@@ -61,39 +93,10 @@ def matmul(N, L, M, dtype):
     
     ta = Template_autotvm(tensors, args)
     example1(ta)
+    #example2(ta)
 
     return ta.ret()
     
-    '''
-    bn = 32
-    kfactor = 4
-
-    s = te.create_schedule(C.op)
-
-    # Allocate write cache
-    CC = s.cache_write(C, "local")
-
-    mo, no, mi, ni = s[C].tile(C.op.axis[0], C.op.axis[1], bn, bn)
-
-    # Write cache is computed at no
-    s[CC].compute_at(s[C], no)
-
-    # New inner axes
-    mc, nc = s[CC].op.axis
-
-    (kaxis,) = s[CC].op.reduce_axis
-    ko, ki = s[CC].split(kaxis, factor=kfactor)
-    s[CC].reorder(ko, mc, ki, nc)
-    #s[CC].vectorize(nc)
-
-    # TODO: Add separate optimization step to discuss loop unrolling
-    # unrolling is a loop optimization strategy which can reduce branch
-    # prediction failures and increases the chance of concurrent execution
-    # unroll kfactor loops
-    #s[CC].unroll(ki)
-    '''
-
-    return s, args
 
 if __name__ == "__main__":
     N, L, M = 1000, 800, 700

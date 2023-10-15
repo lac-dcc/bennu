@@ -51,6 +51,7 @@ class Template_autotvm():
         '''
         assert len(list_CHW) == 2
         stage_id, scope_name = list_CHW
+        stage = self.sch.stages[stage_id]
         name = f'CHW'
         self.cfg.define_knob(name, ["None", scope_name])
 
@@ -84,7 +85,7 @@ class Template_autotvm():
         '''
         print(tvm.lower(self.sch, self.args, simple_mode=True))
 
-    def RE_fixed(self, list_order):
+    def RE_fixed(self, params):
         '''
             RE_fixed: Reorder step with a fixed list
 
@@ -93,12 +94,14 @@ class Template_autotvm():
 
             ReorderStep(int stage_id, const Array<Integer>& after_ids);
         '''
-        assert len(list_order) <= len(self.axis)
+        assert len(params) == 2
+
+        stage_id, after_ids = params
 
         new_order = []
         for i in range(len(self.axis)):
-            if i < len(list_order):
-                new_order.append(self.axis[list_order[i]])
+            if i < len(after_ids):
+                new_order.append(self.axis[after_ids[i]])
             else:
                 new_order.append(self.axis[i])
         # Reorder with the new order
@@ -198,22 +201,24 @@ class Template_autotvm():
         '''
         assert len(params) == 3
 
+        stage_id, iter_id, ann = params
+
         annotation_string = {0:"for", 1:"unroll", 2:"vectorize", 3:"parallel",
                              4:"vthread", 5:"blockIdx.x", 6:"threadIdx.x", 7:"blockIdx.y",
                              8:"threadIdx.y", 9:"blockIdx.z", 10:"threadIdx.z", 11:"tensorize"}
 
-        if params[2] == 1:  # unroll
-            self.sch[self.tensor].unroll(self.axis[params[1]])
-        elif params[2] == 2:  # vectorize
-            self.sch[self.tensor].vectorize(self.axis[params[1]])
-        elif params[2] == 3:  # parallel
-            self.sch[self.tensor].parallel(self.axis[params[1]])
-        elif params[2] in [4, 5, 6, 7, 8, 9, 10]:  # thread and block ids
-            self.sch[self.tensor].bind(self.axis[params[1]], te.thread_axis(annotation_string[params[2]]))
-        elif params[2] == 0:  # for
+        if ann == 1:  # unroll
+            self.sch[self.tensor].unroll(self.axis[iter_id])
+        elif ann == 2:  # vectorize
+            self.sch[self.tensor].vectorize(self.axis[iter_id])
+        elif ann == 3:  # parallel
+            self.sch[self.tensor].parallel(self.axis[iter_id])
+        elif ann in [4, 5, 6, 7, 8, 9, 10]:  # thread and block ids
+            self.sch[self.tensor].bind(self.axis[iter_id], te.thread_axis(annotation_string[ann]))
+        elif ann == 0:  # for
             pass  # do nothing in this case
         else:
-            raise RuntimeError(f"Invalid annotation type {annotation_string[params[2]]}")
+            raise RuntimeError(f"Invalid annotation type {annotation_string[ann]}")
 
 
     def FU(self):
@@ -236,7 +241,7 @@ class Template_autotvm():
                 fused = self.sch[self.tensor].fuse(self.axis[i], self.axis[i+1])
                 update(self.axis, [self.axis[i], self.axis[i+1]], fused, i)
 
-    def FU_fixed(self, list_fuse):
+    def FU_fixed(self, params):
         '''
             FU_fixed: Fuse step with a list
 
@@ -245,18 +250,21 @@ class Template_autotvm():
             
             FuseStep(int stage_id, const Array<Integer>& fused_ids);
         '''
+        assert len(params) == 2
+        stage_id, fused_ids = params
+
         i, pos = 0, 0
         p = self.axis.copy()
-        while i < len(list_fuse):
+        while i < len(fused_ids):
             if i == 0:
-                t1 = p[list_fuse[i]]
-                t2 = p[list_fuse[i+1]]
-                pos = list_fuse[i]
+                t1 = p[fused_ids[i]]
+                t2 = p[fused_ids[i+1]]
+                pos = fused_ids[i]
                 pfused = self.sch[self.tensor].fuse(t1, t2)
                 update(self.axis, [t1, t2], pfused, pos)
                 i += 1
             else:
-                tn = p[list_fuse[i]]
+                tn = p[fused_ids[i]]
                 fused = self.sch[self.tensor].fuse(pfused, tn)
                 update(self.axis, [pfused, tn], fused, pos)
                 pfused = fused
@@ -416,7 +424,7 @@ class Template_autotvm():
         '''
         pass
     
-    def CA_fixed(self, list_CA):
+    def CA_fixed(self, params):
         '''
             CA:     Step with a list fixed
             * \param stage_id The index of the source stage.
@@ -427,15 +435,16 @@ class Template_autotvm():
 
             ['CA', 2, 3, 1]
         '''
-        assert len(list_CA) == 3
-        stage_id, target_stage_id, target_iter_id = list_CA
+        assert len(params) == 3
+        stage_id, target_stage_id, target_iter_id = params
+        stage = self.sch.stages[stage_id]
 
         if target_stage_id == len(self.sch.stages):
-            self.sch.stages[stage_id].compute_at(self.sch.stages[-1], self.axis[target_iter_id])
+            stage.compute_at(self.sch.stages[-1], self.axis[target_iter_id])
         else:
-            self.sch.stages[stage_id].compute_at(self.sch.stages[target_stage_id], self.axis[target_iter_id])
+            stage.compute_at(self.sch.stages[target_stage_id], self.axis[target_iter_id])
     
-    def CI(self):
+    def CI(self, stage_id):
         '''
             CI: ComputeInlineStep
 
@@ -443,9 +452,10 @@ class Template_autotvm():
             
             ComputeInlineStep(int stage_id);
         '''
-        self.sch[self.tensor].compute_inline()
+        stage = self.sch.stages[stage_id]
+        stage.compute_inline()
 
-    def CR(self):
+    def CR(self, stage_id):
         '''
             CR: ComputeRootStep
 
@@ -453,7 +463,8 @@ class Template_autotvm():
             
             ComputeRootStep(int stage_id);
         '''
-        self.sch[self.tensor].compute_root()
+        stage = self.sch.stages[stage_id]
+        stage.compute_root()
 
     def CHR(self):
         '''

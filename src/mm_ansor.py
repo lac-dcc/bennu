@@ -3,8 +3,8 @@ import numpy as np
 import time
 import tvm
 from tvm import te, auto_scheduler
-from kernels.mm import ansor_mm
-from module import utils
+from src.kernels.mm import ansor_mm
+from src.module import utils
 
 @auto_scheduler.register_workload
 def matmul(N, L, M, dtype="float32"):
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     ## Set Parameters for Auto-Scheduler
     log_file = arch + "_matmul.json"
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=1000,  # change this to 20000 to achieve the best performance
+        num_measure_trials=100,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(number=2, repeat=3),
         measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
         verbose=0

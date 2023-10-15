@@ -22,9 +22,9 @@ def Template_factory(cfg, tensors, args):
             if i == len(cfg)-1 or cfg[i+1][0] != 'SP':
                 ta.SP(list_SP)
         elif field[0] == 'RE':
-            ta.RE_fixed(field[2])
+            ta.RE_fixed(field[1:])
         elif field[0] == 'FU':
-            ta.FU_fixed(field[2])
+            ta.FU_fixed(field[1:])
         elif field[0] == 'PR':
             ta.PR_fixed(field[1:])
         elif field[0] == 'AN':
@@ -36,11 +36,13 @@ def Template_factory(cfg, tensors, args):
         elif field[0] == 'SA':
             pass
         elif field[0] == 'CA':
-            ta.CA_fixed(field[1:])
+            #TODO: Temporarily commented. I'm working on a fix for the crash issue.
+            #ta.CA_fixed(field[1:])
+            pass
         elif field[0] == 'CI':
-            ta.CI()
+            ta.CI(field[1:])
         elif field[0] == 'CR':
-            ta.CR()
+            ta.CR(field[1:])
         elif field[0] == 'CHR':
             pass
         elif field[0] == 'CHW':
