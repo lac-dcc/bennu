@@ -74,9 +74,18 @@ Example 3:
     ['PR', 2, 0, 'auto_unroll_max_step$0'], 
     ['AN', 2, 9, 2]]
 '''
-def example2(ta):
+def example3(ta):
     ta.CHW([2, 'local'])
     ta.SP([3, 3, 1])
+    ta.RE_fixed([2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]])
+    ta.FSP_fixed([3, 0, 1, 2])
+    ta.FSP_fixed([3, 3, 2, 2]) 
+    ta.RE_fixed([3, [0, 3, 1, 4, 2, 5]]) 
+    ta.CA_fixed([2, 3, 3])
+    ta.FU_fixed([3, [0, 1, 2, 3]]) 
+    ta.AN([3, 0, 3])
+    ta.PR_fixed([2, 0, 'auto_unroll_max_step$0']) 
+    ta.AN([2, 9, 2])
 
 
 @autotvm.template("matmul")  # 1. use a decorator
@@ -94,6 +103,7 @@ def matmul(N, L, M, dtype):
     ta = Template_autotvm(tensors, args)
     example1(ta)
     #example2(ta)
+    #example3(ta)
 
     return ta.ret()
     
