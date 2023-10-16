@@ -11,8 +11,8 @@ class Template_autotvm():
     axis = None
     args = []
     #search_space = [2, 4, 8, 16, 24, 32, 64, 96, 128] # TODO: Find best values 
-    search_space = [4] # TODO: Find best values 
-    annotation = []
+    search_space = [4] 
+    stage_to_axes = dict() # TODO: creating axes in different stage
 
     def __init__(self, tensor, args) -> None:
         '''
@@ -28,17 +28,23 @@ class Template_autotvm():
 
         # Initialize the axis
         self.tensor = tensor
+        self.stage_to_axes[2] = []
         self.axis = []
         for t in self.sch[tensor].op.axis:
             self.axis.append(t)
+            self.stage_to_axes[2].append(t)
         for t in self.sch[tensor].op.reduce_axis:
             self.axis.append(t)
+            self.stage_to_axes[2].append(t)
 
     def ret(self):
         '''
             return function
         '''
         return self.sch, self.args
+
+    def UpdateStageToAxesMap(self):
+        pass
 
     def CHW(self, list_CHW):
         '''
@@ -52,6 +58,7 @@ class Template_autotvm():
         assert len(list_CHW) == 2
         stage_id, scope_name = list_CHW
         stage = self.sch.stages[stage_id]
+
         name = f'CHW'
         self.cfg.define_knob(name, ["None", scope_name])
 
@@ -301,9 +308,14 @@ class Template_autotvm():
         assert len(list_pragma) == 3
 
         stage_id, iter_id, pragma_type = list_pragma
+        stage = self.sch.stages[stage_id]
+
         pragma, size = pragma_type.split("$")
 
-        self.sch[self.tensor].pragma(self.axis[iter_id], pragma, int(size))
+        stage.pragma(self.axis[iter_id], pragma, int(size))
+
+        if pragma == "auto_unroll_max_step":
+            stage.pragma(self.axis[iter_id], "unroll_explicit", True)
         
 
     def FSP(self):

@@ -1,17 +1,8 @@
 from src.module.creating_template import Template_autotvm
 
-''' cfg
-Config: [[], 
-    [
-    ['SP', 2, 0, 1000, [5, 25, 4], 1], 
-    ['SP', 2, 4, 700, [1, 35, 4], 1], ['SP', 2, 8, 800, [8], 1], 
-    ['RE', 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
-    ['FU', 2, [0, 1, 2]], 
-    ['AN', 2, 0, 3], 
-    ['PR', 2, 0, 'auto_unroll_max_step$512'], 
-    ['AN', 2, 7, 2]]]  
 '''
-
+    Build the template based on Auto Schedule
+'''
 def Template_factory(cfg, tensors, args):
     ta = Template_autotvm(tensors, args)
     list_SP = []
