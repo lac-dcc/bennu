@@ -65,3 +65,18 @@ def get_best_time(log):
     f.close()
 
     return best_avg, best_cfg
+
+def get_template_ansor(log):
+    import json
+
+    f = open(log, "r")
+    cfg = []
+    for line in f.readlines():
+        data = json.loads(line)
+        if "r" in data:
+            cfg.append([data["r"][0], data["i"][1][1]])
+        else:
+            cfg.append([data["result"][0], data["config"]["entity"]])
+    f.close()
+
+    return cfg
