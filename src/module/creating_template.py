@@ -36,6 +36,7 @@ class Template_autotvm():
         for t in self.sch[tensor].op.reduce_axis:
             self.axis.append(t)
             self.stage_to_axes[2].append(t)
+        #print(self.stage_to_axes)
 
     def ret(self):
         '''
@@ -46,7 +47,7 @@ class Template_autotvm():
     def UpdateStageToAxesMap(self):
         pass
 
-    def CHW(self, list_CHW):
+    def CHW(self, params):
         '''
             CHW: CacheWriteStep
 
@@ -55,8 +56,8 @@ class Template_autotvm():
             
             CacheWriteStep(int stage_id, String scope_name)
         '''
-        assert len(list_CHW) == 2
-        stage_id, scope_name = list_CHW
+        assert len(params) == 2
+        stage_id, scope_name = params
         stage = self.sch.stages[stage_id]
 
         name = f'CHW'
@@ -296,7 +297,7 @@ class Template_autotvm():
             if self.cfg[name].val == i:
                 self.sch[self.tensor].pragma(self.axis[var], pragma_type, self.cfg[name].val)
 
-    def PR_fixed(self, list_pragma):
+    def PR_fixed(self, params):
         '''
             PR: PragmaStep with fixed values
 
@@ -305,9 +306,9 @@ class Template_autotvm():
             * \param pragma_type The pragma string.
             pragma options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
         '''
-        assert len(list_pragma) == 3
+        assert len(params) == 3
 
-        stage_id, iter_id, pragma_type = list_pragma
+        stage_id, iter_id, pragma_type = params
         stage = self.sch.stages[stage_id]
 
         pragma, size = pragma_type.split("$")
@@ -348,7 +349,7 @@ class Template_autotvm():
                             yp = y
         self.axis = order # update the tensor's axis 
 
-    def FSP_fixed(self, list_FSP):
+    def FSP_fixed(self, params):
         '''
             FSP: FollowSplitStep with values fixed
             
@@ -359,8 +360,8 @@ class Template_autotvm():
             
             FollowSplitStep(int stage_id, int iter_id, int src_step_id, int n_split)
         '''
-        assert len(list_FSP) == 4
-        stage_id, iter_id, src_step_id, n_split = list_FSP
+        assert len(params) == 4
+        stage_id, iter_id, src_step_id, n_split = params
 
         order = self.axis.copy()
 
@@ -393,7 +394,7 @@ class Template_autotvm():
         '''
         pass
     
-    def FFSP_fixed(self, list_FFSP):
+    def FFSP_fixed(self, params):
         '''
             FFSP: FollowFusedSplitStep
 
@@ -406,11 +407,12 @@ class Template_autotvm():
             FollowFusedSplitStep(int stage_id, int iter_id, const Array<Integer>& src_step_ids, int level,
                        bool factor_or_nparts);
         '''
-        assert len(list_FFSP) == 5
-        stage_id, iter_id, src_step_ids, level, factor_or_nparts = list_FFSP
+        assert len(params) == 5
+        stage_id, iter_id, src_step_ids, level, factor_or_nparts = params
+        # TODO: Implement FFSP opt
         pass
 
-    def SA(self):
+    def SA(self, params):
         '''
             SA: StorageAlignStep
       
@@ -421,9 +423,12 @@ class Template_autotvm():
 
             StorageAlignStep(int stage_id, int iter_id, int factor, int offset)
         '''
+        assert len(params) == 4
+        stage_id, iter_id, factor, offset = params
+        # TODO: Implement SA opt
         pass
 
-    def CA(self):
+    def CA(self, params):
         '''
             CA: ComputeAtStep
             * \param stage_id The index of the source stage.
@@ -434,6 +439,9 @@ class Template_autotvm():
 
             ['CA', 2, 3, 1]
         '''
+        assert len(params) == 3
+        stage_id, target_stage_id, target_iter_id = params
+        # TODO: Implement CA generic opt
         pass
     
     def CA_fixed(self, params):
@@ -464,6 +472,7 @@ class Template_autotvm():
             
             ComputeInlineStep(int stage_id);
         '''
+        assert stage_id < len(self.sch.stages)
         stage = self.sch.stages[stage_id]
         stage.compute_inline()
 
@@ -475,10 +484,11 @@ class Template_autotvm():
             
             ComputeRootStep(int stage_id);
         '''
+        assert stage_id < len(self.sch.stages)
         stage = self.sch.stages[stage_id]
         stage.compute_root()
 
-    def CHR(self):
+    def CHR(self, params):
         '''
             CHR: CacheReadStep
 
@@ -488,9 +498,12 @@ class Template_autotvm():
             
             CacheReadStep(int stage_id, String scope_name, const Array<Integer>& reader_stage_ids);
         '''
+        assert len(params) == 3
+        stage_id, scope_name, reader_stage_ids = params
+        # TODO: Implement CHR opt
         pass
 
-    def RF(self):
+    def RF(self, params):
         '''
             RF: RfactorStep
 
@@ -500,4 +513,7 @@ class Template_autotvm():
             */
             RfactorStep(int stage_id, int iter_id, int factor_iter_id);
         '''
+        assert len(params) == 3
+        stage_id, iter_id, factor_iter_id = params
+        # TODO: Implement RF opt
         pass

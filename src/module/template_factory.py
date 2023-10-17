@@ -23,9 +23,9 @@ def Template_factory(cfg, tensors, args):
         elif field[0] == 'FSP':
             ta.FSP_fixed(field[1:])
         elif field[0] == 'FFSP':
-            pass
+            ta.FFSP_fixed(field[1:])
         elif field[0] == 'SA':
-            pass
+            ta.SA(field[1:])
         elif field[0] == 'CA':
             #TODO: Temporarily commented. I'm working on a fix for the crash issue.
             #ta.CA_fixed(field[1:])
@@ -35,11 +35,11 @@ def Template_factory(cfg, tensors, args):
         elif field[0] == 'CR':
             ta.CR(field[1:])
         elif field[0] == 'CHR':
-            pass
+            ta.CHR(field[1:])
         elif field[0] == 'CHW':
             ta.CHW(field[1:])
         elif field[0] == 'RF':
-            pass
-        # TODO: Complete with other methods
-        # print(f'Method {field[0]} not implemented yet!')
+            ta.RF(field[1:])
+        else:
+            raise RuntimeError(f"Invalid template type {field[0]}")
     return ta.ret()
