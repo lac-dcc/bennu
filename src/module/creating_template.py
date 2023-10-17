@@ -28,15 +28,16 @@ class Template_autotvm():
 
         # Initialize the axis
         self.tensor = tensor
-        self.stage_to_axes[2] = []
+
         self.axis = []
         for t in self.sch[tensor].op.axis:
             self.axis.append(t)
-            self.stage_to_axes[2].append(t)
         for t in self.sch[tensor].op.reduce_axis:
             self.axis.append(t)
-            self.stage_to_axes[2].append(t)
-        #print(self.stage_to_axes)
+        # FIXME: It's 2 because we have 3 operators
+        # and the operator 2 is computer type node
+        # We need to do this generic
+        self.UpdateStageToAxesMap(2)
 
     def ret(self):
         '''
@@ -44,8 +45,23 @@ class Template_autotvm():
         '''
         return self.sch, self.args
 
-    def UpdateStageToAxesMap(self):
-        pass
+    def UpdateStageToAxesMap(self, stage_id):
+        '''
+            Update the axes into dict
+        '''
+        stage = self.sch.stages[stage_id]
+
+        if type(stage.op) == tvm.te.tensor.ComputeOp:
+            self.stage_to_axes[stage_id] = []
+            for axis in stage.op.axis:
+                self.stage_to_axes[stage_id].append(axis)
+            for axis in stage.op.reduce_axis:
+                self.stage_to_axes[stage_id].append(axis)
+        elif type(stage.op) == tvm.te.tensor.PlaceholderOp:
+            # do nothing
+            pass
+        else:
+            raise RuntimeError(f'Invalid op {stage.op}')
 
     def CHW(self, params):
         '''
