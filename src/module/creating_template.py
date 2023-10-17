@@ -13,6 +13,7 @@ class Template_autotvm:
     args = []
     # search_space = [2, 4, 8, 16, 24, 32, 64, 96, 128] # TODO: Find best values
     search_space = [4]
+    stages = [None]
     stage_to_axes = dict()  # TODO: creating axes in different stage
 
     def __init__(self, tensor, args) -> None:
@@ -26,6 +27,7 @@ class Template_autotvm:
         self.sch = te.create_schedule(tensor.op)
         self.cfg = autotvm.get_config()
         self.args = args
+        self.stages = list(self.sch.stages)
 
         # Initialize the axis
         self.tensor = tensor
@@ -37,7 +39,7 @@ class Template_autotvm:
         # FIXME: It's 2 because we have 3 operations
         # and the op 2 is computer type node
         # We need to do this generic
-        self.UpdateStageToAxesMap(2)
+        self.UpdateStageToAxesMap(2, self.stages[2])
 
     def ret(self):
         """
@@ -45,20 +47,20 @@ class Template_autotvm:
         """
         return self.sch, self.args
 
-    def UpdateStageToAxesMap(self, stage_id):
+    def UpdateStageToAxesMap(self, stage_id, stage):
         """
         Update the axes into dict
 
         * \param stage_id The index of the stage
         """
-        stage = self.sch.stages[stage_id]
+        #print(stage)
 
         if type(stage.op) == tvm.te.tensor.ComputeOp:
             self.stage_to_axes[stage_id] = []
             for axis in stage.op.axis:
-                self.stage_to_axes[2].append(axis)
+                self.stage_to_axes[stage_id].append(axis)
             for axis in stage.op.reduce_axis:
-                self.stage_to_axes[2].append(axis)
+                self.stage_to_axes[stage_id].append(axis)
         elif type(stage.op) == tvm.te.tensor.PlaceholderOp:
             # do nothing
             pass
@@ -76,36 +78,44 @@ class Template_autotvm:
         """
         assert len(params) == 2
         stage_id, scope_name = params
-        stage = self.sch.stages[stage_id]
+        stage = self.stages[stage_id]
 
         name = f"CHW"
         self.cfg.define_knob(name, ["None", scope_name])
 
-        # Rewrite the tensor
-        self.tensor = None
+        #print(list(self.stages))
 
         if self.cfg[name].val == scope_name:
-            # cache size
-            bn = 32
+
+            tensor_array = []
+            for i in range(stage.op.num_outputs):
+                tensor_array.append(stage.origin_op.output(i))
 
             # Allocate write cache
-            cache = self.sch.cache_write(self.start_tensor, scope_name)
-            _, no, _, _ = self.sch[self.start_tensor].tile(
-                self.start_tensor.op.axis[0], self.start_tensor.op.axis[1], bn, bn
-            )
+            # TODO: Working that
+            '''
+            outs = self.sch.cache_write(tensor_array, scope_name)
+            self.UpdateStageToAxesMap(stage_id, stage)
 
-            # Write cache is computed at no
-            self.sch[cache].compute_at(self.sch[self.start_tensor], no)
-            self.tensor = cache
+            print(self.stage_to_axes)
+
+            new_stage = self.sch[outs[0].op]
+            print(new_stage)
+            self.stages.insert(stage_id, new_stage)
+            self.UpdateStageToAxesMap(stage_id+1, new_stage)
+            '''
+            self.stages.insert(stage_id, stage)
+            self.UpdateStageToAxesMap(stage_id+1, stage)
         else:
-            self.tensor = self.start_tensor
+            self.stages.insert(stage_id, stage)
+            self.UpdateStageToAxesMap(stage_id+1, stage)
 
         # Update the axis
-        self.axis = []
-        for t in self.sch[self.tensor].op.axis:
-            self.axis.append(t)
-        for t in self.sch[self.tensor].op.reduce_axis:
-            self.axis.append(t)
+        #self.axis = []
+        #for t in self.sch[self.tensor].op.axis:
+        #    self.axis.append(t)
+        #for t in self.sch[self.tensor].op.reduce_axis:
+        #    self.axis.append(t)
 
     def print(self):
         """
@@ -201,7 +211,7 @@ class Template_autotvm:
         
         assert len(params) == 5
         stage_id, iter_id, extent, lengths, inner_to_outer = params
-        stage = self.sch.stages[stage_id]
+        stage = self.stages[stage_id]
 
         order = []
         next_axis = self.axis[iter_id]
@@ -349,7 +359,7 @@ class Template_autotvm:
         assert len(params) == 3
 
         stage_id, iter_id, pragma_type = params
-        stage = self.sch.stages[stage_id]
+        stage = self.stages[stage_id]
 
         pragma, size = pragma_type.split("$")
 
@@ -506,13 +516,13 @@ class Template_autotvm:
         """
         assert len(params) == 3
         stage_id, target_stage_id, target_iter_id = params
-        stage = self.sch.stages[stage_id]
+        stage = self.stages[stage_id]
 
-        if target_stage_id == len(self.sch.stages):
-            stage.compute_at(self.sch.stages[-1], self.axis[target_iter_id])
+        if target_stage_id == len(self.stages):
+            stage.compute_at(self.stages[-1], self.axis[target_iter_id])
         else:
             stage.compute_at(
-                self.sch.stages[target_stage_id], self.axis[target_iter_id]
+                self.stages[target_stage_id], self.axis[target_iter_id]
             )
 
     def CI(self, stage_id):
@@ -523,8 +533,8 @@ class Template_autotvm:
 
         ComputeInlineStep(int stage_id);
         """
-        assert stage_id < len(self.sch.stages)
-        stage = self.sch.stages[stage_id]
+        assert stage_id < len(self.stages)
+        stage = self.stages[stage_id]
         stage.compute_inline()
 
     def CR(self, stage_id):
@@ -535,8 +545,8 @@ class Template_autotvm:
 
         ComputeRootStep(int stage_id);
         """
-        assert stage_id < len(self.sch.stages)
-        stage = self.sch.stages[stage_id]
+        assert stage_id < len(self.stages)
+        stage = self.stages[stage_id]
         stage.compute_root()
 
     def CHR(self, params):

@@ -121,8 +121,8 @@ def matmul(N, L, M, dtype):
 
     ta = Template_autotvm(tensors, args)
     #example1(ta)
-    #example2(ta)
-    example3(ta)
+    example2(ta)
+    #example3(ta)
 
     return ta.ret()
 
