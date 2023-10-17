@@ -185,7 +185,7 @@ class Template_autotvm:
                     yp = y
         self.axis = order  # update the tensor's axis
 
-    def SP(self, list_iter_id):
+    def SP(self, params):
         """
         SP: SplitStep
 
@@ -198,27 +198,25 @@ class Template_autotvm:
         SplitStep(int stage_id, int iter_id, Optional<PrimExpr> extent,
                     const Array<Optional<Integer>>& lengths, bool inner_to_outer);
         """
+        
+        assert len(params) == 5
+        stage_id, iter_id, extent, lengths, inner_to_outer = params
+        stage = self.sch.stages[stage_id]
+
         order = []
-        for iter_id in range(len(list_iter_id)):
-            split_size = list_iter_id[iter_id]
-            if split_size == 0:
-                k = self.axis[iter_id]
-                add(order, [k])
+        next_axis = self.axis[iter_id]
+        for i in range(len(lengths)):
+            name = f"SP_s{stage_id}_i{iter_id}_t{i}"
+            self.cfg.define_knob(name, self.search_space)  
+            x, y = stage.split(next_axis, self.cfg[name].val)
+            if inner_to_outer == 1:
+                add(order, [x, y] if i == len(lengths) - 1 else [x])
+                next_axis = y
             else:
-                for i in range(split_size):
-                    name = f"SP_{iter_id}_{i}"
-                    self.cfg.define_knob(name, self.search_space)
-                    if i == 0:
-                        x0, y0 = self.sch[self.tensor].split(
-                            self.axis[iter_id], self.cfg[name].val
-                        )
-                        add(order, [x0, y0] if i == split_size - 1 else [x0])
-                        yp = y0
-                    else:
-                        x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
-                        add(order, [x, y] if i == split_size - 1 else [x])
-                        yp = y
-        self.axis = order
+                add(order, [x, y] if i == len(lengths) - 1 else [y])
+                next_axis = x
+            
+        insert(self.axis, order, iter_id)
 
     def AN(self, params):
         """

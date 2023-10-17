@@ -6,13 +6,10 @@ def Template_factory(cfg, tensors, args):
     Build the template based on Auto Schedule
     """
     ta = Template_autotvm(tensors, args)
-    list_SP = []
     for i in range(len(cfg)):
         field = cfg[i]
         if field[0] == "SP":
-            list_SP.append(len(field[4]))
-            if i == len(cfg) - 1 or cfg[i + 1][0] != "SP":
-                ta.SP(list_SP)
+            ta.SP(field[1:])
         elif field[0] == "RE":
             ta.RE_fixed(field[1:])
         elif field[0] == "FU":
