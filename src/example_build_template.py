@@ -25,17 +25,18 @@ if __name__ == "__main__":
     best_time, best_config = get_best_time(json_file)
 
     print(best_time, best_config)
-    
+
     N, L, M = 1000, 800, 700
-    task = autotvm.task.create("autotvm_mm", args=(N, L, M, "float32", best_config), target="llvm")
+    task = autotvm.task.create(
+        "autotvm_mm", args=(N, L, M, "float32", best_config), target="llvm"
+    )
     print(task.config_space)
 
     logging.getLogger("autotvm").setLevel(logging.DEBUG)
     logging.getLogger("autotvm").addHandler(logging.StreamHandler(sys.stdout))
 
     measure_option = autotvm.measure_option(
-        builder="local", 
-        runner=autotvm.LocalRunner(number=5, repeat=3)
+        builder="local", runner=autotvm.LocalRunner(number=5, repeat=3)
     )
 
     filename = "matmul.json"
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     )
 
     # apply history best from log file
-    '''
+    """
     with autotvm.apply_history_best(filename):
         with tvm.target.Target("llvm"):
             s, arg_bufs = matmul(N, L, M, "float32", best_config)
@@ -65,7 +66,7 @@ if __name__ == "__main__":
     func(tvm.nd.array(a_np), tvm.nd.array(b_np), c_tvm)
 
     tvm.testing.assert_allclose(c_np, c_tvm.numpy(), rtol=1e-4)
-    '''
+    """
 
     best_time, best_config = get_best_time(filename)
 

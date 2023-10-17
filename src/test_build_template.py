@@ -27,22 +27,24 @@ if __name__ == "__main__":
     print("N, Droplet Time (s), Ansor Time (s), speedup (Ansor/Droplet)")
     c = 1
     for t_ansor, cfg_ansor in config:
-        
-        N, L, M = 1000, 800, 700
-        task = autotvm.task.create("autotvm_mm", args=(N, L, M, "float32", cfg_ansor), target="llvm")
 
-        #logging.getLogger("autotvm").setLevel(logging.DEBUG)
-        #logging.getLogger("autotvm").addHandler(logging.StreamHandler(sys.stdout))
+        N, L, M = 1000, 800, 700
+        task = autotvm.task.create(
+            "autotvm_mm", args=(N, L, M, "float32", cfg_ansor), target="llvm"
+        )
+
+        # logging.getLogger("autotvm").setLevel(logging.DEBUG)
+        # logging.getLogger("autotvm").addHandler(logging.StreamHandler(sys.stdout))
 
         measure_option = autotvm.measure_option(
-            builder="local", 
+            builder="local",
             runner=autotvm.LocalRunner(number=10, repeat=3),
         )
 
         filename = "matmul.json"
         if os.path.isfile(filename):
             os.remove(filename)
-    
+
         tuner = autotvm.tuner.DropletTuner(task)
         tuner.tune(
             n_trial=100,
@@ -50,9 +52,9 @@ if __name__ == "__main__":
             callbacks=[autotvm.callback.log_to_file(filename)],
         )
         d_time, d_config = get_best_time(filename)
-        
+
         d_time = np.mean(np.array(d_time))
         t_ansor = np.mean(t_ansor)
 
-        print("%d, %.4f, %.4f, %.2f" %(c, d_time, t_ansor, t_ansor/d_time))
+        print("%d, %.4f, %.4f, %.2f" % (c, d_time, t_ansor, t_ansor / d_time))
         c += 1

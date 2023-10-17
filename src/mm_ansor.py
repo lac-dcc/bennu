@@ -6,6 +6,7 @@ from tvm import te, auto_scheduler
 from src.kernels.mm import ansor_mm
 from src.module import utils
 
+
 @auto_scheduler.register_workload
 def matmul(N, L, M, dtype="float32"):
     A = te.placeholder((N, L), name="A", dtype=dtype)
@@ -16,6 +17,7 @@ def matmul(N, L, M, dtype="float32"):
 
     return [A, B, C]
 
+
 if __name__ == "__main__":
 
     arch = "cpu"
@@ -25,7 +27,7 @@ if __name__ == "__main__":
 
     if arch == "cpu":
         target = tvm.target.Target("llvm")
-        dev = tvm.cpu() 
+        dev = tvm.cpu()
     elif arch == "cuda":
         target = tvm.target.Target("cuda")
         dev = tvm.cuda()
@@ -39,18 +41,20 @@ if __name__ == "__main__":
     print("Arch:", arch)
 
     ## Create the search task
-    
+
     N, L, M = 1000, 800, 700
 
     np.random.seed(0)
     a_np = np.random.uniform(size=(N, L)).astype(np.float32)
     b_np = np.random.uniform(size=(L, M)).astype(np.float32)
     c_np = a_np.dot(b_np)
-    
-    task = tvm.auto_scheduler.SearchTask(func=ansor_mm, args=(N, L, M, "float32"), target=target)
+
+    task = tvm.auto_scheduler.SearchTask(
+        func=ansor_mm, args=(N, L, M, "float32"), target=target
+    )
 
     # Inspect the computational graph
-    #print("Computational DAG:", task.compute_dag)
+    # print("Computational DAG:", task.compute_dag)
 
     ## Set Parameters for Auto-Scheduler
     log_file = arch + "_matmul.json"
@@ -58,7 +62,7 @@ if __name__ == "__main__":
         num_measure_trials=100,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(number=2, repeat=3),
         measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
-        verbose=0
+        verbose=0,
     )
 
     ## Run the search
@@ -68,7 +72,7 @@ if __name__ == "__main__":
     task.tune(tune_option)
     end = time.time()
 
-    '''
+    """
     # Apply the best schedule
     sch, args = task.apply_best(log_file)
 
@@ -90,9 +94,9 @@ if __name__ == "__main__":
 
     #print("Equivalent python schedule:")
     #print(task.print_best(log_file))
-    '''
+    """
 
     time_avg, best_cfg = utils.get_best_time(log_file)
 
     print("Time spent:", time_avg)
-    print("Config:", best_cfg) 
+    print("Config:", best_cfg)
