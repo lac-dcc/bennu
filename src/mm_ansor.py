@@ -56,10 +56,11 @@ if __name__ == "__main__":
     # print("Computational DAG:", task.compute_dag)
 
     ## Set Parameters for Auto-Scheduler
-    log_file = arch + "_matmul.json"
+    log_file = f"../results/{arch}_matmul.json"
+    trial = 1000
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=100,  # change this to 20000 to achieve the best performance
-        runner=auto_scheduler.LocalRunner(number=2, repeat=3),
+        num_measure_trials=trial,  # change this to 20000 to achieve the best performance
+        runner=auto_scheduler.LocalRunner(number=10, repeat=3),
         measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
         verbose=0,
     )
@@ -99,3 +100,5 @@ if __name__ == "__main__":
 
     print("Time spent:", time_avg)
     print("Config:", best_cfg)
+    print("Time spent to search:", end - start)
+    print("Time approximately for each search:", (end - start) / trial)
