@@ -4,15 +4,12 @@ from src.module.utils import *
 
 
 class Template_autotvm:
-
     cfg = None
     sch = None
-    start_tensor = None
-    tensor = None
-    axis = None
     args = []
-    # search_space = [2, 4, 8, 16, 24, 32, 64, 96, 128] # TODO: Find best values
-    search_space = [4]
+    search_space = [1, 2, 4, 8, 16]  # TODO: Find best values
+    # search_space = [4]
+    start_tensor = None
     stages = [None]
     stage_to_axes = dict()  # TODO: creating axes in different stage
 
@@ -29,13 +26,6 @@ class Template_autotvm:
         self.args = args
         self.stages = list(self.sch.stages)
 
-        # Initialize the axis
-        self.tensor = tensor
-        self.axis = []
-        for t in self.sch[tensor].op.axis:
-            self.axis.append(t)
-        for t in self.sch[tensor].op.reduce_axis:
-            self.axis.append(t)
         # FIXME: It's 2 because we have 3 operations
         # and the op 2 is computer type node
         # We need to do this generic
@@ -53,8 +43,6 @@ class Template_autotvm:
 
         * \param stage_id The index of the stage
         """
-        #print(stage)
-
         if type(stage.op) == tvm.te.tensor.ComputeOp:
             self.stage_to_axes[stage_id] = []
             for axis in stage.op.axis:
@@ -66,6 +54,10 @@ class Template_autotvm:
             pass
         else:
             raise RuntimeError(f"Invalid op {stage.op}")
+
+    def updateAxes(self, axes):
+        for i in range(2, len(self.stages)):
+            self.stage_to_axes[i] = axes
 
     def CHW(self, params):
         """
@@ -83,39 +75,29 @@ class Template_autotvm:
         name = f"CHW"
         self.cfg.define_knob(name, ["None", scope_name])
 
-        #print(list(self.stages))
-
         if self.cfg[name].val == scope_name:
-
             tensor_array = []
             for i in range(stage.op.num_outputs):
                 tensor_array.append(stage.origin_op.output(i))
 
             # Allocate write cache
-            # TODO: Working that
-            '''
             outs = self.sch.cache_write(tensor_array, scope_name)
+            self.stages[stage_id] = stage
             self.UpdateStageToAxesMap(stage_id, stage)
 
-            print(self.stage_to_axes)
-
             new_stage = self.sch[outs[0].op]
-            print(new_stage)
+
+            # FIXME: There is a problem here, when We apply cache_write
+            # the tensor lost the reduce_axis, I don't know why.
+            # I tried to set the atribute, but stage doesn't allow.
+            self.stages[stage_id] = new_stage
+            self.UpdateStageToAxesMap(stage_id, new_stage)
+
             self.stages.insert(stage_id, new_stage)
-            self.UpdateStageToAxesMap(stage_id+1, new_stage)
-            '''
-            self.stages.insert(stage_id, stage)
-            self.UpdateStageToAxesMap(stage_id+1, stage)
+            self.UpdateStageToAxesMap(stage_id + 1, new_stage)
         else:
             self.stages.insert(stage_id, stage)
-            self.UpdateStageToAxesMap(stage_id+1, stage)
-
-        # Update the axis
-        #self.axis = []
-        #for t in self.sch[self.tensor].op.axis:
-        #    self.axis.append(t)
-        #for t in self.sch[self.tensor].op.reduce_axis:
-        #    self.axis.append(t)
+            self.UpdateStageToAxesMap(stage_id + 1, stage)
 
     def print(self):
         """
@@ -135,16 +117,25 @@ class Template_autotvm:
         assert len(params) == 2
 
         stage_id, after_ids = params
+        stage = self.stages[stage_id]
+        axes = self.stage_to_axes[stage_id]
 
-        new_order = []
-        for i in range(len(self.axis)):
+        assert len(after_ids) <= len(axes)
+
+        new_axes = []
+        for i in range(len(axes)):
             if i < len(after_ids):
-                new_order.append(self.axis[after_ids[i]])
+                new_axes.append(axes[after_ids[i]])
             else:
-                new_order.append(self.axis[i])
+                new_axes.append(axes[i])
         # Reorder with the new order
-        self.sch[self.tensor].reorder(*new_order)
-        self.axis = new_order
+        stage.reorder(*new_axes)
+        # Update the axes and stage
+        self.stage_to_axes[stage_id] = new_axes
+        self.stages[stage_id] = stage
+
+        # FIXME: this is temporary
+        self.updateAxes(new_axes)
 
     def RE(self, size_order):
         """
@@ -208,16 +199,17 @@ class Template_autotvm:
         SplitStep(int stage_id, int iter_id, Optional<PrimExpr> extent,
                     const Array<Optional<Integer>>& lengths, bool inner_to_outer);
         """
-        
+
         assert len(params) == 5
         stage_id, iter_id, extent, lengths, inner_to_outer = params
         stage = self.stages[stage_id]
+        axes = self.stage_to_axes[stage_id]
 
         order = []
-        next_axis = self.axis[iter_id]
+        next_axis = axes[iter_id]
         for i in range(len(lengths)):
             name = f"SP_s{stage_id}_i{iter_id}_t{i}"
-            self.cfg.define_knob(name, self.search_space)  
+            self.cfg.define_knob(name, self.search_space)
             x, y = stage.split(next_axis, self.cfg[name].val)
             if inner_to_outer == 1:
                 add(order, [x, y] if i == len(lengths) - 1 else [x])
@@ -225,8 +217,12 @@ class Template_autotvm:
             else:
                 add(order, [x, y] if i == len(lengths) - 1 else [y])
                 next_axis = x
-            
-        insert(self.axis, order, iter_id)
+
+        insert(axes, order, iter_id)
+        self.stages[stage_id] = stage
+
+        # FIXME: this is temporary
+        self.updateAxes(axes)
 
     def AN(self, params):
         """
@@ -242,6 +238,10 @@ class Template_autotvm:
         assert len(params) == 3
 
         stage_id, iter_id, ann = params
+
+        assert stage_id < len(self.stages)
+        stage = self.stages[stage_id]
+        axes = self.stage_to_axes[stage_id]
 
         annotation_string = {
             0: "for",
@@ -259,19 +259,20 @@ class Template_autotvm:
         }
 
         if ann == 1:  # unroll
-            self.sch[self.tensor].unroll(self.axis[iter_id])
+            stage.unroll(axes[iter_id])
         elif ann == 2:  # vectorize
-            self.sch[self.tensor].vectorize(self.axis[iter_id])
+            stage.vectorize(axes[iter_id])
         elif ann == 3:  # parallel
-            self.sch[self.tensor].parallel(self.axis[iter_id])
+            stage.parallel(axes[iter_id])
         elif ann in [4, 5, 6, 7, 8, 9, 10]:  # thread and block ids
-            self.sch[self.tensor].bind(
-                self.axis[iter_id], te.thread_axis(annotation_string[ann])
-            )
+            stage.bind(axes[iter_id], te.thread_axis(annotation_string[ann]))
         elif ann == 0:  # for
             pass  # do nothing in this case
         else:
             raise RuntimeError(f"Invalid annotation type {annotation_string[ann]}")
+
+        # update stage
+        self.stages[stage_id] = stage
 
     def FU(self):
         """
@@ -305,22 +306,33 @@ class Template_autotvm:
         assert len(params) == 2
         stage_id, fused_ids = params
 
+        assert stage_id < len(self.stages)
+        stage = self.stages[stage_id]
+        axes = self.stage_to_axes[stage_id]
+
         i, pos = 0, 0
-        p = self.axis.copy()
+        p = self.stage_to_axes[stage_id].copy()
         while i < len(fused_ids):
             if i == 0:
                 t1 = p[fused_ids[i]]
                 t2 = p[fused_ids[i + 1]]
                 pos = fused_ids[i]
-                pfused = self.sch[self.tensor].fuse(t1, t2)
-                update(self.axis, [t1, t2], pfused, pos)
+                pfused = stage.fuse(t1, t2)
+                update(axes, [t1, t2], pfused, pos)
                 i += 1
             else:
                 tn = p[fused_ids[i]]
-                fused = self.sch[self.tensor].fuse(pfused, tn)
-                update(self.axis, [pfused, tn], fused, pos)
+                fused = stage.fuse(pfused, tn)
+                update(axes, [pfused, tn], fused, pos)
                 pfused = fused
             i += 1
+
+        # update stage
+        self.stages[stage_id] = stage
+        self.stage_to_axes[stage_id] = axes
+
+        # FIXME: this is temporary
+        self.updateAxes(axes)
 
     def PR(self, var, pragma_type):
         """
@@ -353,20 +365,25 @@ class Template_autotvm:
 
         * \param stage_id The index of the stage to be fused.
         * \param iter_id The index of the iterator to add pragma.
-        * \param pragma_type The pragma string.
-        pragma options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
+        * \param pragma_type The pragma string. Options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
         """
         assert len(params) == 3
 
         stage_id, iter_id, pragma_type = params
+
+        assert stage_id < len(self.stages)
         stage = self.stages[stage_id]
+        axes = self.stage_to_axes[stage_id]
 
         pragma, size = pragma_type.split("$")
 
-        stage.pragma(self.axis[iter_id], pragma, int(size))
+        stage.pragma(axes[iter_id], pragma, int(size))
 
         if pragma == "auto_unroll_max_step":
-            stage.pragma(self.axis[iter_id], "unroll_explicit", True)
+            stage.pragma(axes[iter_id], "unroll_explicit", True)
+
+        # update the stage
+        self.stages[stage_id] = stage
 
     def FSP(self):
         """
@@ -416,27 +433,28 @@ class Template_autotvm:
         * \param n_split The number of split level.
 
         FollowSplitStep(int stage_id, int iter_id, int src_step_id, int n_split)
+
+        Example: [3, 0, 1, 1]
         """
         assert len(params) == 4
         stage_id, iter_id, src_step_id, n_split = params
 
-        order = self.axis.copy()
+        assert stage_id < len(self.stages)
+        stage = self.stages[stage_id]
+        axes = self.stage_to_axes[stage_id]
 
-        if n_split != 0:
-            for i in range(n_split):
-                name = f"FSP_{src_step_id}_{i}"
-                self.cfg.define_knob(name, self.search_space)
-                if i == 0:
-                    x0, y0 = self.sch[self.tensor].split(
-                        self.axis[src_step_id], self.cfg[name].val
-                    )
-                    insert(order, [x0, y0] if i == n_split - 1 else [x0], src_step_id)
-                    yp = y0
-                else:
-                    x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
-                    insert(order, [x, y] if i == n_split - 1 else [x], src_step_id)
-                    yp = y
-        self.axis = order  # update the tensor's axis
+        order = []
+        next_axis = axes[iter_id]
+        for i in range(n_split):
+            name = f"FSP_s{stage_id}_i{iter_id}_t{i}"
+            self.cfg.define_knob(name, self.search_space)
+            x, y = stage.split(next_axis, self.cfg[name].val)
+            add(order, [x, y] if i == n_split - 1 else [x])
+            next_axis = y
+        insert(axes, order, iter_id)
+
+        # FIXME: this is temporary
+        self.updateAxes(axes)
 
     def FFSP(self):
         """
@@ -505,7 +523,7 @@ class Template_autotvm:
 
     def CA_fixed(self, params):
         """
-        CA:     Step with a list fixed
+        CA: Step with a list fixed
         * \param stage_id The index of the source stage.
         * \param target_stage_id The index of stage that this step will compute at to.
         * \param target_iter_id The index of iterator in target stage that this step will compute at to.
@@ -516,14 +534,15 @@ class Template_autotvm:
         """
         assert len(params) == 3
         stage_id, target_stage_id, target_iter_id = params
-        stage = self.stages[stage_id]
 
-        if target_stage_id == len(self.stages):
-            stage.compute_at(self.stages[-1], self.axis[target_iter_id])
-        else:
-            stage.compute_at(
-                self.stages[target_stage_id], self.axis[target_iter_id]
-            )
+        assert stage_id < len(self.stages)
+        assert target_iter_id < len(self.stages)
+
+        stage = self.stages[stage_id]
+        target_stage = self.stages[target_stage_id]
+        target_axes = self.stage_to_axes[target_stage_id]
+
+        stage.compute_at(target_stage, target_axes[target_iter_id])
 
     def CI(self, stage_id):
         """

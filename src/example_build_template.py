@@ -14,7 +14,6 @@ from src.module.utils import get_best_time
 from src.kernels.mm import autotvm_mm
 
 if __name__ == "__main__":
-
     if len(sys.argv) > 1:
         json_file = sys.argv[1]
     else:

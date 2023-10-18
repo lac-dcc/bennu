@@ -31,6 +31,7 @@ def generate_space(values, r):
         space.append([values[i] for i in idx])
     return space
 
+
 def update(list, list_remove, insert_element, pos):
     # insert the new axis in the new position
     list.insert(pos, insert_element)
@@ -38,17 +39,17 @@ def update(list, list_remove, insert_element, pos):
     for l in list_remove:
         list.remove(l)
 
-def update(list, list_remove, insert_element, pos):
-    # insert the new tensor in the new position
-    list.insert(pos, insert_element)
-    # Removed the old tensors
-    for l in list_remove:
-        list.remove(l)
+
+def print_list(list):
+    for i in range(len(list)):
+        print(i, list[i])
+
 
 def updateAxis(axis, new_axis, elem_del):
     for ax in new_axis:
         axis.append(ax)
     del axis[elem_del]
+
 
 def limited_interval(self, max_value, interval):
     new_interval = []

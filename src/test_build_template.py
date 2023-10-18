@@ -5,7 +5,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 import numpy as np
-import tvm
+import tvm, time
 from tvm import te
 import tvm.testing
 
@@ -14,7 +14,6 @@ from src.module.utils import *
 from src.kernels.mm import autotvm_mm
 
 if __name__ == "__main__":
-
     if len(sys.argv) > 1:
         json_file = sys.argv[1]
     else:
@@ -24,10 +23,11 @@ if __name__ == "__main__":
 
     config = get_template_ansor(json_file)
 
-    print("N, Droplet Time (s), Ansor Time (s), speedup (Ansor/Droplet)")
+    print(
+        "N, Droplet Time (s), Search Time (s), Count Sample, Ansor Time (s), speedup (Ansor/Droplet)"
+    )
     c = 1
     for t_ansor, cfg_ansor in config:
-
         N, L, M = 1000, 800, 700
         task = autotvm.task.create(
             "autotvm_mm", args=(N, L, M, "float32", cfg_ansor), target="llvm"
@@ -46,15 +46,26 @@ if __name__ == "__main__":
             os.remove(filename)
 
         tuner = autotvm.tuner.DropletTuner(task)
+
+        search_time = time.time()
         tuner.tune(
             n_trial=100,
             measure_option=measure_option,
             callbacks=[autotvm.callback.log_to_file(filename)],
         )
+        search_time = time.time() - search_time
         d_time, d_config = get_best_time(filename)
 
         d_time = np.mean(np.array(d_time))
         t_ansor = np.mean(t_ansor)
 
-        print("%d, %.4f, %.4f, %.2f" % (c, d_time, t_ansor, t_ansor / d_time))
+        f = open("matmul.json", "r")
+        count = 0
+        for l in f.readlines():
+            count += 1
+
+        print(
+            "%d, %.4f, %.2f, %d, %.4f, %.2f"
+            % (c, d_time, search_time, count, t_ansor, t_ansor / d_time)
+        )
         c += 1

@@ -60,8 +60,8 @@ Example 2:
 
 def example2(ta):
     ta.CHW([2, "local"])
-    ta.SP([2, 0, 1000, [1, 20, 2], 1]) 
-    ta.SP([2, 4, 700, [1, 7, 20], 1]) 
+    ta.SP([2, 0, 1000, [1, 20, 2], 1])
+    ta.SP([2, 4, 700, [1, 7, 20], 1])
     ta.SP([2, 8, 800, [10], 1])
     ta.RE_fixed([2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]])
     ta.FSP_fixed([3, 0, 1, 1])
@@ -93,8 +93,8 @@ Example 3:
 
 def example3(ta):
     ta.CHW([2, "local"])
-    ta.SP([2, 0, 1000, [1, 40, 5], 1]) 
-    ta.SP([2, 4, 700, [1, 140, 1], 1]) 
+    ta.SP([2, 0, 1000, [1, 40, 5], 1])
+    ta.SP([2, 4, 700, [1, 140, 1], 1])
     ta.SP([2, 8, 800, [5], 1])
     ta.RE_fixed([2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]])
     ta.FSP_fixed([3, 0, 1, 2])
@@ -104,6 +104,41 @@ def example3(ta):
     ta.FU_fixed([3, [0, 1, 2, 3]])
     ta.AN([3, 0, 3])
     ta.PR_fixed([2, 0, "auto_unroll_max_step$0"])
+    ta.AN([2, 9, 2])
+
+
+"""
+Example 4:
+    Time spent: [0.0719511, 0.06978, 0.0702638]
+    [["CHW", 2, "local"], 
+    ["SP", 2, 0, 1000, [5, 1, 20], 1], 
+    ["SP", 2, 4, 700, [7, 5, 10], 1], 
+    ["SP", 2, 8, 800, [20], 1], 
+    ["RE", 2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]], 
+    ["FSP", 3, 0, 1, 1], 
+    ["FSP", 3, 2, 2, 1], 
+    ["RE", 3, [0, 2, 1, 3]], 
+    ["CA", 2, 3, 1], 
+    ["FU", 3, [0, 1]], 
+    ["AN", 3, 0, 3], 
+    ["PR", 2, 0, "auto_unroll_max_step$16"], 
+    ["AN", 2, 9, 2]]]
+"""
+
+
+def example4(ta):
+    ta.CHW([2, "local"])
+    ta.SP([2, 0, 1000, [5, 1, 20], 1])
+    ta.SP([2, 4, 700, [7, 5, 10], 1])
+    ta.SP([2, 8, 800, [20], 1])
+    ta.RE_fixed([2, [0, 4, 1, 5, 8, 2, 6, 9, 3, 7]])
+    ta.FSP_fixed([3, 0, 1, 1])
+    ta.FSP_fixed([3, 2, 2, 1])
+    ta.RE_fixed([3, [0, 2, 1, 3]])
+    # ta.CA_fixed([2, 3, 1])
+    ta.FU_fixed([3, [0, 1]])
+    ta.AN([3, 0, 3])
+    ta.PR_fixed([2, 0, "auto_unroll_max_step$16"])
     ta.AN([2, 9, 2])
 
 
@@ -120,9 +155,10 @@ def matmul(N, L, M, dtype):
     tensors = C
 
     ta = Template_autotvm(tensors, args)
-    #example1(ta)
-    example2(ta)
-    #example3(ta)
+    # example1(ta)
+    # example2(ta)
+    # example3(ta)
+    example4(ta)
 
     return ta.ret()
 

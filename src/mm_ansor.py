@@ -19,7 +19,6 @@ def matmul(N, L, M, dtype="float32"):
 
 
 if __name__ == "__main__":
-
     arch = "cpu"
 
     if len(sys.argv) == 2:
