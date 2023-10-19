@@ -27,7 +27,7 @@ parallel i.0@j.0@i.1@ (0,350)
           for k.1 (0,2)
             C = ...
 ```
-### Command 1:
+### Command 2:
 
 ```shell
 python print_record_info.py --logfile '../results/cpu_matmul.json' --index 4
