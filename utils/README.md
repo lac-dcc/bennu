@@ -1,12 +1,16 @@
+## Execution Details for `print_record_info.py`
+
+### Command 1:
+```shell
 python print_record_info.py --logfile '../results/cpu_matmul.json' --index 2
 
 The file ../results/cpu_matmul.json exists.
 Index: 2
 Time cost (second): [T.float64(0.022992200000000001), T.float64(0.023908800000000001), T.float64(0.0230355)]
-----------
+--------------
 Workload Key: ["ansor_mm", 1000, 800, 700, "float32"]
-FLOP Ct: 1120000000.0
-----------
+FLOP Count: 1120000000.0
+--------------
 Compute DAG:
 A = PLACEHOLDER [1000, 800]
 B = PLACEHOLDER [800, 700]
@@ -22,8 +26,10 @@ parallel i.0@j.0@i.1@ (0,350)
         for j.2 (0,5)
           for k.1 (0,2)
             C = ...
+```
+### Command 1:
 
-
+```shell
 python print_record_info.py --logfile '../results/cpu_matmul.json' --index 4
 The file ../results/cpu_matmul.json exists.
 Index: 4
@@ -52,4 +58,4 @@ parallel i.0@j.0@i.1@j.1@ (0,100)
     for j.2 (0,700)
       C = ...
 
-
+```
