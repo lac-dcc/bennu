@@ -1,8 +1,12 @@
-import sys
+import sys, os
 import numpy as np
 import time
 import tvm
 from tvm import te, auto_scheduler
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
 from src.kernels.mm import ansor_mm
 from src.module import utils
 

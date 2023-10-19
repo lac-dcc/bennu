@@ -1,5 +1,10 @@
+import os, sys
 import tvm
 from tvm import autotvm, te
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
 from src.module.utils import *
 
 
@@ -7,8 +12,8 @@ class Template_autotvm:
     cfg = None
     sch = None
     args = []
-    search_space = [1, 2, 4, 8, 16]  # TODO: Find best values
-    # search_space = [4]
+    # search_space = [1, 2, 4, 8, 16]  # TODO: Find best values
+    search_space = [4]
     start_tensor = None
     stages = [None]
     stage_to_axes = dict()  # TODO: creating axes in different stage
