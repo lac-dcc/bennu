@@ -59,10 +59,10 @@ if __name__ == "__main__":
         d_time = np.mean(np.array(d_time))
         t_ansor = np.mean(t_ansor)
 
-        # f = open("matmul.json", "r")
+        f = open("matmul.json", "r")
         count = 0
-        # for l in f.readlines():
-        #    count += 1
+        for l in f.readlines():
+            count += 1
 
         print(
             "%d, %.4f, %.2f, %d, %.4f, %.2f"
