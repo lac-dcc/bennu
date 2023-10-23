@@ -1,6 +1,7 @@
 import os, sys
 import tvm
 from tvm import autotvm, te
+from copy import deepcopy
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -12,8 +13,6 @@ class Template_autotvm:
     cfg = None
     sch = None
     args = []
-    # search_space = [1, 2, 4, 8, 16]  # TODO: Find best values
-    search_space = [4]
     start_tensor = None
     stages = [None]
     stage_to_axes = dict()  # TODO: creating axes in different stage
@@ -85,17 +84,24 @@ class Template_autotvm:
             for i in range(stage.op.num_outputs):
                 tensor_array.append(stage.origin_op.output(i))
 
+            print("stages before")
+            print(self.stages[stage_id])
+
             # Allocate write cache
             outs = self.sch.cache_write(tensor_array, scope_name)
             self.stages[stage_id] = stage
             self.UpdateStageToAxesMap(stage_id, stage)
+
+            print("stages after")
+
+            print(self.stages[stage_id])
 
             new_stage = self.sch[outs[0].op]
 
             # FIXME: There is a problem here, when We apply cache_write
             # the tensor lost the reduce_axis, I don't know why.
             # I tried to set the atribute, but stage doesn't allow.
-            self.stages[stage_id] = new_stage
+            self.stages[stage_id] = stage
             self.UpdateStageToAxesMap(stage_id, new_stage)
 
             self.stages.insert(stage_id, new_stage)
@@ -210,11 +216,14 @@ class Template_autotvm:
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
 
+        search_space = [1, 2, 4, 8, 16]
+
         order = []
         next_axis = axes[iter_id]
         for i in range(len(lengths)):
             name = f"SP_s{stage_id}_i{iter_id}_t{i}"
-            self.cfg.define_knob(name, self.search_space)
+            search = add_space(search_space, [lengths[i]])
+            self.cfg.define_knob(name, search)
             x, y = stage.split(next_axis, self.cfg[name].val)
             if inner_to_outer == 1:
                 add(order, [x, y] if i == len(lengths) - 1 else [x])
@@ -447,12 +456,13 @@ class Template_autotvm:
         assert stage_id < len(self.stages)
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
+        search_space = [1, 2, 4, 8, 16]
 
         order = []
         next_axis = axes[iter_id]
         for i in range(n_split):
             name = f"FSP_s{stage_id}_i{iter_id}_t{i}"
-            self.cfg.define_knob(name, self.search_space)
+            self.cfg.define_knob(name, search_space)
             x, y = stage.split(next_axis, self.cfg[name].val)
             add(order, [x, y] if i == n_split - 1 else [x])
             next_axis = y

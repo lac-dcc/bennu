@@ -11,6 +11,14 @@ def permutation(arr, limit):
     return result
 
 
+def add_space(list, element):
+    new_list = element
+    for l in list:
+        if l not in new_list:
+            new_list.append(l)
+    return new_list
+
+
 def add(list, elements):
     for e in elements:
         list.append(e)

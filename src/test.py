@@ -155,10 +155,10 @@ def matmul(N, L, M, dtype):
     tensors = C
 
     ta = Template_autotvm(tensors, args)
-    # example1(ta)
+    example1(ta)
     # example2(ta)
     # example3(ta)
-    example4(ta)
+    # example4(ta)
 
     return ta.ret()
 
