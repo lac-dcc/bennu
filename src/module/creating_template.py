@@ -84,17 +84,10 @@ class Template_autotvm:
             for i in range(stage.op.num_outputs):
                 tensor_array.append(stage.origin_op.output(i))
 
-            print("stages before")
-            print(self.stages[stage_id])
-
             # Allocate write cache
             outs = self.sch.cache_write(tensor_array, scope_name)
             self.stages[stage_id] = stage
             self.UpdateStageToAxesMap(stage_id, stage)
-
-            print("stages after")
-
-            print(self.stages[stage_id])
 
             new_stage = self.sch[outs[0].op]
 
