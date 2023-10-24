@@ -30,10 +30,9 @@ class Template_autotvm:
         self.args = args
         self.stages = list(self.sch.stages)
 
-        # FIXME: It's 2 because we have 3 operations
-        # and the op 2 is computer type node
-        # We need to do this generic
-        self.UpdateStageToAxesMap(2, self.stages[2])
+        # generic way to update all stages to axes map
+        for i in range(len(self.stages)):
+            self.UpdateStageToAxesMap(i)
 
     def ret(self):
         """
@@ -41,12 +40,13 @@ class Template_autotvm:
         """
         return self.sch, self.args
 
-    def UpdateStageToAxesMap(self, stage_id, stage):
+    def UpdateStageToAxesMap(self, stage_id):
         """
         Update the axes into dict
 
         * \param stage_id The index of the stage
         """
+        stage = self.stages[stage_id]
         if type(stage.op) == tvm.te.tensor.ComputeOp:
             self.stage_to_axes[stage_id] = []
             for axis in stage.op.axis:
@@ -86,22 +86,20 @@ class Template_autotvm:
 
             # Allocate write cache
             outs = self.sch.cache_write(tensor_array, scope_name)
+
             self.stages[stage_id] = stage
-            self.UpdateStageToAxesMap(stage_id, stage)
+            self.UpdateStageToAxesMap(stage_id)
 
             new_stage = self.sch[outs[0].op]
 
-            # FIXME: There is a problem here, when We apply cache_write
-            # the tensor lost the reduce_axis, I don't know why.
-            # I tried to set the atribute, but stage doesn't allow.
-            self.stages[stage_id] = stage
-            self.UpdateStageToAxesMap(stage_id, new_stage)
+            self.stages[stage_id] = new_stage
+            self.UpdateStageToAxesMap(stage_id)
 
-            self.stages.insert(stage_id, new_stage)
-            self.UpdateStageToAxesMap(stage_id + 1, new_stage)
+            self.stages.insert(stage_id + 1, new_stage)
+            self.UpdateStageToAxesMap(stage_id + 1)
         else:
-            self.stages.insert(stage_id, stage)
-            self.UpdateStageToAxesMap(stage_id + 1, stage)
+            self.stages.insert(stage_id + 1, stage)
+            self.UpdateStageToAxesMap(stage_id + 1)
 
     def print(self):
         """
@@ -137,9 +135,6 @@ class Template_autotvm:
         # Update the axes and stage
         self.stage_to_axes[stage_id] = new_axes
         self.stages[stage_id] = stage
-
-        # FIXME: this is temporary
-        self.updateAxes(new_axes)
 
     def RE(self, size_order):
         """
@@ -209,7 +204,8 @@ class Template_autotvm:
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
 
-        search_space = [1, 2, 4, 8, 16]
+        # search_space = [1, 2, 4, 8, 16]
+        search_space = []
 
         order = []
         next_axis = axes[iter_id]
@@ -449,7 +445,7 @@ class Template_autotvm:
         assert stage_id < len(self.stages)
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
-        search_space = [1, 2, 4, 8, 16]
+        search_space = [4]
 
         order = []
         next_axis = axes[iter_id]
