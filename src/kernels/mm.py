@@ -20,12 +20,11 @@ def ansor_mm(N, L, M, dtype="float32"):
 
 
 @autotvm.template("autotvm_mm")
-def autotvm_mm(N, L, M, dtype="float32", cfg=None):
-    A = te.placeholder((N, L), name="A", dtype=dtype)
-    B = te.placeholder((L, M), name="B", dtype=dtype)
-
-    k = te.reduce_axis((0, L), name="k")
-    C = te.compute((N, M), lambda i, j: te.sum(A[i, k] * B[k, j], axis=k), name="C")
+def autotvm_mm(N, K, M, dtype="float32", cfg=None):
+    k = te.reduce_axis((0, K), "k")
+    A = te.placeholder((M, K), name="A")
+    B = te.placeholder((K, N), name="B")
+    C = te.compute((M, N), lambda m, n: te.sum(A[m, k] * B[k, n], axis=k), name="C")
 
     args = [A, B, C]
     tensors = C

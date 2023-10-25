@@ -67,7 +67,7 @@ def example2(ta):
     ta.FSP_fixed([3, 0, 1, 1])
     ta.FSP_fixed([3, 2, 2, 1])
     ta.RE_fixed([3, [0, 2, 1, 3]])
-    # ta.CA_fixed([2, 3, 1])
+    ta.CA_fixed([2, 3, 1])
     ta.AN([3, 0, 3])
     ta.PR_fixed([2, 0, "auto_unroll_max_step$512"])
 
@@ -155,8 +155,8 @@ def matmul(N, L, M, dtype):
     tensors = C
 
     ta = Template_autotvm(tensors, args)
-    example1(ta)
-    # example2(ta)
+    # example1(ta)
+    example2(ta)
     # example3(ta)
     # example4(ta)
 

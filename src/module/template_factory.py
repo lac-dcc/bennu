@@ -11,8 +11,7 @@ def Template_factory(cfg, tensors, args):
     Build the template based on Auto Schedule
     """
     ta = Template_autotvm(tensors, args)
-    for i in range(len(cfg)):
-        field = cfg[i]
+    for field in cfg:
         if field[0] == "SP":
             ta.SP(field[1:])
         elif field[0] == "RE":
@@ -30,9 +29,7 @@ def Template_factory(cfg, tensors, args):
         elif field[0] == "SA":
             ta.SA(field[1:])
         elif field[0] == "CA":
-            # TODO: Temporarily commented. I'm working on a fix for the crash issue.
-            # ta.CA_fixed(field[1:])
-            pass
+            ta.CA_fixed(field[1:])
         elif field[0] == "CI":
             ta.CI(field[1:])
         elif field[0] == "CR":
