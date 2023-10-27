@@ -1,5 +1,7 @@
 import numpy as np
 from itertools import permutations, product
+import tvm
+import tvm.contrib.graph_executor as runtime
 
 
 def permutation(arr, limit):
@@ -91,6 +93,40 @@ def get_best_time(log):
     return best_avg, best_cfg
 
 
+def get_best_time_multilayer(log):
+    import json
+
+    f = open(log, "r")
+    best_avg = 9999.0
+    best_cfg = {}
+    hash_map = dict()
+    for line in f.readlines():
+        data = json.loads(line)
+        if "i" in data:
+            r = data["r"][0]
+            hash = data["i"][0][0]
+            cfg = data["i"][1][1]
+
+            if hash not in hash_map or np.mean(hash_map[hash][0]) > np.mean(r):
+                hash_map[hash] = (r, cfg)
+
+        """
+        if "r" in data:
+            r = data["r"][0]
+            if np.mean(best_avg) > np.mean(r):
+                best_avg = r
+                best_cfg = data["i"][1][1]
+        else:
+            r = data["result"][0]
+            if np.mean(best_avg) > np.mean(r):
+                best_avg = r
+                best_cfg = data["config"]["entity"]
+        """
+    f.close()
+
+    return hash_map
+
+
 def get_template_ansor(log):
     import json
 
@@ -105,3 +141,28 @@ def get_template_ansor(log):
     f.close()
 
     return cfg
+
+
+def evaluate_performance(lib, data_shape, target, input_name="data", dtype="float32"):
+    # upload parameters to device
+    dev = tvm.device(str(target), 0)
+    np.random.seed(0)
+    data_tvm = tvm.nd.array(
+        (np.random.uniform(size=data_shape)).astype(dtype), device=dev
+    )
+    module = runtime.GraphModule(lib["default"](dev))
+    module.set_input(input_name, data_tvm)
+
+    # Create graph runtime
+    # ctx = tvm.device(str(target), 0)
+    # module = runtime.GraphModule(lib["default"](ctx))
+    # data_tvm = tvm.nd.array((np.random.uniform(size=input_shape)).astype("int64"), device=ctx)
+    # module.set_input("input_ids", data_tvm)
+
+    r = []
+    for i in range(3):
+        eval = module.benchmark(
+            dev, number=5, repeat=5, min_repeat_ms=100, cooldown_interval_ms=100
+        )
+        r.append(eval.mean * 1000)
+    return r

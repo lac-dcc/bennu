@@ -84,7 +84,7 @@ class Template_autotvm:
         for i in range(stage.op.num_outputs):
             tensor_array.append(stage.origin_op.output(i))
 
-        # Allocate write cache
+        # Allocate cache write
         outs = self.sch.cache_write(tensor_array, scope_name)
 
         # update the list stages
@@ -204,8 +204,8 @@ class Template_autotvm:
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
 
-        search_space = [1, 2, 4, 8, 16, 24, 32]
-        # search_space = []
+        # search_space = [1, 2, 4, 8, 16, 24, 32]
+        search_space = []
 
         order, values = [], []
         next_axis = axes[iter_id]
@@ -578,8 +578,27 @@ class Template_autotvm:
         """
         assert len(params) == 3
         stage_id, scope_name, reader_stage_ids = params
-        # TODO: Implement CHR opt
-        pass
+        stage = self.stages[stage_id]
+
+        readers = []
+        for i in reader_stage_ids:
+            readers.append(stage[i].origin_op)
+
+        # Allocate cache read
+        out = self.sch.cache_read(stage.origin_op.output(0), scope_name, readers)
+
+        # update the list stages
+        self.stages = list(self.sch.stages)
+        self.UpdateStageToAxesMap(stage_id)
+
+        # adding new stage
+        new_stage = self.sch[out.op]
+        self.stages[stage_id] = new_stage
+        self.UpdateStageToAxesMap(stage_id + 1)
+
+        self.values_sp[stage_id + 1] = []
+        for j in range(len(self.args)):
+            self.values_sp[stage_id + 1].append(1)
 
     def RF(self, params):
         """
