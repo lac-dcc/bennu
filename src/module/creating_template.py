@@ -63,10 +63,6 @@ class Template_autotvm:
         else:
             raise RuntimeError(f"Invalid op {stage.op}")
 
-    def updateAxes(self, axes):
-        for i in range(2, len(self.stages)):
-            self.stage_to_axes[i] = axes
-
     def CHW(self, params):
         """
         CHW: CacheWriteStep
@@ -106,7 +102,7 @@ class Template_autotvm:
         """
         print(tvm.lower(self.sch, self.args, simple_mode=True))
 
-    def RE_fixed(self, params):
+    def RE(self, params):
         """
         RE_fixed: Reorder step with a fixed list
 
@@ -135,55 +131,6 @@ class Template_autotvm:
         self.stage_to_axes[stage_id] = new_axes
         self.values_sp[stage_id] = new_values
         self.stages[stage_id] = stage
-
-    def RE(self, size_order):
-        """
-        RE: ReorderStep
-
-        * \param stage_id The index of the stage to be reordered.
-        * \param after_ids The expected indexes of the iterators after reorder.
-
-        ReorderStep(int stage_id, const Array<Integer>& after_ids);
-        """
-        if len(self.axis) == 0:
-            return
-        name = f"RE_{0}"
-
-        self.cfg.define_knob(name, [i for i in range(size_order)])
-
-        perms = permutation(self.axis, size_order)
-        for i, p in enumerate(perms):
-            if self.cfg[name].val == i:
-                self.sch[self.tensor].reorder(*p)
-
-    def SP_fixed(self, list_SP):
-        """
-        SP_fixed: SplitStep
-
-        * \param stage_id The index of the stage to be split.
-        * \param iter_id The index of the iterator to be split.
-        * \param extent The extent length of the axis to split.
-        * \param lengths The multiple split factors. Can be None to be filled by search policy.
-        * \param inner_to_outer The split direction.
-
-        SplitStep(int stage_id, int iter_id, Optional<PrimExpr> extent,
-                    const Array<Optional<Integer>>& lengths, bool inner_to_outer);
-        """
-        order = []
-        for iter_id in range(len(list_SP)):
-            split_size = len(list_SP[iter_id])
-            for i in range(split_size):
-                if i == 0:
-                    x0, y0 = self.sch[self.tensor].split(
-                        self.axis[iter_id], factor=list_SP[iter_id][i]
-                    )
-                    add(order, [x0, y0] if i == split_size - 1 else [x0])
-                    yp = y0
-                else:
-                    x, y = self.sch[self.tensor].split(yp, factor=list_SP[iter_id][i])
-                    add(order, [x, y] if i == split_size - 1 else [x])
-                    yp = y
-        self.axis = order  # update the tensor's axis
 
     def SP(self, params):
         """
@@ -276,27 +223,7 @@ class Template_autotvm:
         # update stage
         self.stages[stage_id] = stage
 
-    def FU(self):
-        """
-        FU: FuseStep
-
-        * \param stage_id The index of the stage to be fused.
-        * \param fused_ids The index of the iterators to be fused.
-
-        FuseStep(int stage_id, const Array<Integer>& fused_ids);
-        """
-        # TODO: Grow up the number of fusion, currently only between two tensor
-        # is possible.
-        name = f"FU_{0}"
-        size_fusion = len(self.axis) - 1
-        self.cfg.define_knob(name, [i for i in range(size_fusion)])
-
-        for i in range(size_fusion):
-            if self.cfg[name].val == i:
-                fused = self.sch[self.tensor].fuse(self.axis[i], self.axis[i + 1])
-                update(self.axis, [self.axis[i], self.axis[i + 1]], fused, i)
-
-    def FU_fixed(self, params):
+    def FU(self, params):
         """
         FU_fixed: Fuse step with a list
 
@@ -333,32 +260,7 @@ class Template_autotvm:
         self.stages[stage_id] = stage
         self.stage_to_axes[stage_id] = axes
 
-    def PR(self, var, pragma_type):
-        """
-        PR: PragmaStep
-
-        * \param stage_id The index of the stage to be fused.
-        * \param iter_id The index of the iterator to add pragma.
-        * \param pragma_type The pragma string.
-        pragma_type options: "auto_unroll_max_step", "auto_unroll_max_depth", "unroll_explicit"
-        """
-        assert pragma_type in [
-            "auto_unroll_max_step",
-            "auto_unroll_max_depth",
-            "unroll_explicit",
-        ]
-
-        name = f"PR_{var}_{pragma_type}"
-        pragma_size = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
-        self.cfg.define_knob(name, [i for i in pragma_size])
-
-        for i in pragma_size:
-            if self.cfg[name].val == i:
-                self.sch[self.tensor].pragma(
-                    self.axis[var], pragma_type, self.cfg[name].val
-                )
-
-    def PR_fixed(self, params):
+    def PR(self, params):
         """
         PR: PragmaStep with fixed values
 
@@ -384,45 +286,7 @@ class Template_autotvm:
         # update the stage
         self.stages[stage_id] = stage
 
-    def FSP(self):
-        """
-        FSP: FollowSplitStep
-
-        * \param stage_id The index of the stage to be split.
-        * \param iter_id The index of the iterator to be split.
-        * \param src_step_id The index of the split step to be followed in the history.
-        * \param n_split The number of split level.
-
-        FollowSplitStep(int stage_id, int iter_id, int src_step_id, int n_split)
-        """
-        split_factor = [0, 1, 2, 3, 4]
-        order = self.axis.copy()
-
-        for src_step_id in range(len(self.axis)):
-            for n_split in split_factor:
-                name = f"FSP_{src_step_id}_{n_split}"
-                self.cfg.define_knob(name, self.search_space)
-                if n_split != 0:
-                    for i in range(n_split):
-                        if i == 0:
-                            x0, y0 = self.sch[self.tensor].split(
-                                self.axis[src_step_id], self.cfg[name].val
-                            )
-                            insert(
-                                order,
-                                [x0, y0] if i == n_split - 1 else [x0],
-                                src_step_id,
-                            )
-                            yp = y0
-                        else:
-                            x, y = self.sch[self.tensor].split(yp, self.cfg[name].val)
-                            insert(
-                                order, [x, y] if i == n_split - 1 else [x], src_step_id
-                            )
-                            yp = y
-        self.axis = order  # update the tensor's axis
-
-    def FSP_fixed(self, params):
+    def FSP(self, params):
         """
         FSP: FollowSplitStep with values fixed
 
@@ -467,22 +331,6 @@ class Template_autotvm:
         FollowFusedSplitStep(int stage_id, int iter_id, const Array<Integer>& src_step_ids, int level,
                    bool factor_or_nparts);
         """
-        pass
-
-    def FFSP_fixed(self, params):
-        """
-        FFSP: FollowFusedSplitStep
-
-        * \param stage_id The index of the stage to be split.
-        * \param iter_id The index of the iterator to be split.
-        * \param src_step_ids An array of index for split step to be followed in the history.
-        * \param level Use the length in this split level.
-        * \param factor_or_nparts If this is true, use factor. Otherwise, use nparts.
-
-        FollowFusedSplitStep(int stage_id, int iter_id, const Array<Integer>& src_step_ids, int level,
-                   bool factor_or_nparts);
-        """
-        assert len(params) == 5
         stage_id, iter_id, src_step_ids, level, factor_or_nparts = params
         # TODO: Implement FFSP opt
         pass
@@ -505,30 +353,12 @@ class Template_autotvm:
 
     def CA(self, params):
         """
-        CA: ComputeAtStep
-        * \param stage_id The index of the source stage.
-        * \param target_stage_id The index of stage that this step will compute at to.
-        * \param target_iter_id The index of iterator in target stage that this step will compute at to.
-
-        ComputeAtStep(int stage_id, int target_stage_id, int target_iter_id);
-
-        ['CA', 2, 3, 1]
-        """
-        assert len(params) == 3
-        stage_id, target_stage_id, target_iter_id = params
-        # TODO: Implement CA generic opt
-        pass
-
-    def CA_fixed(self, params):
-        """
         CA: Step with a list fixed
         * \param stage_id The index of the source stage.
         * \param target_stage_id The index of stage that this step will compute at to.
         * \param target_iter_id The index of iterator in target stage that this step will compute at to.
 
         ComputeAtStep(int stage_id, int target_stage_id, int target_iter_id);
-
-        ['CA', 2, 3, 1]
         """
         assert len(params) == 3
         stage_id, target_stage_id, target_iter_id = params

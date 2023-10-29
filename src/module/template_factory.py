@@ -15,21 +15,21 @@ def Template_factory(cfg, tensors, args):
         if field[0] == "SP":
             ta.SP(field[1:])
         elif field[0] == "RE":
-            ta.RE_fixed(field[1:])
+            ta.RE(field[1:])
         elif field[0] == "FU":
-            ta.FU_fixed(field[1:])
+            ta.FU(field[1:])
         elif field[0] == "PR":
-            ta.PR_fixed(field[1:])
+            ta.PR(field[1:])
         elif field[0] == "AN":
             ta.AN(field[1:])
         elif field[0] == "FSP":
-            ta.FSP_fixed(field[1:])
+            ta.FSP(field[1:])
         elif field[0] == "FFSP":
-            ta.FFSP_fixed(field[1:])
+            ta.FFSP(field[1:])
         elif field[0] == "SA":
             ta.SA(field[1:])
         elif field[0] == "CA":
-            ta.CA_fixed(field[1:])
+            ta.CA(field[1:])
         elif field[0] == "CI":
             ta.CI(field[1:])
         elif field[0] == "CR":
