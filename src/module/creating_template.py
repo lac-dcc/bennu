@@ -145,7 +145,7 @@ class Template_autotvm:
         search_space = [1, 2, 4, 8, 16, 24, 32, 36]
         #search_space = []
 
-        order, values = [], []
+        order = []
         next_axis = axes[iter_id]
         for i in range(len(lengths)):
             name = f"SP_s{stage_id}_i{iter_id}_t{i}"
@@ -297,7 +297,7 @@ class Template_autotvm:
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
 
-        order, new_values = [], []
+        order = []
         next_axis = axes[iter_id]
         for i in range(n_split):
             name = f"SP_s{stage_id}_i{iter_id}_t{i}"
@@ -414,10 +414,6 @@ class Template_autotvm:
         new_stage = self.sch[out.op]
         self.stages[stage_id] = new_stage
         self.UpdateStageToAxesMap(stage_id + 1)
-
-        self.values_sp[stage_id + 1] = []
-        for j in range(len(self.args)):
-            self.values_sp[stage_id + 1].append(1)
 
     def RF(self, params):
         """
