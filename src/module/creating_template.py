@@ -318,7 +318,7 @@ class Template_autotvm:
         insert(axes, order, iter_id)
         insert(self.values_sp[stage_id], new_values, iter_id)
 
-    def FFSP(self):
+    def FFSP(self, params):
         """
         FFSP: FollowFusedSplitStep
 
