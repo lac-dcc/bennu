@@ -25,6 +25,10 @@ def add(list, elements):
     for e in elements:
         list.append(e)
 
+def add_unique(list, elements):
+    for e in elements:
+        if e not in list:
+            list.append(e)
 
 def insert(list, elements, pos):
     for e in elements:

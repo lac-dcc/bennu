@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from src.module.template_factory import Template_factory
 
+
 def resnet18(batch_size, layout="NCHW", dtype="float32"):
     input_shape = (batch_size, 3, 224, 224)
     output_shape = (batch_size, 1000)

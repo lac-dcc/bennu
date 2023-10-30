@@ -39,18 +39,25 @@ if __name__ == "__main__":
 
     if os.path.isfile(log_file):
         os.remove(log_file)
-    
+
     batch_size = 1
-    dtype = 'float32'
-    tasks, task_weights, mod, params, data_shape, out_shape = resnet18_ansor(batch_size, target)
+    dtype = "float32"
+    tasks, task_weights, mod, params, data_shape, out_shape = resnet18_ansor(
+        batch_size, target
+    )
 
     trials = 30
     tuner = auto_scheduler.TaskScheduler(tasks, task_weights)
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=trials,  # change this to 20000 to achieve the best performance
-        runner=auto_scheduler.LocalRunner(number=2, repeat=3, min_repeat_ms=100, enable_cpu_cache_flush=True if target=="llvm" else False),
+        runner=auto_scheduler.LocalRunner(
+            number=2,
+            repeat=3,
+            min_repeat_ms=100,
+            enable_cpu_cache_flush=True if target == "llvm" else False,
+        ),
         measure_callbacks=[auto_scheduler.RecordToFile(log_file)],
-        verbose=0
+        verbose=0,
     )
 
     ## Run the search
@@ -60,7 +67,9 @@ if __name__ == "__main__":
 
     # compile kernels in kernel tuned only mode
     with auto_scheduler.ApplyHistoryBest(log_file):
-        with tvm.transform.PassContext(opt_level=3, config={"relay.backend.use_auto_scheduler": True}):
+        with tvm.transform.PassContext(
+            opt_level=3, config={"relay.backend.use_auto_scheduler": True}
+        ):
             lib = relay.build(mod, target=target, params=params)
             r = utils.evaluate_performance(lib, data_shape, target)
 
@@ -68,7 +77,7 @@ if __name__ == "__main__":
     results = utils.get_best_time_multilayer(log_file)
     for i, v in enumerate(results):
         print(f"Layer {i}: Time {np.mean(results[v][0])} cfg: {results[v][1]}")
-    
+
     print("\nTime to execute the algorithm: ", np.mean(r))
     print("Time spent to search:", end - start)
     print("Time approximately for each search:", (end - start) / trials)

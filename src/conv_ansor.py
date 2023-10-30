@@ -7,7 +7,7 @@ from tvm import te, auto_scheduler
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from src.kernels.conv import conv2d_ansor
+# from src.kernels.conv import conv2d_ansor
 from src.module import utils
 
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     print("Arch:", arch)
 
     input_shape = (1, 3, 224, 224)
-    filter_shape = (64, 3, 3)
+    filter_shape = (64, 3, 3, 3)
 
     ## Create the search task
     task = tvm.auto_scheduler.SearchTask(
@@ -44,12 +44,12 @@ if __name__ == "__main__":
     # print("Computational DAG:", task.compute_dag)
 
     ## Set Parameters for Auto-Scheduler
-    log_file = f"../results/{arch}_conv2d.json"
+    log_file = f"results/{arch}_conv2d.json"
 
     if os.path.isfile(log_file):
         os.remove(log_file)
 
-    trial = 10
+    trial = 100
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=trial,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(number=10, repeat=3),
