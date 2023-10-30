@@ -18,10 +18,9 @@ from src.kernels.resnet18 import *
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         json_file = sys.argv[1]
-        algorithm = sys.argv[2]
     else:
         print("Example to execute:")
-        print("python3 src/example_build_template.py <file>.json <algorithm_name>")
+        print("python3 src/example_build_template.py <file>.json")
         exit(1)
 
     config = get_template_ansor(json_file)
@@ -33,7 +32,7 @@ if __name__ == "__main__":
     for t_ansor, cfg_ansor in config:
         N, L, M = 1000, 800, 700
         task = autotvm.task.create(
-            algorithm, args=(N, L, M, "float32", cfg_ansor), target="llvm"
+            "autotvm_mm", args=(N, L, M, "float32", cfg_ansor), target="llvm"
         )
 
         # logging.getLogger("autotvm").setLevel(logging.DEBUG)
@@ -44,7 +43,7 @@ if __name__ == "__main__":
             runner=autotvm.LocalRunner(number=10, repeat=3),
         )
 
-        filename = algorithm + ".json"
+        filename = "mm.json"
         if os.path.isfile(filename):
             os.remove(filename)
 
