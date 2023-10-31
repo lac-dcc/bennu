@@ -40,7 +40,7 @@ def insert(list, elements, pos):
     try:
         del list[pos]
     except:
-        return
+        pass
 
 
 def generate_space(values, r):
