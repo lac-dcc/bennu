@@ -33,7 +33,7 @@ if __name__ == "__main__":
     input_shape = (1, 3, 224, 224)
     filter_shape = (64, 3, 3, 3)
     for t_ansor, cfg_ansor in config:
-        print(cfg_ansor)
+        # print(cfg_ansor)
 
         task = autotvm.task.create(
             "conv2d_autotvm", args=(input_shape, filter_shape, cfg_ansor), target="llvm"
