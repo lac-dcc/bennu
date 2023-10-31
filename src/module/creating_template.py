@@ -171,7 +171,7 @@ class Template_autotvm:
                 next_axis = x
             add(new_values, [val, val] if i == len(lengths) - 1 else [val])
         insert(axes, order, iter_id)
-        insert(self.values, new_values, iter_id)
+        insert(self.values[stage_id], new_values, iter_id)
         self.stages[stage_id] = stage
 
     def AN(self, params):
@@ -307,13 +307,16 @@ class Template_autotvm:
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
 
-        order = []
+        order, new_values = [], []
         next_axis = axes[iter_id]
         for i in range(n_split):
-            x, y = stage.split(next_axis, self.values[stage_id][src_step_id])
+            val = self.values[stage_id][src_step_id]
+            x, y = stage.split(next_axis, val)
             add(order, [x, y] if i == n_split - 1 else [x])
+            add(new_values, [val, val] if i == n_split - 1 else [val])
             next_axis = y
         insert(axes, order, iter_id)
+        insert(self.values[stage_id], new_values, iter_id)
 
     def FFSP(self, params):
         """
