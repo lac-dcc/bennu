@@ -11,17 +11,6 @@ from src.kernels.mm import ansor_mm
 from src.module import utils
 
 
-@auto_scheduler.register_workload
-def matmul(N, L, M, dtype="float32"):
-    A = te.placeholder((N, L), name="A", dtype=dtype)
-    B = te.placeholder((L, M), name="B", dtype=dtype)
-
-    k = te.reduce_axis((0, L), name="k")
-    C = te.compute((N, M), lambda i, j: te.sum(A[i, k] * B[k, j], axis=k), name="C")
-
-    return [A, B, C]
-
-
 if __name__ == "__main__":
     arch = "cpu"
 

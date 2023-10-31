@@ -7,7 +7,7 @@ from tvm import te, auto_scheduler
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-# from src.kernels.conv import conv2d_ansor
+from src.kernels.conv import conv2d_ansor
 from src.module import utils
 
 

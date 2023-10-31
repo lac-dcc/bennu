@@ -143,7 +143,7 @@ class Template_autotvm:
         axes = self.stage_to_axes[stage_id]
 
         search_space = [1, 2, 4, 8, 16, 24, 32, 36]
-        #search_space = []
+        # search_space = []
 
         order = []
         next_axis = axes[iter_id]

@@ -10,15 +10,13 @@ from src.module.template_factory import Template_factory
 
 
 @auto_scheduler.register_workload
-def conv2d_ansor(
-    input_shape,
-    filter_shape,
-    strides=(1, 1),
-    padding=(1, 1),
-    dilation=(1, 1),
-    layout="NCHW",
-    dtype="float32",
-):
+def conv2d_ansor(input_shape, filter_shape):
+    strides = (1, 1)
+    padding = (1, 1)
+    dilation = (1, 1)
+    layout = "NCHW"
+    dtype = "float32"
+
     A = te.placeholder(input_shape, name="A", dtype=dtype)
     W = te.placeholder(filter_shape, name="W", dtype=dtype)
     C = topi.nn.conv2d(
