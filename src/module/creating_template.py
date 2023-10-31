@@ -288,7 +288,6 @@ class Template_autotvm:
         FollowSplitStep(int stage_id, int iter_id, int src_step_id, int n_split)
 
         Example: [3, 0, 1, 1]
-                 [3, 2, 2, 1]
         """
         assert len(params) == 4
         stage_id, iter_id, src_step_id, n_split = params
@@ -300,9 +299,10 @@ class Template_autotvm:
         order = []
         next_axis = axes[iter_id]
         for i in range(n_split):
-            name = f"SP_s{stage_id}_i{iter_id}_t{i}"
-            self.cfg.define_knob(name, self.lengths)
-            x, y = stage.split(next_axis, self.cfg[name].val)
+            # name = f"FSP_s{stage_id}_i{iter_id}_t{i}"
+            # self.cfg.define_knob(name, self.lengths)
+            # TODO: Need to work here
+            x, y = stage.split(next_axis, 4)
             add(order, [x, y] if i == n_split - 1 else [x])
             next_axis = y
         insert(axes, order, iter_id)
