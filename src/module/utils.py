@@ -36,9 +36,11 @@ def insert(list, elements, pos):
     for e in elements:
         list.insert(pos, e)
         pos += 1
-    # remove the first element which was splited
-    # from the list
-    del list[pos]
+    # remove the first element which was splited from the list
+    try:
+        del list[pos]
+    except:
+        return
 
 
 def generate_space(values, r):

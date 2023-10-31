@@ -36,7 +36,7 @@ class Template_autotvm:
             self.UpdateStageToAxesMap(i)
             self.values[i] = []
             # Update values to use in FSP
-            for _ in range(len(args)):
+            for _ in range(len(self.stages)):
                 self.values[i].append(1)
 
     def ret(self):
@@ -152,8 +152,8 @@ class Template_autotvm:
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
 
-        search_space = [1, 2, 4, 8, 16, 24, 32, 36]
-        # search_space = []
+        # search_space = [1, 2, 4, 8, 16, 24, 32, 36]
+        search_space = []
 
         order, new_values = [], []
         next_axis = axes[iter_id]
