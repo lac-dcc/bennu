@@ -16,7 +16,7 @@ class Template_autotvm:
     start_tensor = None
     stages = [None]
     stage_to_axes = dict()
-    values = dict()
+    lengths = []
 
     def __init__(self, tensor, args) -> None:
         """
@@ -34,10 +34,6 @@ class Template_autotvm:
         # generic way to update all stages to axes map
         for i in range(len(self.stages)):
             self.UpdateStageToAxesMap(i)
-            self.values[i] = []
-            # Update values to use in FSP
-            for _ in range(len(self.stages)):
-                self.values[i].append(1)
 
     def ret(self):
         """
@@ -93,10 +89,6 @@ class Template_autotvm:
         self.stages[stage_id] = new_stage
         self.UpdateStageToAxesMap(stage_id + 1)
 
-        self.values[stage_id + 1] = []
-        for _ in range(len(self.args)):
-            self.values[stage_id + 1].append(1)
-
     def print(self):
         """
         Print tensor function
@@ -120,18 +112,16 @@ class Template_autotvm:
 
         assert len(after_ids) <= len(axes)
 
-        new_axes, new_values = [], []
+        new_axes = []
         for i in range(len(axes)):
             if i < len(after_ids):
                 new_axes.append(axes[after_ids[i]])
-                new_values.append(self.values[stage_id][after_ids[i]])
 
         # Reorder with the new order
         stage.reorder(*new_axes)
         # Update the axes, values, and stage
         self.stage_to_axes[stage_id] = new_axes
         self.stages[stage_id] = stage
-        self.values[stage_id] = new_values
 
     def SP(self, params):
         """
@@ -153,15 +143,16 @@ class Template_autotvm:
         axes = self.stage_to_axes[stage_id]
 
         search_space = [1, 2, 4, 8, 16, 24, 32, 36]
-        #search_space = []
+        # search_space = []
 
-        order, new_values = [], []
+        order = []
         next_axis = axes[iter_id]
         for i in range(len(lengths)):
             name = f"SP_s{stage_id}_i{iter_id}_t{i}"
             search = add_space(search_space, [lengths[i]])
             self.cfg.define_knob(name, search)
             val = self.cfg[name].val
+            add_unique(self.lengths, [lengths[i]])
             x, y = stage.split(next_axis, val)
             if inner_to_outer == 1:
                 add(order, [x, y] if i == len(lengths) - 1 else [x])
@@ -169,9 +160,7 @@ class Template_autotvm:
             else:
                 add(order, [x, y] if i == len(lengths) - 1 else [y])
                 next_axis = x
-            add(new_values, [val, val] if i == len(lengths) - 1 else [val])
         insert(axes, order, iter_id)
-        insert(self.values[stage_id], new_values, iter_id)
         self.stages[stage_id] = stage
 
     def AN(self, params):
@@ -307,16 +296,16 @@ class Template_autotvm:
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
 
-        order, new_values = [], []
+        order = []
         next_axis = axes[iter_id]
         for i in range(n_split):
-            val = self.values[stage_id][src_step_id]
-            x, y = stage.split(next_axis, val)
+            #name = f"FSP_s{stage_id}_i{iter_id}_t{i}"
+            #self.cfg.define_knob(name, self.lengths)
+            # TODO: Need to work here
+            x, y = stage.split(next_axis, 4)
             add(order, [x, y] if i == n_split - 1 else [x])
-            add(new_values, [val, val] if i == n_split - 1 else [val])
             next_axis = y
         insert(axes, order, iter_id)
-        insert(self.values[stage_id], new_values, iter_id)
 
     def FFSP(self, params):
         """
@@ -425,10 +414,6 @@ class Template_autotvm:
         new_stage = self.sch[out.op]
         self.stages[stage_id] = new_stage
         self.UpdateStageToAxesMap(stage_id + 1)
-
-        self.lengths[stage_id + 1] = []
-        for _ in range(len(self.args)):
-            self.lengths[stage_id + 1].append(1)
 
     def RF(self, params):
         """
