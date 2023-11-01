@@ -1,12 +1,11 @@
 import os, sys
 import tvm
 from tvm import autotvm, te
-from copy import deepcopy
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from src.module.utils import *
+from src.utils import *
 
 
 class Template_autotvm:
@@ -321,8 +320,25 @@ class Template_autotvm:
                    bool factor_or_nparts);
         """
         stage_id, iter_id, src_step_ids, level, factor_or_nparts = params
-        # TODO: Implement FFSP opt
-        pass
+        stage = self.stages[stage_id]
+
+        assert stage_id < len(self.stages)
+        stage = self.stages[stage_id]
+        axes = self.stage_to_axes[stage_id]
+
+        order = []
+        next_axis = axes[iter_id]
+        for i in range(n_split):
+            # name = f"FSP_s{stage_id}_i{iter_id}_t{i}"
+            # self.cfg.define_knob(name, self.lengths)
+            # TODO: Need to work here
+            if factor_or_nparts:
+                x, y = stage.split(next_axis, factor=4)
+            else:
+                x, y = stage.split(next_axis, nparts=4)
+            add(order, [x, y] if i == n_split - 1 else [x])
+            next_axis = y
+        insert(axes, order, iter_id)
 
     def SA(self, params):
         """

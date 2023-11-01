@@ -3,7 +3,7 @@ import os, sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from src.module.creating_template import Template_autotvm
+from src.creating_template import Template_autotvm
 
 
 def Template_factory(cfg, tensors, args):
