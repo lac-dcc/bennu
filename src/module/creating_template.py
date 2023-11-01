@@ -337,8 +337,10 @@ class Template_autotvm:
         """
         assert len(params) == 4
         stage_id, iter_id, factor, offset = params
-        # TODO: Implement SA opt
-        pass
+        stage = self.stages[stage_id]
+        axes = self.stage_to_axes[stage_id]
+        stage.storage_align(axes[iter_id], factor, offset)
+        self.stages[stage_id] = stage
 
     def CA(self, params):
         """
