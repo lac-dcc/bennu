@@ -142,7 +142,7 @@ class Template_autotvm:
         stage = self.stages[stage_id]
         axes = self.stage_to_axes[stage_id]
 
-        search_space = [4, 8, 16, 24, 32, 36]
+        search_space = [4, 8, 16, 32]
         # search_space = []
 
         order = []
@@ -299,8 +299,8 @@ class Template_autotvm:
         order = []
         next_axis = axes[iter_id]
         for i in range(n_split):
-            #name = f"FSP_s{stage_id}_i{iter_id}_t{i}"
-            #self.cfg.define_knob(name, self.lengths)
+            # name = f"FSP_s{stage_id}_i{iter_id}_t{i}"
+            # self.cfg.define_knob(name, self.lengths)
             # TODO: Need to work here
             x, y = stage.split(next_axis, 4)
             add(order, [x, y] if i == n_split - 1 else [x])
@@ -361,7 +361,7 @@ class Template_autotvm:
 
         stage.compute_at(target_stage, target_axes[target_iter_id])
 
-    def CI(self, stage_id):
+    def CI(self, params):
         """
         CI: ComputeInlineStep
 
@@ -369,11 +369,13 @@ class Template_autotvm:
 
         ComputeInlineStep(int stage_id);
         """
+        assert len(params) == 1
+        stage_id = params[0]
         assert stage_id < len(self.stages)
         stage = self.stages[stage_id]
         stage.compute_inline()
 
-    def CR(self, stage_id):
+    def CR(self, params):
         """
         CR: ComputeRootStep
 
@@ -381,6 +383,8 @@ class Template_autotvm:
 
         ComputeRootStep(int stage_id);
         """
+        assert len(params) == 1
+        stage_id = params[0]
         assert stage_id < len(self.stages)
         stage = self.stages[stage_id]
         stage.compute_root()
@@ -427,5 +431,18 @@ class Template_autotvm:
         """
         assert len(params) == 3
         stage_id, iter_id, factor_iter_id = params
-        # TODO: Implement RF opt
-        pass
+        stage = self.stages[stage]
+        axes = self.stage_to_axes[stage]
+
+        tensor = stage.origin_op.output(0)
+        axis = axes[iter_id]
+        outs = self.sch.rfactor(tensor, axis, factor_iter_id)
+
+        # update the list stages
+        self.stages = list(self.sch.stages)
+        self.UpdateStageToAxesMap(stage_id)
+
+        # adding new stage
+        new_stage = self.sch[outs[0].op]
+        self.stages[stage_id] = new_stage
+        self.UpdateStageToAxesMap(stage_id + 1)
