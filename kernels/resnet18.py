@@ -15,6 +15,7 @@ output_shape = (batch_size, 1000)
 layout = "NCHW"
 dtype = "float32"
 
+
 def resnet18_ansor(batch_size, target):
     n_layer = 18
     mod, params = relay.testing.resnet.get_workload(
@@ -26,7 +27,7 @@ def resnet18_ansor(batch_size, target):
 
 
 def resnet18_autotvm(batch_size, target, cfg=None):
-    '''
+    """
     if cfg is None:
         tasks = autotvm.task.extract_from_program(
             mod["main"], target=target, params=params
@@ -36,14 +37,12 @@ def resnet18_autotvm(batch_size, target, cfg=None):
         tasks.append(Template_factory(cfg, mod["main"], params))
 
     return tasks
-    '''
+    """
     pass
 
+
 def generate_ansor_template(log_file, target):
-    
-    tasks, task_weights, mod, params = resnet18_ansor(
-        batch_size, target
-    )
+    tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
 
     ## Set Parameters for Auto-Scheduler
     trial = 1000
@@ -82,8 +81,7 @@ def generate_ansor_template(log_file, target):
 
 
 def build_template(log_file, index, target):
-
-    '''
+    """
     config = get_template_ansor(log_file)
 
     print(
@@ -132,7 +130,7 @@ def build_template(log_file, index, target):
                 "%d, %.4f, %.2f, %d, %.4f, %.2f"
                 % (i, d_time, search_time, count, t_ansor, t_ansor / d_time)
             )
-    '''
+    """
     pass
 
 

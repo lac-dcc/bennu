@@ -93,7 +93,12 @@ def build_template(log_file, index, target):
 
             measure_option = autotvm.measure_option(
                 builder="local",
-                runner=autotvm.LocalRunner(number=10, repeat=3, timeout=100, enable_cpu_cache_flush=True if target == "llvm" else False),
+                runner=autotvm.LocalRunner(
+                    number=10,
+                    repeat=3,
+                    timeout=100,
+                    enable_cpu_cache_flush=True if target == "llvm" else False,
+                ),
             )
 
             filename = "mm.json"

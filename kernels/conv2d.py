@@ -16,6 +16,7 @@ dilation = (1, 1)
 layout = "NCHW"
 dtype = "float32"
 
+
 ## ----------------- Benchmark -------------------
 @auto_scheduler.register_workload
 def conv2d_ansor(input_shape, filter_shape):
@@ -42,6 +43,7 @@ def conv2d_autotvm(input_shape, filter_shape, cfg=None):
         return Template_factory(cfg, tensors, args)
     else:
         return te.create_schedule(C.op), args
+
 
 def generate_ansor_template(log_file, target):
     task = tvm.auto_scheduler.SearchTask(
@@ -85,7 +87,9 @@ def build_template(log_file, index, target):
             t_ansor, cfg_ansor = config[i]
 
             task = autotvm.task.create(
-                "conv2d_autotvm", args=(input_shape, filter_shape, cfg_ansor), target=target
+                "conv2d_autotvm",
+                args=(input_shape, filter_shape, cfg_ansor),
+                target=target,
             )
 
             # logging.getLogger("autotvm").setLevel(logging.DEBUG)
@@ -93,8 +97,12 @@ def build_template(log_file, index, target):
 
             measure_option = autotvm.measure_option(
                 builder="local",
-                runner=autotvm.LocalRunner(number=10, repeat=3, timeout=100, 
-                                           enable_cpu_cache_flush=True if target == "llvm" else False),
+                runner=autotvm.LocalRunner(
+                    number=10,
+                    repeat=3,
+                    timeout=100,
+                    enable_cpu_cache_flush=True if target == "llvm" else False,
+                ),
             )
 
             filename = "conv2d.json"
