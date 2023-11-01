@@ -423,7 +423,7 @@ class Template_autotvm:
 
         readers = []
         for i in reader_stage_ids:
-            readers.append(stage[i].origin_op)
+            readers.append(self.stages[i].origin_op)
 
         # Allocate cache read
         out = self.sch.cache_read(stage.origin_op.output(0), scope_name, readers)
