@@ -47,15 +47,14 @@ def autotvm_depthwise(input_shape, filter_shape, dtype, cfg=None):
 ## ---------------------------------------------
 
 
-def generate_ansor_template(log_file, target):
+def generate_ansor_template(log_file, target, trials):
     task = tvm.auto_scheduler.SearchTask(
         func=ansor_depthwise, args=(input_shape, filter_shape, "float32"), target=target
     )
 
     ## Set Parameters for Auto-Scheduler
-    trial = 1000
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=trial,  # change this to 20000 to achieve the best performance
+        num_measure_trials=trials,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(
             number=10,
             repeat=3,
@@ -78,7 +77,7 @@ def generate_ansor_template(log_file, target):
     print("Time spent to search:", end - start)
 
 
-def build_template(log_file, index, target):
+def build_template(log_file, index, target, trials):
     config = get_template_ansor(log_file)
 
     print(
@@ -110,7 +109,7 @@ def build_template(log_file, index, target):
 
             search_time = time.time()
             tuner.tune(
-                n_trial=100,
+                n_trial=trials,
                 measure_option=measure_option,
                 callbacks=[autotvm.callback.log_to_file(filename)],
             )
@@ -133,22 +132,24 @@ def build_template(log_file, index, target):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        "python depthwise.py -m ansor -a x86 -l 'results/cpu_matmul.json' -i 3"
+        "python print_record_info.py -m 'ansor' -a x86 -l 'results/cpu_matmul.json' -i 3"
     )
     parser.add_argument(
         "-m", "--method", type=str, required=True, help="Options: ansor, droplet"
     )
     parser.add_argument(
-        "-a", "--arch", type=str, required=True, help="Options: x86, a64fx, cuda"
+        "-a", "--arch", type=str, required=True, help="Options: x86, arm, cuda"
     )
     parser.add_argument("-l", "--logfile", type=str, required=True)
     parser.add_argument("-i", "--index", type=int, default=-1)
+    parser.add_argument("-t", "--trials", type=int, default=100)
     args = parser.parse_args()
 
     method = args.method
     arch = args.arch
     logfile = args.logfile
     index = args.index
+    trials = args.trials
 
     if arch == "x86":
         target = tvm.target.Target("llvm")
@@ -156,7 +157,7 @@ if __name__ == "__main__":
     elif arch == "cuda":
         target = tvm.target.Target("cuda")
         dev = tvm.cuda()
-    elif arch == "a64fx":
+    elif arch == "arm":
         target = tvm.target.Target("llvm -mcpu=a64fx")
         dev = tvm.cpu()
     else:
@@ -164,6 +165,6 @@ if __name__ == "__main__":
         exit(0)
 
     if method == "ansor":
-        generate_ansor_template(logfile, target)
+        generate_ansor_template(logfile, target, trials)
     elif method == "droplet":
-        build_template(logfile, index, target)
+        build_template(logfile, index, target, trials)

@@ -23,6 +23,8 @@ def resnet18_ansor(batch_size, target):
     )
     tasks, task_weights = auto_scheduler.extract_tasks(mod["main"], params, target)
 
+    print(tasks, task_weights)
+
     return tasks, task_weights, mod, params
 
 
@@ -43,6 +45,8 @@ def resnet18_autotvm(batch_size, target, cfg=None):
 
 def generate_ansor_template(log_file, target):
     tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
+
+    return 
 
     ## Set Parameters for Auto-Scheduler
     trial = 1000

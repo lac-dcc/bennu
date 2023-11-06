@@ -45,15 +45,14 @@ def conv2d_autotvm(input_shape, filter_shape, cfg=None):
         return te.create_schedule(C.op), args
 
 
-def generate_ansor_template(log_file, target):
+def generate_ansor_template(log_file, target, trials):
     task = tvm.auto_scheduler.SearchTask(
         func=conv2d_ansor, args=(input_shape, filter_shape), target=target
     )
 
     ## Set Parameters for Auto-Scheduler
-    trial = 1000
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=trial,  # change this to 20000 to achieve the best performance
+        num_measure_trials=trials,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(
             number=10,
             repeat=3,
@@ -76,7 +75,7 @@ def generate_ansor_template(log_file, target):
     print("Time spent to search:", end - start)
 
 
-def build_template(log_file, index, target):
+def build_template(log_file, index, target, trials):
     config = get_template_ansor(log_file)
 
     print(
@@ -113,7 +112,7 @@ def build_template(log_file, index, target):
 
             search_time = time.time()
             tuner.tune(
-                n_trial=100,
+                n_trial=trials,
                 measure_option=measure_option,
                 callbacks=[autotvm.callback.log_to_file(filename)],
             )
@@ -146,12 +145,14 @@ if __name__ == "__main__":
     )
     parser.add_argument("-l", "--logfile", type=str, required=True)
     parser.add_argument("-i", "--index", type=int, default=-1)
+    parser.add_argument("-t", "--trials", type=int, default=100)
     args = parser.parse_args()
 
     method = args.method
     arch = args.arch
     logfile = args.logfile
     index = args.index
+    trials = args.trials
 
     if arch == "x86":
         target = tvm.target.Target("llvm")
@@ -167,6 +168,6 @@ if __name__ == "__main__":
         exit(0)
 
     if method == "ansor":
-        generate_ansor_template(logfile, target)
+        generate_ansor_template(logfile, target, trials)
     elif method == "droplet":
-        build_template(logfile, index, target)
+        build_template(logfile, index, target, trials)
