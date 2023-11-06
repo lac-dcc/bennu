@@ -6,6 +6,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from src.template_factory import Template_factory
+from src.execute_program import execute_ansor
 from src.utils import *
 
 ## ------------------ Global ---------------------
@@ -23,36 +24,26 @@ def resnet18_ansor(batch_size, target):
     )
     tasks, task_weights = auto_scheduler.extract_tasks(mod["main"], params, target)
 
-    print(tasks, task_weights)
-
     return tasks, task_weights, mod, params
 
 
 def resnet18_autotvm(batch_size, target, cfg=None):
-    """
-    if cfg is None:
-        tasks = autotvm.task.extract_from_program(
-            mod["main"], target=target, params=params
-        )
-    else:
-        tasks = []
-        tasks.append(Template_factory(cfg, mod["main"], params))
+    n_layer = 18
+    mod, params = relay.testing.resnet.get_workload(
+        num_layers=n_layer, batch_size=batch_size, dtype=dtype, layout=layout
+    )
 
-    return tasks
-    """
-    pass
+    tasks = autotvm.task.extract_from_program(mod["main"], params, target)
+    
+    return tasks, mod, params
 
-
-def generate_ansor_template(log_file, target):
+def generate_ansor_template(log_file, target, trials):
     tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
 
-    return 
-
     ## Set Parameters for Auto-Scheduler
-    trial = 1000
     tuner = auto_scheduler.TaskScheduler(tasks, task_weights)
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=trial,  # change this to 20000 to achieve the best performance
+        num_measure_trials=trials,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(
             number=10,
             repeat=3,
@@ -84,59 +75,34 @@ def generate_ansor_template(log_file, target):
     print("Time spent to search:", end - start)
 
 
-def build_template(log_file, index, target):
-    """
-    config = get_template_ansor(log_file)
+def build_template(log_file, index, target, trials):
+    
+    config = get_best_time_multilayer(log_file)
 
-    print(
-        "N, Droplet Time (s), Search Time (s), Count Sample, Ansor Time (s), speedup (Ansor/Droplet)"
-    )
-    for i in range(len(config)):
-        if i == index or index == -1:
-            t_ansor, cfg_ansor = config[i]
+    tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
 
-            task = autotvm.task.create(
-                "autotvm_mm", args=(N, L, M, "float32", cfg_ansor), target=target
-            )
+    for c in config:
+        print(c)
+        execute_ansor(c, "/home/canesche/git/resnet.log", target, 0)
 
-            # logging.getLogger("autotvm").setLevel(logging.DEBUG)
-            # logging.getLogger("autotvm").addHandler(logging.StreamHandler(sys.stdout))
+        break
 
-            measure_option = autotvm.measure_option(
-                builder="local",
-                runner=autotvm.LocalRunner(number=10, repeat=3, timeout=100, enable_cpu_cache_flush=True if target == "llvm" else False),
-            )
+    '''
+    for i, t in enumerate(tasks):
+        #print(t.workload_key)
 
-            filename = "mm.json"
-            if os.path.isfile(filename):
-                os.remove(filename)
+        
 
-            tuner = autotvm.tuner.DropletTuner(task)
+        #execute_ansor(t.workload_key, "results/resnet.log", target, 1)
 
-            search_time = time.time()
-            tuner.tune(
-                n_trial=100,
-                measure_option=measure_option,
-                callbacks=[autotvm.callback.log_to_file(filename)],
-            )
-            search_time = time.time() - search_time
-            d_time, d_config = get_best_time(filename)
+        break
+    '''
 
-            d_time = np.mean(np.array(d_time))
-            t_ansor = np.mean(t_ansor)
+    #tasks, mod, params = resnet18_autotvm(batch_size, target)
 
-            f = open(filename, "r")
-            count = 0
-            for l in f.readlines():
-                count += 1
-
-            print(
-                "%d, %.4f, %.2f, %d, %.4f, %.2f"
-                % (i, d_time, search_time, count, t_ansor, t_ansor / d_time)
-            )
-    """
-    pass
-
+    #for t in tasks:
+    #    print(t.workload)
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -150,12 +116,14 @@ if __name__ == "__main__":
     )
     parser.add_argument("-l", "--logfile", type=str, required=True)
     parser.add_argument("-i", "--index", type=int, default=-1)
+    parser.add_argument("-t", "--trials", type=int, default=100)
     args = parser.parse_args()
 
     method = args.method
     arch = args.arch
     logfile = args.logfile
     index = args.index
+    trials = args.trials
 
     if arch == "x86":
         target = tvm.target.Target("llvm")
@@ -171,6 +139,6 @@ if __name__ == "__main__":
         exit(0)
 
     if method == "ansor":
-        generate_ansor_template(logfile, target)
+        generate_ansor_template(logfile, target, trials)
     elif method == "droplet":
-        build_template(logfile, index, target)
+        build_template(logfile, index, target, trials)
