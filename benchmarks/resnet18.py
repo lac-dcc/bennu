@@ -5,8 +5,7 @@ from tvm.relay import testing
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from src.template_factory import Template_factory
-from src.execute_program import execute_ansor
+from src.optimize_layer import execute_one_layer
 from src.utils import *
 
 ## ------------------ Global ---------------------
@@ -34,8 +33,9 @@ def resnet18_autotvm(batch_size, target, cfg=None):
     )
 
     tasks = autotvm.task.extract_from_program(mod["main"], params, target)
-    
+
     return tasks, mod, params
+
 
 def generate_ansor_template(log_file, target, trials):
     tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
@@ -76,35 +76,16 @@ def generate_ansor_template(log_file, target, trials):
 
 
 def build_template(log_file, index, target, trials):
-    
     config = get_best_time_multilayer(log_file)
 
     tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
 
     for c in config:
-        print(c)
-        execute_ansor(c, "resnet.log", target, 10)
-
-        #c.workload_key
+        t_ansor, cfg_ansor = config[c]
+        execute_one_layer(c, cfg_ansor, target, trials)
 
         break
 
-    '''
-    for i, t in enumerate(tasks):
-        #print(t.workload_key)
-
-        
-
-        #execute_ansor(t.workload_key, "results/resnet.log", target, 1)
-
-        break
-    '''
-
-    #tasks, mod, params = resnet18_autotvm(batch_size, target)
-
-    #for t in tasks:
-    #    print(t.workload)
-    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

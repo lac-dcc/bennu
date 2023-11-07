@@ -13,14 +13,17 @@ from src.utils import *
 input_shape = (128, 168, 83, 83)
 dtype = "float32"
 
-#avg      128 168 83 83 1  2       VALID
-#pooltype N,  CI, H, W, K, strides padding
+# avg      128 168 83 83 1  2       VALID
+# pooltype N,  CI, H, W, K, strides padding
+
 
 ## ----------------- Benchmark -------------------
 @auto_scheduler.register_workload
 def ansor_pool2d(input_shape, dtype="float32"):
     A = te.placeholder(shape=input_shape, name="A", dtype=dtype)
-    B = topi.nn.pool2d(A, (1, 1), (2, 2), (1, 1), get_pad_tuple("VALID", (1, 1)), pool_type="avg")
+    B = topi.nn.pool2d(
+        A, (1, 1), (2, 2), (1, 1), get_pad_tuple("VALID", (1, 1)), pool_type="avg"
+    )
 
     return [A, B]
 
@@ -28,7 +31,9 @@ def ansor_pool2d(input_shape, dtype="float32"):
 @autotvm.template("autotvm_pool2d")
 def autotvm_pool2d(input_shape, dtype, cfg=None):
     A = te.placeholder(shape=input_shape, name="A", dtype=dtype)
-    B = topi.nn.pool2d(A, (1, 1), (2, 2), (1, 1), get_pad_tuple("VALID", (1, 1)), pool_type="avg")
+    B = topi.nn.pool2d(
+        A, (1, 1), (2, 2), (1, 1), get_pad_tuple("VALID", (1, 1)), pool_type="avg"
+    )
 
     if cfg is not None:
         return Template_factory(cfg, [A, B])
@@ -80,7 +85,9 @@ def build_template(log_file, index, target, trials):
             t_ansor, cfg_ansor = config[i]
 
             task = autotvm.task.create(
-                "autotvm_pool2d", args=(input_shape, "float32", cfg_ansor), target=target
+                "autotvm_pool2d",
+                args=(input_shape, "float32", cfg_ansor),
+                target=target,
             )
 
             measure_option = autotvm.measure_option(
@@ -89,7 +96,9 @@ def build_template(log_file, index, target, trials):
                     number=10,
                     repeat=3,
                     timeout=100,
-                    enable_cpu_cache_flush=True if target == "llvm -mcpu=a64fx" else False,
+                    enable_cpu_cache_flush=True
+                    if target == "llvm -mcpu=a64fx"
+                    else False,
                 ),
             )
 

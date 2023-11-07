@@ -22,18 +22,22 @@ dtype = "float32"
 ## ----------------- Benchmark -------------------
 @auto_scheduler.register_workload
 def ansor_depthwise(input_shape, filter_shape, dtype="float32"):
-    A = te.placeholder(input_shape, name='A', dtype=dtype)
-    B = te.placeholder(filter_shape, name='B', dtype=dtype)
-    C = topi.nn.depthwise_conv2d_nhwc(A, B, stride=strides, padding=padding, dilation=dilation, out_dtype=dtype)
+    A = te.placeholder(input_shape, name="A", dtype=dtype)
+    B = te.placeholder(filter_shape, name="B", dtype=dtype)
+    C = topi.nn.depthwise_conv2d_nhwc(
+        A, B, stride=strides, padding=padding, dilation=dilation, out_dtype=dtype
+    )
 
     return [A, B, C]
 
 
 @autotvm.template("autotvm_depthwise")
 def autotvm_depthwise(input_shape, filter_shape, dtype, cfg=None):
-    A = te.placeholder(input_shape, name='A', dtype=dtype)
-    B = te.placeholder(filter_shape, name='B', dtype=dtype)
-    C = topi.nn.depthwise_conv2d_nhwc(A, B, stride=strides, padding=padding, dilation=dilation, out_dtype=dtype)
+    A = te.placeholder(input_shape, name="A", dtype=dtype)
+    B = te.placeholder(filter_shape, name="B", dtype=dtype)
+    C = topi.nn.depthwise_conv2d_nhwc(
+        A, B, stride=strides, padding=padding, dilation=dilation, out_dtype=dtype
+    )
 
     if cfg is not None:
         return Template_factory(cfg, [A, B, C])
@@ -85,7 +89,9 @@ def build_template(log_file, index, target, trials):
             t_ansor, cfg_ansor = config[i]
 
             task = autotvm.task.create(
-                "autotvm_depthwise", args=(input_shape, filter_shape, "float32", cfg_ansor), target=target
+                "autotvm_depthwise",
+                args=(input_shape, filter_shape, "float32", cfg_ansor),
+                target=target,
             )
 
             measure_option = autotvm.measure_option(
@@ -94,7 +100,9 @@ def build_template(log_file, index, target, trials):
                     number=10,
                     repeat=3,
                     timeout=100,
-                    enable_cpu_cache_flush=True if target == "llvm -mcpu=a64fx" else False,
+                    enable_cpu_cache_flush=True
+                    if target == "llvm -mcpu=a64fx"
+                    else False,
                 ),
             )
 

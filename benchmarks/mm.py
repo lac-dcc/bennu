@@ -48,7 +48,7 @@ def generate_ansor_template(log_file, target, trials):
     ## Set Parameters for Auto-Scheduler
     trial = trials
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=trial, # change this to 20000 to achieve the best performance
+        num_measure_trials=trial,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(
             number=10,
             repeat=3,

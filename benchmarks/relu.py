@@ -86,7 +86,9 @@ def build_template(log_file, index, target, trials):
                     number=10,
                     repeat=3,
                     timeout=100,
-                    enable_cpu_cache_flush=True if target == "llvm -mcpu=a64fx" else False,
+                    enable_cpu_cache_flush=True
+                    if target == "llvm -mcpu=a64fx"
+                    else False,
                 ),
             )
 

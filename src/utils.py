@@ -40,6 +40,7 @@ def insert(list, elements, pos):
     try:
         del list[pos]
     except:
+        print(f"Warning: element in position {pos} not deleted!")
         pass
 
 
@@ -174,3 +175,16 @@ def evaluate_performance(lib, data_shape, target, input_name="data", dtype="floa
         )
         r.append(eval.mean * 1000)
     return r
+
+
+def convert_to_list(cfg):
+    cfg_list = []
+    for c in cfg:
+        tmp = []
+        for i in c:
+            if type(i) == int or type(i) == str:
+                tmp.append(i)
+            else:
+                tmp.append(list(i))
+        cfg_list.append(tmp)
+    return cfg_list
