@@ -42,6 +42,7 @@ def generate_ansor_template(log_file, target, trials):
     )
 
     ## Set Parameters for Auto-Scheduler
+
     tune_option = auto_scheduler.TuningOptions(
         num_measure_trials=trials,  # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(
@@ -123,7 +124,7 @@ def build_template(log_file, index, target, trials):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        "python print_record_info.py -m 'ansor' -a x86 -l 'results/cpu_matmul.json' -i 3"
+        "python relu.py -m 'ansor' -a x86 -l 'results/cpu_matmul.json' -i 3"
     )
     parser.add_argument(
         "-m", "--method", type=str, required=True, help="Options: ansor, droplet"

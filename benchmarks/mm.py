@@ -129,7 +129,7 @@ def build_template(log_file, index, target, trials):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        "python print_record_info.py -m 'ansor' -a x86 -l 'results/cpu_matmul.json' -i 3"
+        "python mm.py -m 'ansor' -a x86 -l 'results/cpu_matmul.json' -i 3"
     )
     parser.add_argument(
         "-m", "--method", type=str, required=True, help="Options: ansor, droplet"

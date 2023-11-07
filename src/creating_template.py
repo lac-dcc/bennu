@@ -233,15 +233,19 @@ class Template_autotvm:
 
         i, pos = 0, 0
         p = self.stage_to_axes[stage_id].copy()
-        while i < len(fused_ids):
-            if i == 0:
+
+        fused_ids_len = len(fused_ids)
+
+        while i < fused_ids_len:
+            temp_ind = True if i < fused_ids_len - 1 else False
+            if i == 0 and temp_ind:
                 t1 = p[fused_ids[i]]
                 t2 = p[fused_ids[i + 1]]
                 pos = fused_ids[i]
                 pfused = stage.fuse(t1, t2)
                 update(axes, [t1, t2], pfused, pos)
                 i += 1
-            else:
+            elif fused_ids_len >= 2:
                 tn = p[fused_ids[i]]
                 fused = stage.fuse(pfused, tn)
                 update(axes, [pfused, tn], fused, pos)
