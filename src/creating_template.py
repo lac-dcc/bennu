@@ -12,20 +12,23 @@ class Template_autotvm:
     cfg = None
     sch = None
     args = []
-    start_tensor = None
     stages = [None]
     stage_to_axes = dict()
     lengths = []
 
-    def __init__(self, tensor, args) -> None:
+    def __init__(self, args) -> None:
         """
         Initializes the class constructor
 
         * \param tensor
         * \param args
         """
-        self.start_tensor = tensor
-        self.sch = te.create_schedule(tensor.op)
+
+        tensors = []
+        for a in args:
+            tensors.append(a.op)
+
+        self.sch = te.create_schedule(tensors)
         self.cfg = autotvm.get_config()
         self.args = args
         self.stages = list(self.sch.stages)

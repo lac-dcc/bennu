@@ -31,13 +31,10 @@ def autotvm_mm(N, K, M, dtype="float32", cfg=None):
     B = te.placeholder((K, N), name="B")
     C = te.compute((M, N), lambda m, n: te.sum(A[m, k] * B[k, n], axis=k), name="C")
 
-    args = [A, B, C]
-    tensors = C
-
     if cfg is not None:
-        return Template_factory(cfg, tensors, args)
+        return Template_factory(cfg, [A, B, C])
     else:
-        return te.create_schedule(C.op), args
+        return te.create_schedule(C.op), [A, B, C]
 
 
 ## ---------------------------------------------
@@ -51,7 +48,7 @@ def generate_ansor_template(log_file, target, trials):
     ## Set Parameters for Auto-Scheduler
     trial = trials
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=trial,  # change this to 20000 to achieve the best performance
+        num_measure_trials=trial, # change this to 20000 to achieve the best performance
         runner=auto_scheduler.LocalRunner(
             number=10,
             repeat=3,

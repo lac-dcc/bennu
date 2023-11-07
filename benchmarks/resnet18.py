@@ -83,7 +83,9 @@ def build_template(log_file, index, target, trials):
 
     for c in config:
         print(c)
-        execute_ansor(c, "/home/canesche/git/resnet.log", target, 0)
+        execute_ansor(c, "resnet.log", target, 10)
+
+        #c.workload_key
 
         break
 

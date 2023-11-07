@@ -36,13 +36,10 @@ def conv2d_autotvm(input_shape, filter_shape, cfg=None):
         A, W, strides, padding, dilation, data_layout=layout, out_dtype=dtype
     )
 
-    args = [A, W, C]
-    tensors = C
-
     if cfg is not None:
-        return Template_factory(cfg, tensors, args)
+        return Template_factory(cfg, [A, W, C])
     else:
-        return te.create_schedule(C.op), args
+        return te.create_schedule(C.op), [A, W, C]
 
 
 def generate_ansor_template(log_file, target, trials):

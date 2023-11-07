@@ -6,11 +6,11 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from src.creating_template import Template_autotvm
 
 
-def Template_factory(cfg, tensors, args):
+def Template_factory(cfg, args):
     """
     Build the template based on Auto Schedule
     """
-    ta = Template_autotvm(tensors, args)
+    ta = Template_autotvm(args)
     for field in cfg:
         if field[0] == "SP":
             ta.SP(field[1:])

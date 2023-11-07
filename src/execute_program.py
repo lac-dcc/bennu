@@ -1,8 +1,26 @@
 import time
 from tvm import auto_scheduler
 from tvm.auto_scheduler.search_task import SearchTask
+from tvm.auto_scheduler.compute_dag import ComputeDAG
+from tvm.auto_scheduler.workload_registry import workload_key_to_tensors
 
 def execute_ansor(workload_key, log_file, target, trials):
+    
+    compute_dag = ComputeDAG(workload_key)
+
+    print(compute_dag)
+    
+    tensors = workload_key_to_tensors(workload_key)
+
+    print(tensors)
+
+    for t in tensors:
+        print(t, type(t))
+    
+    print(t[-1].op)
+
+
+    '''
     task = SearchTask(workload_key=workload_key, target=target)
 
     ## Set Parameters for Auto-Scheduler
@@ -26,3 +44,4 @@ def execute_ansor(workload_key, log_file, target, trials):
     f = open(log_file, "r")
     for l in f.readlines():
         print(l.strip())
+    '''

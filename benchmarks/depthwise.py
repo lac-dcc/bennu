@@ -35,13 +35,10 @@ def autotvm_depthwise(input_shape, filter_shape, dtype, cfg=None):
     B = te.placeholder(filter_shape, name='B', dtype=dtype)
     C = topi.nn.depthwise_conv2d_nhwc(A, B, stride=strides, padding=padding, dilation=dilation, out_dtype=dtype)
 
-    args = [A, B, C]
-    tensors = C
-
     if cfg is not None:
-        return Template_factory(cfg, tensors, args)
+        return Template_factory(cfg, [A, B, C])
     else:
-        return te.create_schedule(C.op), args
+        return te.create_schedule(C.op), [A, B, C]
 
 
 ## ---------------------------------------------

@@ -27,13 +27,10 @@ def autotvm_relu(M, N, dtype, cfg=None):
     A = te.placeholder((M, N), name="A", dtype=dtype)
     B = topi.nn.relu(A)
 
-    args = [A, B]
-    tensors = B
-
     if cfg is not None:
-        return Template_factory(cfg, tensors, args)
+        return Template_factory(cfg, [A, B])
     else:
-        return te.create_schedule(B.op), args
+        return te.create_schedule(B.op), [A, B]
 
 
 ## ---------------------------------------------

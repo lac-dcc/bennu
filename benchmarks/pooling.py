@@ -30,13 +30,10 @@ def autotvm_pool2d(input_shape, dtype, cfg=None):
     A = te.placeholder(shape=input_shape, name="A", dtype=dtype)
     B = topi.nn.pool2d(A, (1, 1), (2, 2), (1, 1), get_pad_tuple("VALID", (1, 1)), pool_type="avg")
 
-    args = [A, B]
-    tensors = B
-
     if cfg is not None:
-        return Template_factory(cfg, tensors, args)
+        return Template_factory(cfg, [A, B])
     else:
-        return te.create_schedule(B.op), args
+        return te.create_schedule(B.op), [A, B]
 
 
 ## ---------------------------------------------
