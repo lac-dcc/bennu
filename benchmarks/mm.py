@@ -135,7 +135,7 @@ if __name__ == "__main__":
         "-m", "--method", type=str, required=True, help="Options: ansor, droplet"
     )
     parser.add_argument(
-        "-a", "--arch", type=str, required=True, help="Options: x86, arm, cuda"
+        "-a", "--arch", type=str, required=True, help="Options: x86, aarch64, cuda"
     )
     parser.add_argument("-l", "--logfile", type=str, required=True)
     parser.add_argument("-i", "--index", type=int, default=-1)
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     elif arch == "cuda":
         target = tvm.target.Target("cuda")
         dev = tvm.cuda()
-    elif arch == "arm":
+    elif arch == "aarch64":
         target = tvm.target.Target("llvm -mcpu=a64fx")
         dev = tvm.cpu()
     else:
