@@ -6,7 +6,11 @@
 
 ## Introduction
 
-TODO
+The goal of this project is to combine
+[Ansor](https://tvm.apache.org/2021/03/03/intro-auto-scheduler) and
+[AutoTVM](https://tvm.apache.org/docs/reference/api/python/autotvm.html).
+We want to use Ansor to do some exploration of kernel configurations,
+and then use AutoTVM to exploit the best solution found by Ansor.
 
 ## Building 
 
