@@ -28,7 +28,14 @@ These are the most important dependencies for running Bennu:
 
 ## Running
 
-To run the code, execute the script `bennu/scripts/run_ansor.sh` to generate 
-Ansor's template for a specific machine architecture. Default is x86-32.
-The script `bennu/scripts/test_build_template.sh` executes 100 templates using 
-Droplet Search as an optimizer of the Ansor's template.
+Generating the Ansor template for a specific machine architecture (default is x86-32).
+
+```
+  python3 benchmarks/mm.py -m ansor -a x86 -l results/x86_mm.json
+```
+
+Optimize Ansor template using Droplet Search:
+
+```
+  python3 benchmarks/mm.py -m droplet -a x86 -l results/x86_mm.json -t 100
+```
