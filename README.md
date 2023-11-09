@@ -1,7 +1,7 @@
 # Bennu
 
 <p align="center">
-  <img alt="bennu drawing" src="assets/img/BennuBanner.png" width="95%" height="auto"/></br>
+  <img alt="bennu drawing" src="assets/img/BennuBanner.jpg" width="95%" height="auto"/></br>
 </p>
 
 ## Introduction
