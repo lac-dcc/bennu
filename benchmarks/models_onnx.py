@@ -1,18 +1,20 @@
-import tvm, argparse
+import tvm, argparse, os, json
 from copy import deepcopy
 from tvm import auto_scheduler
 from tvm.driver import tvmc
 from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
 from tvm.auto_scheduler import MeasureInput, MeasureResult
 
-import tvm.runtime._ffi_api
+from tvm.auto_scheduler.search_task import SearchTask
+
+import tvm._ffi
 from tvm.auto_scheduler import _ffi_api
 
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)
     tvmc.tune(
         tvmc_model=model,
-        target="llvm",
+        target=target,
         tuning_records=logfile,
         repeat=3,
         timeout=100,
@@ -27,25 +29,42 @@ def build_template(bench, logfile, index, target, trials):
         mod=deepcopy(model.mod), params=model.params, target=target
     )
 
+    
+
+    inputs, results = auto_scheduler.RecordReader(logfile).read_lines()
+
+    filename = logfile + ".json"
+    if os.path.isfile(filename):
+        os.remove(filename)
+    
     for task in tasks:
+        print(type(task))
+        print(task.workload_key, task.compute_dag.tensors)
         auto_scheduler.workload_registry.register_workload_tensors(
             task.workload_key, task.compute_dag.tensors
         )
-        # print(task.workload_key, task.compute_dag.tensors)
 
-    inputs, results = auto_scheduler.RecordReader(logfile).read_lines()
-    
-    for task in tasks:
         states = []
         for i in range(len(inputs)):
+            print(type(inputs[i]), type(inputs[i].state), inputs[i].task.workload_key)
             try:
-                states.append(task.compute_dag.infer_bound_from_state(inputs[i].state))
+                states.append([i, task.compute_dag.infer_bound_from_state(inputs[i].state)])
             except:
-                print(f"Warning: Solution {inputs[i].state} is not working.")
-        for state in states:
+                ...
+            #print(i, inputs[i].state)
+        for i, state in states:
+            print(task, state)
             inp = [MeasureInput(task, state)]
             res = _ffi_api.Run(task, state.state_object)
-            _ffi_api.SaveRecords("test.log", inp, res)
+            _ffi_api.SaveRecords(filename, inp, res)
+
+            print(results[i])
+            f = open(filename)
+            for l in f.readlines():
+                print(l.strip())
+            break
+            
+
         break
 
 
