@@ -3,7 +3,10 @@ from copy import deepcopy
 from tvm import auto_scheduler
 from tvm.driver import tvmc
 from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
+from tvm.auto_scheduler import MeasureInput, MeasureResult
 
+import tvm.runtime._ffi_api
+from tvm.auto_scheduler import _ffi_api
 
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)
@@ -30,8 +33,20 @@ def build_template(bench, logfile, index, target, trials):
         )
         # print(task.workload_key, task.compute_dag.tensors)
 
-    #inputs, results = auto_scheduler.RecordReader(logfile).read_lines()
-    # working in the logic.
+    inputs, results = auto_scheduler.RecordReader(logfile).read_lines()
+    
+    for task in tasks:
+        states = []
+        for i in range(len(inputs)):
+            try:
+                states.append(task.compute_dag.infer_bound_from_state(inputs[i].state))
+            except:
+                print(f"Warning: Solution {inputs[i].state} is not working.")
+        for state in states:
+            inp = [MeasureInput(task, state)]
+            res = _ffi_api.Run(task, state.state_object)
+            _ffi_api.SaveRecords("test.log", inp, res)
+        break
 
 
 if __name__ == "__main__":
