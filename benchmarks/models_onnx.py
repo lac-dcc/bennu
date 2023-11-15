@@ -1,5 +1,4 @@
-import tvm, argparse, os, json
-from copy import deepcopy
+import tvm, argparse, os, sys, json
 from tvm import auto_scheduler
 from tvm.driver import tvmc
 from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
@@ -9,6 +8,12 @@ from tvm.auto_scheduler.search_task import SearchTask
 
 import tvm._ffi
 from tvm.auto_scheduler import _ffi_api
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
+from src.utils import *
+from src.DropletSearch import Droplet
 
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)
@@ -24,13 +29,33 @@ def generate_ansor_template(bench, logfile, target, trials):
 
 
 def build_template(bench, logfile, index, target, trials):
+    
     model = tvmc.load(bench)
     tasks, weights = autoscheduler_get_tuning_tasks(
-        mod=deepcopy(model.mod), params=model.params, target=target
+        mod=model.mod, params=model.params, target=target
     )
 
+    cfg = get_best_multilayers(logfile)
     
+    for workload in cfg:
+        t, params, json_file = cfg[workload]
+        print(workload)
+        print(t)
+        print(params)
+        print(json_file)
 
+        droplet = Droplet(json_file, workload, target)
+        droplet.run()
+        break
+    
+    #
+    #tasks, weights = autoscheduler_get_tuning_tasks(
+    #    mod=deepcopy(model.mod), params=model.params, target=target
+    #)
+
+    #print(tasks)
+
+    '''
     inputs, results = auto_scheduler.RecordReader(logfile).read_lines()
 
     filename = logfile + ".json"
@@ -66,7 +91,7 @@ def build_template(bench, logfile, index, target, trials):
             
 
         break
-
+    '''
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
