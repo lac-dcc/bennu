@@ -1,7 +1,26 @@
 import numpy as np
 from itertools import permutations, product
-import tvm
+import tvm, json
 import tvm.contrib.graph_executor as runtime
+
+
+def write_file(json_file, log="/tmp/file.json"):
+    with open(log, "w") as outfile:
+        json.dump(json_file, outfile)
+    return log
+
+
+def append_file(json_file, log="/tmp/file.json"):
+    with open(log, "a") as outfile:
+        json.dump(json_file, outfile)
+    return log
+
+
+def read_file(filename):
+    f = open(filename, "r")
+    for l in f.readlines():
+        print(l.strip())
+    f.close()
 
 
 def permutation(arr, limit):
@@ -102,37 +121,20 @@ def get_best_time(log):
     return best_avg, best_cfg
 
 
-def get_best_time_multilayer(log):
+def get_best_multilayers(log):
     import json
 
-    f = open(log, "r")
-    best_avg = 9999.0
-    best_cfg = {}
     hash_map = dict()
+    f = open(log, "r")
     for line in f.readlines():
         data = json.loads(line)
         if "i" in data:
             r = data["r"][0]
             hash = data["i"][0][0]
             cfg = data["i"][1][1]
-
             if hash not in hash_map or np.mean(hash_map[hash][0]) > np.mean(r):
-                hash_map[hash] = (r, cfg)
-
-        """
-        if "r" in data:
-            r = data["r"][0]
-            if np.mean(best_avg) > np.mean(r):
-                best_avg = r
-                best_cfg = data["i"][1][1]
-        else:
-            r = data["result"][0]
-            if np.mean(best_avg) > np.mean(r):
-                best_avg = r
-                best_cfg = data["config"]["entity"]
-        """
+                hash_map[hash] = (r, cfg, data)
     f.close()
-
     return hash_map
 
 
