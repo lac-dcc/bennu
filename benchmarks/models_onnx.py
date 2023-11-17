@@ -1,4 +1,4 @@
-import tvm, argparse, os, sys, json
+import tvm, argparse, os, sys, json, time
 from tvm import auto_scheduler
 from tvm.driver import tvmc
 from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
@@ -37,50 +37,31 @@ def build_template(bench, logfile, index, target, trials):
 
     cfg = get_best_multilayers(logfile)
 
+    print("Time Droplet (s), Tuning time (s), Time Ansor (s), speedup")
+    layer = 0
     for workload in cfg:
+        log = f"layer_{layer}.log"
         t, params, json_file = cfg[workload]
-
         droplet = Droplet(json_file, workload, target)
-        droplet.tune()
-        break
+        start = time.time()
+        droplet.tune(log)
+        end = time.time()
+        layer += 1
 
-    """
-    inputs, results = auto_scheduler.RecordReader(logfile).read_lines()
+        droplet_avg, droplet_cfg = get_best_time(log)
 
-    filename = logfile + ".json"
-    if os.path.isfile(filename):
-        os.remove(filename)
-    
-    for task in tasks:
-        print(type(task))
-        print(task.workload_key, task.compute_dag.tensors)
-        auto_scheduler.workload_registry.register_workload_tensors(
-            task.workload_key, task.compute_dag.tensors
+        print(
+            "%.6f, %.2f, %.6f, %.2f"
+            % (
+                np.mean(droplet_avg),
+                end - start,
+                np.mean(t),
+                np.mean(t) / np.mean(droplet_avg),
+            )
         )
-
-        states = []
-        for i in range(len(inputs)):
-            print(type(inputs[i]), type(inputs[i].state), inputs[i].task.workload_key)
-            try:
-                states.append([i, task.compute_dag.infer_bound_from_state(inputs[i].state)])
-            except:
-                ...
-            #print(i, inputs[i].state)
-        for i, state in states:
-            print(task, state)
-            inp = [MeasureInput(task, state)]
-            res = _ffi_api.Run(task, state.state_object)
-            _ffi_api.SaveRecords(filename, inp, res)
-
-            print(results[i])
-            f = open(filename)
-            for l in f.readlines():
-                print(l.strip())
-            break
-            
+        print(droplet_cfg)
 
         break
-    """
 
 
 if __name__ == "__main__":
