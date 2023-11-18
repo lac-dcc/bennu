@@ -21,6 +21,9 @@ class Space:
 
     def __init__(self, cfg) -> None:
         self.__cfg = cfg
+        self.__dims = []
+        self.__total_dims = []
+        self.__config_space = {}
         self.create_space()
 
     def __repr__(self) -> str:
