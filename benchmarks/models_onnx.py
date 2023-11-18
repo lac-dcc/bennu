@@ -41,8 +41,7 @@ def build_template(bench, logfile, index, target, trials):
     for layer, workload in enumerate(cfg):
 
         log = f"layer_{layer}.log"
-        if os.path.isfile(log):
-            os.remove(log)
+        clean_file(log)
 
         t, params, json_file = cfg[workload]
         droplet = Droplet(json_file, workload, target)

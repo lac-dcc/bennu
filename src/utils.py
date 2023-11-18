@@ -1,6 +1,6 @@
 import numpy as np
 from itertools import permutations, product
-import tvm, json
+import tvm, json, os
 import tvm.contrib.graph_executor as runtime
 
 
@@ -15,6 +15,9 @@ def append_file(json_file, log="/tmp/file.json"):
         json.dump(json_file, outfile)
     return log
 
+def clean_file(filename):
+    if os.path.isfile(filename):
+        os.remove(filename)
 
 def read_file(filename):
     f = open(filename, "r")
