@@ -55,7 +55,6 @@ class Space:
                     f"auto_unroll_max_step${v}"
                     for v in add_space(PR_space, [int(f[3].split("$")[-1])])
                 ]
-        # print(self.__config_space)
         self.__dims = []
         for key in self.__config_space:
             self.__dims.append(len(self.__config_space[key]))
@@ -110,8 +109,9 @@ class Droplet:
     n_parallel = os.cpu_count()
     build_func = "default"
 
-    def __init__(self, json_file, workload_key, target, trials=100) -> None:
+    def __init__(self, json_file, workload_key, target, log, trials=100) -> None:
         self.json_file = json_file
+        self.final_log = write_file(json_file, log)
         self.log = write_file(json_file)
         self.task = SearchTask(workload_key=workload_key, target=target)
         self.trials = trials
@@ -212,17 +212,16 @@ class Droplet:
         log = write_file(j_file_modified)
         return self.run(log)
 
-    def tune(self, log):
-        self.final_log = log
+    def tune(self):
+        '''
+            tune function:
+            input: task
+        '''
         self.speculation()
-        while True:
+        while self.has_next():
             res = self.next_batch(self.batch)
             self.update(res)
             self.count += len(res)
-
-            if not self.has_next():
-                break
-        # print(self.best_choice)
 
     def run(self, log):
         inputs, results = auto_scheduler.RecordReader(log).read_lines()

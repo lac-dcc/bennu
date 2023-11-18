@@ -44,9 +44,9 @@ def build_template(bench, logfile, index, target, trials):
         clean_file(log)
 
         t, params, json_file = cfg[workload]
-        droplet = Droplet(json_file, workload, target)
+        droplet = Droplet(json_file, workload, target, log)
         start = time.time()
-        droplet.tune(log)
+        droplet.tune()
         end = time.time()
 
         droplet_avg, droplet_cfg = get_best_time(log)
