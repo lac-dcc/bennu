@@ -22,6 +22,11 @@ def read_file(filename):
         print(l.strip())
     f.close()
 
+def get_tasks(filename : str) -> int:
+    f = open(filename, "r")
+    count = len(f.readlines())
+    f.close()
+    return count
 
 def permutation(arr, limit):
     result = []
@@ -137,6 +142,21 @@ def get_best_multilayers(log):
     f.close()
     return hash_map
 
+def get_task_multilayers(log):
+    import json
+
+    hash_map = dict()
+    f = open(log, "r")
+    for line in f.readlines():
+        data = json.loads(line)
+        if "i" in data:
+            hash = data["i"][0][0]
+            if hash not in hash_map:
+                hash_map[hash] = 1
+            else:
+                hash_map[hash] += 1
+    f.close()
+    return hash_map
 
 def get_template_ansor(log):
     import json

@@ -37,12 +37,13 @@ def build_template(bench, logfile, index, target, trials):
 
     cfg = get_best_multilayers(logfile)
 
-    print("Time Droplet (s), Tuning time (s), Time Ansor (s), speedup")
+    print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
     for layer, workload in enumerate(cfg):
-        #if layer != 1:
-        #    continue
 
         log = f"layer_{layer}.log"
+        if os.path.isfile(log):
+            os.remove(log)
+
         t, params, json_file = cfg[workload]
         droplet = Droplet(json_file, workload, target)
         start = time.time()
@@ -50,14 +51,16 @@ def build_template(bench, logfile, index, target, trials):
         end = time.time()
 
         droplet_avg, droplet_cfg = get_best_time(log)
-
+            
         print(
-            "%d, %.7f, %.2f, %.7f, %.2f"
+            "%d, %.7f, %.2f, %d, %.7f, %d, %.2f"
             % (
                 layer,
                 np.mean(droplet_avg),
                 end - start,
+                get_tasks(log),
                 np.mean(t),
+                get_task_multilayers(logfile)[workload],
                 np.mean(t) / np.mean(droplet_avg),
             )
         )

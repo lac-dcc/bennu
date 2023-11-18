@@ -117,7 +117,8 @@ class Droplet:
         self.trials = trials
         self.space = Space(json_file["i"][1][1])
         self.next = [np.zeros(len(self.space.dims), dtype=int)]
-        self.best_choice = [np.zeros(len(self.space.dims), dtype=int), 9999]
+        best_avg, _ = get_best_time(self.log)
+        self.best_choice = [np.zeros(len(self.space.dims), dtype=int), np.mean(best_avg)]
         self.visited.append(self.space.index(self.best_choice[0]))
         self.count = 0
         if len(self.space.dims) > 0:
@@ -128,7 +129,7 @@ class Droplet:
         # print(self.space)
 
     def has_next(self):
-        return self.count < min(self.trials, self.space.total_dims)
+        return self.count < min(self.trials, self.space.total_dims) and len(self.next) > 0
 
     def next_batch(self, batch_size):
         i, res = 0, []
@@ -170,8 +171,6 @@ class Droplet:
             if value < self.best_choice[1]:
                 self.best_choice = [self.next[i], value]
                 found_best_pos = True
-
-        # print(self.best_choice)
 
         self.next = self.next[self.batch : -1]
         if found_best_pos:
