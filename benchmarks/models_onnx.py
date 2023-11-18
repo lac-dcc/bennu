@@ -59,9 +59,8 @@ def build_template(bench, logfile, index, target, trials):
                 np.mean(t) / np.mean(droplet_avg),
             )
         )
-        print(droplet_cfg)
-
-        break
+        # print(droplet_cfg)
+        # break
 
 
 if __name__ == "__main__":
