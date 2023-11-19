@@ -1,6 +1,6 @@
 import numpy as np
 from itertools import permutations, product
-import tvm, json, os
+import tvm, json, os, time
 import tvm.contrib.graph_executor as runtime
 
 
@@ -12,8 +12,7 @@ def write_file(json_file, log="/tmp/file.json") -> str:
 
 
 def create_file(json_list : list, log="/tmp/file.json") -> str:
-    clean_file(log)
-    with open(log, "a", encoding="utf-8") as outfile:
+    with open(log, "w", encoding="utf-8") as outfile:
         for j in json_list:
             outfile.write(json.dumps(j))
             outfile.write("\n")
@@ -217,3 +216,34 @@ def convert_to_list(cfg):
                 tmp.append(list(i))
         cfg_list.append(tmp)
     return cfg_list
+
+def build_template(name, logfile, target, trials):
+
+    from src.DropletSearch import Droplet
+
+    t_ansor, workload, json_file = get_best_template(logfile)
+
+    print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
+
+    log = name +".log"
+    clean_file(log)
+
+    droplet = Droplet(json_file, workload, target, log, trials)
+    start = time.time()
+    droplet.tune()
+    end = time.time()
+
+    droplet_avg, _ = get_best_time(log)
+            
+    print(
+        "%s, %.7f, %.2f, %d, %.7f, %d, %.2f"
+        % (
+            name,
+            np.mean(droplet_avg),
+            end - start,
+            get_tasks(log),
+            np.mean(t_ansor),
+            get_task_multilayers(logfile)[workload],
+            np.mean(t_ansor) / np.mean(droplet_avg),
+        )
+    )
