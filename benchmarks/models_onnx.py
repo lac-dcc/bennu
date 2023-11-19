@@ -43,7 +43,7 @@ def build_template(bench, logfile, index, target, trials):
         log = f"layer_{layer}.log"
         clean_file(log)
 
-        t, params, json_file = cfg[workload]
+        t, _, json_file = cfg[workload]
         droplet = Droplet(json_file, workload, target, log, trials)
         start = time.time()
         droplet.tune()
@@ -63,8 +63,6 @@ def build_template(bench, logfile, index, target, trials):
                 np.mean(t) / np.mean(droplet_avg),
             )
         )
-        # print(droplet_cfg)
-        # break
 
 
 if __name__ == "__main__":

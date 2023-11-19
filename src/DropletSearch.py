@@ -1,4 +1,4 @@
-import tvm, sys, os, json
+import tvm, sys, os, json, threading  
 from tvm import autotvm, auto_scheduler
 from copy import deepcopy
 import tvm._ffi
@@ -120,23 +120,24 @@ class Droplet:
         best_avg, _ = get_best_time(self.log)
         self.best_choice = [np.zeros(len(self.space.dims), dtype=int), np.mean(best_avg)]
         self.visited.append(self.space.index(self.best_choice[0]))
-        self.count = 0
+        self.count = 1
         if len(self.space.dims) > 0:
             self.total_execution = max(self.space.dims)
         auto_scheduler.workload_registry.register_workload_tensors(
             self.task.workload_key, self.task.compute_dag.tensors
         )
-        # print(self.space)
 
     def has_next(self):
         return self.count < min(self.trials, self.space.total_dims) and len(self.next) > 0
 
     def next_batch(self, batch_size):
-        i, res = 0, []
-        while batch_size > 0 and i < len(self.next):
-            res.append(self.apply_optimization(self.next[i]))
+        i, json_file_list = 0, []
+        while batch_size > 0 and i < len(self.next) and self.count < self.trials:
+            json_file_list.append(self.apply_optimization(self.next[i]))
             i += 1
-        return res
+            self.count += 1
+        log = create_file(json_file_list)
+        return self.run(log)
 
     def num_to_bin(self, value, factor=1):
         bin_format = (
@@ -171,7 +172,6 @@ class Droplet:
             if value < self.best_choice[1]:
                 self.best_choice = [self.next[i], value]
                 found_best_pos = True
-
         self.next = self.next[self.batch : -1]
         if found_best_pos:
             self.next += self.next_pos(self.search_space())
@@ -204,13 +204,9 @@ class Droplet:
                     index += 1
                 cfg[i] = ["SP", f[1], f[2], f[3], new_f, f[5]]
             elif f[0] == "PR":
-                new_f = self.space.get_value(f"{f[0]}_{i}", values[index])
+                cfg[i] = ["PR", f[1], f[2], self.space.get_value(f"{f[0]}_{i}", values[index])]
                 index += 1
-                cfg[i] = ["PR", f[1], f[2], new_f]
-
-        # print(cfg)
-        log = write_file(j_file_modified)
-        return self.run(log)
+        return j_file_modified
 
     def tune(self):
         '''
@@ -221,12 +217,10 @@ class Droplet:
         while self.has_next():
             res = self.next_batch(self.batch)
             self.update(res)
-            self.count += len(res)
 
     def run(self, log):
-        inputs, results = auto_scheduler.RecordReader(log).read_lines()
-
-        results = []
+        inputs, _ = auto_scheduler.RecordReader(log).read_lines()
+        results = np.zeros((len(inputs), self.repeat), dtype=float)
         for i in range(len(inputs)):
             state = self.task.compute_dag.infer_bound_from_state(inputs[i].state)
             inp = [MeasureInput(self.task, state)]
@@ -242,9 +236,8 @@ class Droplet:
                 self.enable_cpu_cache_flush,
                 self.device,
                 self.n_parallel,
-                self.build_func,
+                self.build_func
             )
             _ffi_api.SaveRecords(self.final_log, inp, res)
-
-            results.append([v.value for v in res[0].costs])
+            results[i] = [v.value for v in res[0].costs]
         return results
