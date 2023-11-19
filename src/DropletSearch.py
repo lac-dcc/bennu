@@ -246,5 +246,5 @@ class Droplet:
             )
             _ffi_api.SaveRecords(self.final_log, inp, res)
 
-            results.append([float(v) for v in res[0].costs])
+            results.append([v.value for v in res[0].costs])
         return results

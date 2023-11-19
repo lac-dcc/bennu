@@ -5,14 +5,14 @@ import tvm.contrib.graph_executor as runtime
 
 
 def write_file(json_file, log="/tmp/file.json"):
-    with open(log, "w") as outfile:
-        json.dump(json_file, outfile)
+    with open(log, "w", encoding="utf-8") as outfile:
+        json.dump(json_file, outfile, ensure_ascii=False)
     return log
 
 
 def append_file(json_file, log="/tmp/file.json"):
-    with open(log, "a") as outfile:
-        json.dump(json_file, outfile)
+    with open(log, "a", encoding="utf-8") as outfile:
+        json.dump(json_file, outfile, ensure_ascii=False)
     return log
 
 def clean_file(filename):
