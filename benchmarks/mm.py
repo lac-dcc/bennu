@@ -1,11 +1,11 @@
-import os, sys, time, argparse
-from tvm import te, autotvm, auto_scheduler
+import os, sys, time, argparse, tvm
+from tvm import te, auto_scheduler
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from src.DropletSearch import Droplet
 from src.utils import *
+from benchmarks.benchmarks import *
 
 ## ------------------ Global ---------------------
 N, L, M = 1000, 800, 700
@@ -56,35 +56,6 @@ def generate_ansor_template(log_file, target, trials):
     print("Config:", best_cfg)
     print("Time spent to search:", end - start)
 
-
-def build_template(log_file, target, trials):
-    t_ansor, workload, json_file = get_best_template(log_file)
-
-    print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
-
-    log = "mm.log"
-    clean_file(log)
-
-    droplet = Droplet(json_file, workload, target, log, trials)
-    start = time.time()
-    droplet.tune()
-    end = time.time()
-
-    droplet_avg, droplet_cfg = get_best_time(log)
-            
-    print(
-        "%.7f, %.2f, %d, %.7f, %d, %.2f"
-        % (
-            np.mean(droplet_avg),
-            end - start,
-            get_tasks(log),
-            np.mean(t_ansor),
-            get_task_multilayers(logfile)[workload],
-            np.mean(t_ansor) / np.mean(droplet_avg),
-        )
-    )
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         "python mm.py -m 'ansor' -a x86 -l 'results/cpu_matmul.json' -i 3"
@@ -120,4 +91,4 @@ if __name__ == "__main__":
     if method == "ansor":
         generate_ansor_template(logfile, target, trials)
     elif method == "droplet":
-        build_template(logfile, target, trials)
+        build_template("mm", logfile, target, trials)

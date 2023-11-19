@@ -122,7 +122,6 @@ class Droplet:
         self.next = [np.zeros(len(self.space.dims), dtype=int)]
         best_avg, _ = get_best_time(self.log)
         self.best_choice = [np.zeros(len(self.space.dims), dtype=int), np.mean(best_avg), best_avg]
-        self.visited.append(self.space.index(self.best_choice[0]))
         self.count = 1
         if len(self.space.dims) > 0:
             self.total_execution = max(self.space.dims)
