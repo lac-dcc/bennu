@@ -111,7 +111,7 @@ class Droplet:
 
     def __init__(self, json_file, workload_key, target, log, trials=100) -> None:
         self.json_file = json_file
-        self.final_log = log
+        self.final_log = write_file(json_file, log)
         self.log = write_file(json_file)
         self.task = SearchTask(workload_key=workload_key, target=target)
         self.trials = trials
