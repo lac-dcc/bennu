@@ -165,20 +165,20 @@ def get_task_multilayers(log):
     f.close()
     return hash_map
 
-def get_template_ansor(log):
+def get_best_template(log):
     import json
-
+    hash_map = []
     f = open(log, "r")
-    cfg = []
     for line in f.readlines():
         data = json.loads(line)
-        if "r" in data:
-            cfg.append([data["r"][0], data["i"][1][1]])
-        else:
-            cfg.append([data["result"][0], data["config"]["entity"]])
+        if "i" in data:
+            r = data["r"][0]
+            hash = data["i"][0][0]
+            cfg = data["i"][1][1]
+            if len(hash_map) == 0 or np.mean(hash_map[0]) > np.mean(r):
+                hash_map = [r, hash, data]
     f.close()
-
-    return cfg
+    return hash_map
 
 
 def evaluate_performance(lib, data_shape, target, input_name="data", dtype="float32"):

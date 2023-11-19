@@ -5,6 +5,7 @@ import tvm._ffi
 from tvm.auto_scheduler import MeasureInput, MeasureResult, _ffi_api
 from tvm.auto_scheduler.search_task import SearchTask
 from tvm.auto_scheduler.measure import local_builder_build
+from scipy import stats
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -97,6 +98,7 @@ class Droplet:
     visited = []
     execution = 1
     total_execution = 1
+    pvalue = 0.05
 
     # params
     timeout = 15
@@ -109,16 +111,17 @@ class Droplet:
     n_parallel = os.cpu_count()
     build_func = "default"
 
-    def __init__(self, json_file, workload_key, target, log, trials=100) -> None:
+    def __init__(self, json_file, workload_key, target, log, trials=100, pvalue=0.05) -> None:
         self.json_file = json_file
         self.final_log = write_file(json_file, log)
         self.log = write_file(json_file)
         self.task = SearchTask(workload_key=workload_key, target=target)
         self.trials = trials
+        self.pvalue = pvalue
         self.space = Space(json_file["i"][1][1])
         self.next = [np.zeros(len(self.space.dims), dtype=int)]
         best_avg, _ = get_best_time(self.log)
-        self.best_choice = [np.zeros(len(self.space.dims), dtype=int), np.mean(best_avg)]
+        self.best_choice = [np.zeros(len(self.space.dims), dtype=int), np.mean(best_avg), best_avg]
         self.visited.append(self.space.index(self.best_choice[0]))
         self.count = 1
         if len(self.space.dims) > 0:
@@ -145,6 +148,11 @@ class Droplet:
         )
         return [int(i) * factor for i in bin_format]
 
+    def p_value(self, elem_1, elem_2):
+        if len(elem_1) <= 1 or len(elem_2) <= 1:
+            return True
+        return stats.ttest_ind(np.array(elem_1), np.array(elem_2)).pvalue <= self.pvalue
+
     def search_space(self, factor=1):
         search_space = []
         for i in range(2 ** len(self.space.dims) - 1, 0, -1):
@@ -169,8 +177,8 @@ class Droplet:
         found_best_pos = False
         for i in range(len(results)):
             value = np.mean(results[i])
-            if value < self.best_choice[1]:
-                self.best_choice = [self.next[i], value]
+            if value < self.best_choice[1] and self.p_value(self.best_choice[2], results[i]):
+                self.best_choice = [self.next[i], value, results[i]]
                 found_best_pos = True
         self.next = self.next[self.batch : -1]
         if found_best_pos:
