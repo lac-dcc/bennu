@@ -47,7 +47,7 @@ def permutation(arr, limit):
 def add_space(list, element, limit=10000):
     new_list = element
     for l in list:
-        if l not in new_list and l < limit:
+        if l not in new_list and l <= limit:
             new_list.append(l)
     return new_list
 

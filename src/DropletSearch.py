@@ -41,8 +41,8 @@ class Space:
         return s
 
     def create_space(self) -> None:
-        SP_space = [1, 2, 4, 8, 16, 32, 64]
-        PR_space = [0, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+        SP_space = [1, 2, 4, 8, 16, 24, 32, 48, 64, 128, 256]
+        PR_space = [0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
         for i in range(len(self.__cfg)):
             f = self.__cfg[i]
             if f[0] == "SP" and f[3] != 1:
@@ -95,7 +95,7 @@ class Droplet:
     final_log = None
     best_choice = []
     visited = []
-    execution = 2
+    execution = 1
     total_execution = 1
 
     # params
