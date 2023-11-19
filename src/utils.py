@@ -5,9 +5,8 @@ import tvm.contrib.graph_executor as runtime
 
 
 def write_file(json_file, log="/tmp/file.json"):
-    with open(log, "w", encoding="utf-8") as f:
-        dict = json.dumps(log)
-        f.writelines(dict)
+    with open(log, "w", encoding="utf-8") as outfile:
+        json.dump(json_file, outfile, ensure_ascii=False)
     return log
 
 
