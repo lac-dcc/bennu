@@ -5,7 +5,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from src.utils import *
-from benchmarks.benchmarks import *
+from benchmarks.utils import *
 
 ## ------------------ Global ---------------------
 N, L, M = 1000, 800, 700
