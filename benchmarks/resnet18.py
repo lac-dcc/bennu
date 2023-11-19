@@ -1,12 +1,12 @@
 import os, sys, time, argparse
-from tvm import te, topi, relay, autotvm, auto_scheduler
+from tvm import relay, auto_scheduler
 from tvm.relay import testing
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from src.optimize_layer import execute_one_layer
 from src.utils import *
+from src.DropletSearch import Droplet
 
 ## ------------------ Global ---------------------
 batch_size = 1
@@ -24,18 +24,6 @@ def resnet18_ansor(batch_size, target):
     tasks, task_weights = auto_scheduler.extract_tasks(mod["main"], params, target)
 
     return tasks, task_weights, mod, params
-
-
-def resnet18_autotvm(batch_size, target, cfg=None):
-    n_layer = 18
-    mod, params = relay.testing.resnet.get_workload(
-        num_layers=n_layer, batch_size=batch_size, dtype=dtype, layout=layout
-    )
-
-    tasks = autotvm.task.extract_from_program(mod["main"], params, target)
-
-    return tasks, mod, params
-
 
 def generate_ansor_template(log_file, target, trials):
     tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
@@ -60,31 +48,53 @@ def generate_ansor_template(log_file, target, trials):
     end = time.time()
 
     # compile kernels in kernel tuned only mode
+    '''
     with auto_scheduler.ApplyHistoryBest(log_file):
         with tvm.transform.PassContext(
             opt_level=3, config={"relay.backend.use_auto_scheduler": True}
         ):
             lib = relay.build(mod, target=target, params=params)
             r = evaluate_performance(lib, input_shape, target)
+    '''
 
     print("Time for each layers")
-    results = get_best_time_multilayer(log_file)
-    for i, v in enumerate(results):
-        print(f"Layer {i}: Time {np.mean(results[v][0])} cfg: {results[v][1]}")
-    print("\nTime to execute the algorithm: ", np.mean(r))
+    cfg = get_best_multilayers(logfile)
+    for i, v in enumerate(cfg):
+        print(f"Layer {i}: Time {np.mean(cfg[v][0])}")
+    #print("\nTime to execute the algorithm: ", np.mean(r))
     print("Time spent to search:", end - start)
 
 
-def build_template(log_file, index, target, trials):
-    config = get_best_time_multilayer(log_file)
-
+def build_template_multilayers(logfile, target, trials):
     tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
+    cfg = get_best_multilayers(logfile)
 
-    for c in config:
-        t_ansor, cfg_ansor = config[c]
-        execute_one_layer(c, cfg_ansor, target, trials)
+    print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
+    for layer, workload in enumerate(cfg):
 
-        break
+        log = f"layer_{layer}.log"
+        clean_file(log)
+
+        t, _, json_file = cfg[workload]
+        droplet = Droplet(json_file, workload, target, log, trials)
+        start = time.time()
+        droplet.tune()
+        end = time.time()
+
+        droplet_avg, droplet_cfg = get_best_time(log)
+            
+        print(
+            "%d, %.7f, %.2f, %d, %.7f, %d, %.2f"
+            % (
+                layer,
+                np.mean(droplet_avg),
+                end - start,
+                get_tasks(log),
+                np.mean(t),
+                get_task_multilayers(logfile)[workload],
+                np.mean(t) / np.mean(droplet_avg),
+            )
+        )
 
 
 if __name__ == "__main__":
@@ -98,14 +108,12 @@ if __name__ == "__main__":
         "-a", "--arch", type=str, required=True, help="Options: x86, aarch64, cuda"
     )
     parser.add_argument("-l", "--logfile", type=str, required=True)
-    parser.add_argument("-i", "--index", type=int, default=-1)
     parser.add_argument("-t", "--trials", type=int, default=100)
     args = parser.parse_args()
 
     method = args.method
     arch = args.arch
     logfile = args.logfile
-    index = args.index
     trials = args.trials
 
     if arch == "x86":
@@ -124,4 +132,4 @@ if __name__ == "__main__":
     if method == "ansor":
         generate_ansor_template(logfile, target, trials)
     elif method == "droplet":
-        build_template(logfile, index, target, trials)
+        build_template_multilayers(logfile, target, trials)

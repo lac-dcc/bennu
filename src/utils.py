@@ -218,7 +218,6 @@ def convert_to_list(cfg):
     return cfg_list
 
 def build_template(name, logfile, target, trials):
-
     from src.DropletSearch import Droplet
 
     t_ansor, workload, json_file = get_best_template(logfile)
