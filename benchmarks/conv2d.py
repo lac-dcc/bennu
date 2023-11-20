@@ -90,4 +90,4 @@ if __name__ == "__main__":
     if method == "ansor":
         generate_ansor_template(logfile, target, trials)
     elif method == "droplet":
-        build_template(logfile, target, trials)
+        build_template("conv2d", logfile, target, trials)
