@@ -7,7 +7,7 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from src.utils import *
 
 ## ------------------ Global ---------------------
-input_shape = (1, 3, 32, 224, 224)
+input_shape = (1, 3, 3, 224, 224)
 filter_shape = (64, 3, 3, 3, 3)
 strides = (1, 1, 1)
 padding = (1, 1, 1)

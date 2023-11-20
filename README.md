@@ -26,16 +26,30 @@ These are the most important dependencies for running Bennu:
 | TVM        | >= 0.13   | [TVM website](https://tvm.apache.org/docs/index.html)|
 | Python3    | >= 3.6.0  | [Python website](https://www.python.org)             |
 
-## Running
+## Running python models
 
-Generating the Ansor template for a specific machine architecture (default is x86-32).
+Generating the Ansor template with 10k trials for a specific machine architecture.
 
 ```
   python3 benchmarks/mm.py -m ansor -a x86 -l results/x86_mm.json
 ```
 
-Optimize Ansor template using Droplet Search:
+Optimize Ansor template using Droplet Search with 100 trials:
 
 ```
   python3 benchmarks/mm.py -m droplet -a x86 -l results/x86_mm.json -t 100
+```
+
+## Running ONNX models
+
+Generating the Ansor template with 10k trials for a specific machine architecture.
+
+```
+python3 benchmarks/models_onnx.py -m ansor -a x86 -t 10000 -l results/x86_resnet18_10k.json -b models/resnet18.onnx
+```
+
+Optimize Ansor template using Droplet Search with 100 trials:
+
+```
+python3 benchmarks/models_onnx.py -m droplet -a x86 -t 100 -l results/x86_resnet18_10k.json -b models/resnet18.onnx
 ```
