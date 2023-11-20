@@ -5,6 +5,7 @@ import tvm._ffi
 from tvm.auto_scheduler import MeasureInput, MeasureResult, _ffi_api
 from tvm.auto_scheduler.search_task import SearchTask
 from tvm.auto_scheduler.measure import local_builder_build
+from tvm.auto_scheduler.workload_registry import workload_key_to_tensors, register_workload_tensors 
 from scipy import stats
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -115,6 +116,11 @@ class Droplet:
         self.json_file = json_file
         self.final_log = write_file(json_file, log)
         self.log = write_file(json_file)
+        
+        #print(json_file, workload_key)
+        #tensors_list = workload_key_to_tensors(workload_key)
+        #register_workload_tensors(workload_key, tensors_list)
+
         self.task = SearchTask(workload_key=workload_key, target=target)
         self.trials = trials
         self.pvalue = pvalue
@@ -125,6 +131,7 @@ class Droplet:
         self.count = 1
         if len(self.space.dims) > 0:
             self.total_execution = max(self.space.dims)
+
         auto_scheduler.workload_registry.register_workload_tensors(
             self.task.workload_key, self.task.compute_dag.tensors
         )

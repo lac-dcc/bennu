@@ -69,6 +69,11 @@ def build_template_multilayers(logfile, target, trials):
     tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
     cfg = get_best_multilayers(logfile)
 
+    for task in tasks:
+        auto_scheduler.workload_registry.register_workload_tensors(
+            task.workload_key, task.compute_dag.tensors
+        )
+
     print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
     for layer, workload in enumerate(cfg):
 
