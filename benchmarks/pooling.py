@@ -73,7 +73,6 @@ if __name__ == "__main__":
     method = args.method
     arch = args.arch
     logfile = args.logfile
-    index = args.index
     trials = args.trials
 
     if arch == "x86":
