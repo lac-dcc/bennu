@@ -27,7 +27,10 @@ BENCH=(
 
 trials=10000
 
+time_ansor="time.txt"
+echo "" > $time_ansor
 for ((i = 0; i < ${#BENCH[@]}; i++)); do
-    echo "BENCH: "${BENCH[i]}
-    python3 benchmarks/models_onnx.py -m ansor -a $ARCH -t $trials -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx
+    echo "BENCH: "${BENCH[i]} 
+    echo "BENCH: "${BENCH[i]} >> $time_ansor
+    python3 benchmarks/models_onnx.py -m ansor -a $ARCH -t $trials -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx >> $time_ansor
 done
