@@ -39,6 +39,12 @@ def build_template(bench, logfile, index, target, trials):
         mod=model.mod, params=model.params, target=target
     )
 
+    if "ansor" in logfile:
+        droplet_log = logfile.replace("ansor", "droplet")
+    else:
+        droplet_log = ".".join(logfile.split(".")[:-1]) + "_droplet.json"
+    clean_file(droplet_log)
+
     cfg = get_best_multilayers(logfile)
 
     print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
@@ -70,6 +76,7 @@ def build_template(bench, logfile, index, target, trials):
                 np.mean(t) / np.mean(droplet_avg),
             )
         )
+        append_file(droplet_cfg, droplet_log)
 
 def run(logfile, bench, target, dev):
     model = tvmc.load(bench)
