@@ -117,9 +117,7 @@ class Droplet:
         self.final_log = write_file(json_file, log)
         self.log = write_file(json_file)
         
-        #print(json_file, workload_key)
-        #tensors_list = workload_key_to_tensors(workload_key)
-        #register_workload_tensors(workload_key, tensors_list)
+        #register_workload_tensors(workload_key, workload_key_to_tensors(workload_key))
 
         self.task = SearchTask(workload_key=workload_key, target=target)
         self.trials = trials

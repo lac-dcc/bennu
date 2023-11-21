@@ -18,6 +18,7 @@ from src.DropletSearch import Droplet
 
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)
+    start = time.time()
     tvmc.tune(
         tvmc_model=model,
         target=target,
@@ -27,6 +28,8 @@ def generate_ansor_template(bench, logfile, target, trials):
         trials=trials,
         enable_autoscheduler=True,
     )
+    end = time.time()
+    print("time search:", end-start)
 
 
 def build_template(bench, logfile, index, target, trials):
@@ -39,6 +42,9 @@ def build_template(bench, logfile, index, target, trials):
 
     print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
     for layer, workload in enumerate(cfg):
+
+        if index != -1 and layer != index:
+            continue
 
         log = f"layer_{layer}.log"
         clean_file(log)
@@ -64,6 +70,23 @@ def build_template(bench, logfile, index, target, trials):
             )
         )
 
+def run(logfile, bench, target, dev):
+    model = tvmc.load(bench)
+
+    package = tvmc.compile(
+        model,
+        target=target,
+        tuning_records=logfile
+    )
+
+    package = tvmc.compile(
+        model,
+        target=target
+    )
+
+    result = tvmc.run(package, device=dev)
+    print(result)
+    #print(package.__module__.__mod__)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -108,3 +131,5 @@ if __name__ == "__main__":
         generate_ansor_template(bench, logfile, target_name, trials)
     elif method == "droplet":
         build_template(bench, logfile, index, target, trials)
+    elif method == "run":
+        run(logfile, target, dev)
