@@ -18,6 +18,7 @@ from src.DropletSearch import Droplet
 
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)
+    clean_file(logfile)
     start = time.time()
     tvmc.tune(
         tvmc_model=model,
