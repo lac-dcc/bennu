@@ -10,13 +10,15 @@ def write_file(json_file, log="/tmp/file.json") -> str:
         outfile.write("\n")
     return log
 
+
 def append_file(json_file, log="/tmp/file.json") -> str:
     with open(log, "a", encoding="utf-8") as outfile:
         outfile.write(json.dumps(json_file))
         outfile.write("\n")
     return log
 
-def create_file(json_list : list, log="/tmp/file.json") -> str:
+
+def create_file(json_list: list, log="/tmp/file.json") -> str:
     with open(log, "w", encoding="utf-8") as outfile:
         for j in json_list:
             outfile.write(json.dumps(j))
@@ -28,17 +30,20 @@ def clean_file(filename):
     if os.path.isfile(filename):
         os.remove(filename)
 
+
 def read_file(filename):
     f = open(filename, "r")
     for l in f.readlines():
         print(l.strip())
     f.close()
 
-def get_tasks(filename : str) -> int:
+
+def get_tasks(filename: str) -> int:
     f = open(filename, "r")
     count = len(f.readlines())
     f.close()
     return count
+
 
 def permutation(arr, limit):
     result = []
@@ -138,10 +143,11 @@ def get_best_time(log):
     return best_avg, best_cfg
 
 
-def get_best_multilayers(log):
+def get_best_multilayers(log, top=1000):
     import json
 
     hash_map = dict()
+    count = dict()
     f = open(log, "r")
     for line in f.readlines():
         data = json.loads(line)
@@ -149,10 +155,20 @@ def get_best_multilayers(log):
             r = data["r"][0]
             hash = data["i"][0][0]
             cfg = data["i"][1][1]
+
+            # limit the number of task
+            if hash not in count:
+                count[hash] = 1
+            elif count[hash] > top:
+                continue
+            else:
+                count[hash] += 1
+
             if hash not in hash_map or np.mean(hash_map[hash][0]) > np.mean(r):
                 hash_map[hash] = (r, cfg, data)
     f.close()
     return hash_map
+
 
 def get_task_multilayers(log):
     import json
@@ -170,8 +186,10 @@ def get_task_multilayers(log):
     f.close()
     return hash_map
 
+
 def get_best_template(log):
     import json
+
     hash_map = []
     f = open(log, "r")
     for line in f.readlines():
@@ -223,14 +241,17 @@ def convert_to_list(cfg):
         cfg_list.append(tmp)
     return cfg_list
 
+
 def build_template(name, logfile, target, trials):
     from src.DropletSearch import Droplet
 
     t_ansor, workload, json_file = get_best_template(logfile)
 
-    print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
+    print(
+        "Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup"
+    )
 
-    log = name +".log"
+    log = name + ".log"
     clean_file(log)
 
     droplet = Droplet(json_file, workload, target, log, trials)
@@ -239,7 +260,7 @@ def build_template(name, logfile, target, trials):
     end = time.time()
 
     droplet_avg, _ = get_best_time(log)
-            
+
     print(
         "%s, %.7f, %.2f, %d, %.7f, %d, %.2f"
         % (

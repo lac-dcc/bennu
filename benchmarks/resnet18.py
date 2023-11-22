@@ -25,6 +25,7 @@ def resnet18_ansor(batch_size, target):
 
     return tasks, task_weights, mod, params
 
+
 def generate_ansor_template(log_file, target, trials):
     tasks, task_weights, mod, params = resnet18_ansor(batch_size, target)
 
@@ -48,20 +49,20 @@ def generate_ansor_template(log_file, target, trials):
     end = time.time()
 
     # compile kernels in kernel tuned only mode
-    '''
+    """
     with auto_scheduler.ApplyHistoryBest(log_file):
         with tvm.transform.PassContext(
             opt_level=3, config={"relay.backend.use_auto_scheduler": True}
         ):
             lib = relay.build(mod, target=target, params=params)
             r = evaluate_performance(lib, input_shape, target)
-    '''
+    """
 
     print("Time for each layers")
     cfg = get_best_multilayers(logfile)
     for i, v in enumerate(cfg):
         print(f"Layer {i}: Time {np.mean(cfg[v][0])}")
-    #print("\nTime to execute the algorithm: ", np.mean(r))
+    # print("\nTime to execute the algorithm: ", np.mean(r))
     print("Time spent to search:", end - start)
 
 
@@ -74,9 +75,10 @@ def build_template_multilayers(logfile, target, trials):
             task.workload_key, task.compute_dag.tensors
         )
 
-    print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
+    print(
+        "Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup"
+    )
     for layer, workload in enumerate(cfg):
-
         log = f"layer_{layer}.log"
         clean_file(log)
 
@@ -87,7 +89,7 @@ def build_template_multilayers(logfile, target, trials):
         end = time.time()
 
         droplet_avg, droplet_cfg = get_best_time(log)
-            
+
         print(
             "%d, %.7f, %.2f, %d, %.7f, %d, %.2f"
             % (

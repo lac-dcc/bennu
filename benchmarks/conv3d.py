@@ -27,6 +27,7 @@ def conv3d_ansor(input_shape, filter_shape):
     )
     return [A, W, C]
 
+
 def generate_ansor_template(log_file, target, trials):
     task = tvm.auto_scheduler.SearchTask(
         func=conv3d_ansor, args=(input_shape, filter_shape), target=target
@@ -55,6 +56,7 @@ def generate_ansor_template(log_file, target, trials):
     print("Time spent:", time_avg)
     print("Config:", best_cfg)
     print("Time spent to search:", end - start)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

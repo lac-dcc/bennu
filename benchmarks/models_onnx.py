@@ -30,10 +30,10 @@ def generate_ansor_template(bench, logfile, target, trials):
         enable_autoscheduler=True,
     )
     end = time.time()
-    print("time search:", end-start)
+    print("time search:", end - start)
 
 
-def build_template(bench, logfile, index, target, trials):
+def build_template(bench, logfile, index, target, trials, top=1000):
     model = tvmc.load(bench)
     tasks, weights = autoscheduler_get_tuning_tasks(
         mod=model.mod, params=model.params, target=target
@@ -45,11 +45,12 @@ def build_template(bench, logfile, index, target, trials):
         droplet_log = ".".join(logfile.split(".")[:-1]) + "_droplet.json"
     clean_file(droplet_log)
 
-    cfg = get_best_multilayers(logfile)
+    cfg = get_best_multilayers(logfile, top)
 
-    print("Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup")
+    print(
+        "Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup"
+    )
     for layer, workload in enumerate(cfg):
-
         if index != -1 and layer != index:
             continue
 
@@ -63,7 +64,7 @@ def build_template(bench, logfile, index, target, trials):
         end = time.time()
 
         droplet_avg, droplet_cfg = get_best_time(log)
-            
+
         print(
             "%d, %.7f, %.2f, %d, %.7f, %d, %.2f"
             % (
@@ -78,23 +79,18 @@ def build_template(bench, logfile, index, target, trials):
         )
         append_file(droplet_cfg, droplet_log)
 
+
 def run(logfile, bench, target, dev):
     model = tvmc.load(bench)
 
-    package = tvmc.compile(
-        model,
-        target=target,
-        tuning_records=logfile
-    )
+    package = tvmc.compile(model, target=target, tuning_records=logfile)
 
-    package = tvmc.compile(
-        model,
-        target=target
-    )
+    package = tvmc.compile(model, target=target)
 
     result = tvmc.run(package, device=dev)
     print(result)
-    #print(package.__module__.__mod__)
+    # print(package.__module__.__mod__)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -110,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("-b", "--benchmark", type=str, required=True)
     parser.add_argument("-i", "--index", type=int, default=-1)
     parser.add_argument("-t", "--trials", type=int, default=100)
+    parser.add_argument("-k", "--top", type=int, default=1000)
     args = parser.parse_args()
 
     method = args.method
@@ -118,6 +115,7 @@ if __name__ == "__main__":
     bench = args.benchmark
     index = args.index
     trials = args.trials
+    top = args.top
 
     if arch == "x86":
         target_name = "llvm"
@@ -138,6 +136,6 @@ if __name__ == "__main__":
     if method == "ansor":
         generate_ansor_template(bench, logfile, target_name, trials)
     elif method == "droplet":
-        build_template(bench, logfile, index, target, trials)
+        build_template(bench, logfile, index, target, trials, top)
     elif method == "run":
         run(logfile, target, dev)

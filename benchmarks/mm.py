@@ -22,6 +22,7 @@ def ansor_mm(N, L, M, dtype="float32"):
 
     return [A, B, C]
 
+
 ## ---------------------------------------------
 
 
@@ -54,6 +55,7 @@ def generate_ansor_template(log_file, target, trials):
     print("Time spent:", time_avg)
     print("Config:", best_cfg)
     print("Time spent to search:", end - start)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
