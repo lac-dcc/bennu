@@ -10,6 +10,11 @@ def write_file(json_file, log="/tmp/file.json") -> str:
         outfile.write("\n")
     return log
 
+def append_file(json_file, log="/tmp/file.json") -> str:
+    with open(log, "a", encoding="utf-8") as outfile:
+        outfile.write(json.dumps(json_file))
+        outfile.write("\n")
+    return log
 
 def create_file(json_list : list, log="/tmp/file.json") -> str:
     with open(log, "w", encoding="utf-8") as outfile:
@@ -17,6 +22,7 @@ def create_file(json_list : list, log="/tmp/file.json") -> str:
             outfile.write(json.dumps(j))
             outfile.write("\n")
     return log
+
 
 def clean_file(filename):
     if os.path.isfile(filename):
