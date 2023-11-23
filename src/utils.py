@@ -132,12 +132,12 @@ def get_best_time(log):
             r = data["r"][0]
             if np.mean(best_avg) > np.mean(r):
                 best_avg = r
-                best_cfg = data["i"][1][1]
+                best_cfg = data
         else:
             r = data["result"][0]
             if np.mean(best_avg) > np.mean(r):
                 best_avg = r
-                best_cfg = data["config"]["entity"]
+                best_cfg = data
     f.close()
 
     return best_avg, best_cfg
