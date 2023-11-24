@@ -1,11 +1,14 @@
-import tvm, sys, os, json, threading  
+import tvm, sys, os, json, threading
 from tvm import autotvm, auto_scheduler
 from copy import deepcopy
 import tvm._ffi
 from tvm.auto_scheduler import MeasureInput, MeasureResult, _ffi_api
 from tvm.auto_scheduler.search_task import SearchTask
 from tvm.auto_scheduler.measure import local_builder_build
-from tvm.auto_scheduler.workload_registry import workload_key_to_tensors, register_workload_tensors 
+from tvm.auto_scheduler.workload_registry import (
+    workload_key_to_tensors,
+    register_workload_tensors,
+)
 from scipy import stats
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,8 +46,8 @@ class Space:
         return s
 
     def create_space(self) -> None:
-        SP_space = [1, 2, 4, 8, 16, 24, 32, 48, 64, 128, 256]
-        PR_space = [0, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+        SP_space = [4, 8, 16, 24, 32, 48, 64]
+        PR_space = [64, 128, 256, 512, 1024]
         for i in range(len(self.__cfg)):
             f = self.__cfg[i]
             if f[0] == "SP" and f[3] != 1:
@@ -53,10 +56,12 @@ class Space:
                         SP_space, [f[4][j]], f[3]
                     )
             elif f[0] == "PR":
-                self.__config_space[f"{f[0]}_{i}"] = [
-                    f"auto_unroll_max_step${v}"
-                    for v in add_space(PR_space, [int(f[3].split("$")[-1])])
-                ]
+                start_value = int(f[3].split("$")[-1])
+                if start_value != 0:
+                    self.__config_space[f"{f[0]}_{i}"] = [
+                        f"auto_unroll_max_step${v}"
+                        for v in add_space(PR_space, [start_value])
+                    ]
         self.__dims = []
         for key in self.__config_space:
             self.__dims.append(len(self.__config_space[key]))
@@ -100,6 +105,7 @@ class Droplet:
     execution = 1
     total_execution = 1
     pvalue = 0.05
+    trying = 0
 
     # params
     timeout = 15
@@ -112,12 +118,14 @@ class Droplet:
     n_parallel = os.cpu_count()
     build_func = "default"
 
-    def __init__(self, json_file, workload_key, target, log, trials=100, pvalue=0.05) -> None:
+    def __init__(
+        self, json_file, workload_key, target, log, trials=100, pvalue=0.05
+    ) -> None:
         self.json_file = json_file
         self.final_log = write_file(json_file, log)
         self.log = write_file(json_file)
-        
-        #register_workload_tensors(workload_key, workload_key_to_tensors(workload_key))
+
+        # register_workload_tensors(workload_key, workload_key_to_tensors(workload_key))
 
         self.task = SearchTask(workload_key=workload_key, target=target)
         self.trials = trials
@@ -125,8 +133,16 @@ class Droplet:
         self.space = Space(json_file["i"][1][1])
         self.next = [np.zeros(len(self.space.dims), dtype=int)]
         best_avg, _ = get_best_time(self.log)
-        self.best_choice = [np.zeros(len(self.space.dims), dtype=int), np.mean(best_avg), best_avg]
+        self.best_choice = [
+            np.zeros(len(self.space.dims), dtype=int),
+            np.mean(best_avg),
+            best_avg,
+        ]
         self.count = 1
+        self.execution = 1
+        self.trying = 0
+        self.visited = []
+
         if len(self.space.dims) > 0:
             self.total_execution = max(self.space.dims)
 
@@ -135,7 +151,12 @@ class Droplet:
         )
 
     def has_next(self):
-        return self.count < min(self.trials, self.space.total_dims) and len(self.next) > 0
+        # print("cond", self.count, min(self.trials, self.space.total_dims), len(self.next), self.best_choice)
+        return (
+            self.count < min(self.trials, self.space.total_dims)
+            and len(self.next) > 0
+            and self.trying < 2
+        )
 
     def next_batch(self, batch_size):
         i, json_file_list = 0, []
@@ -152,10 +173,10 @@ class Droplet:
         )
         return [int(i) * factor for i in bin_format]
 
-    def p_value(self, elem_1, elem_2):
-        if len(elem_1) <= 1 or len(elem_2) <= 1:
-            return True
-        return stats.ttest_ind(np.array(elem_1), np.array(elem_2)).pvalue <= self.pvalue
+    # def p_value(self, elem_1, elem_2):
+    #    if len(elem_1) <= 1 or len(elem_2) <= 1:
+    #        return True
+    #    return stats.ttest_ind(np.array(elem_1), np.array(elem_2)).pvalue <= self.pvalue
 
     def search_space(self, factor=1):
         search_space = []
@@ -181,13 +202,17 @@ class Droplet:
         found_best_pos = False
         for i in range(len(results)):
             value = np.mean(results[i])
-            if value < self.best_choice[1] and self.p_value(self.best_choice[2], results[i]):
+            if (
+                value < self.best_choice[1]
+            ):  # and self.p_value(self.best_choice[2], results[i]):
                 self.best_choice = [self.next[i], value, results[i]]
                 found_best_pos = True
         self.next = self.next[self.batch : -1]
+        self.trying += 1
         if found_best_pos:
             self.next += self.next_pos(self.search_space())
             self.execution = 1
+            self.trying = 0
         self.speculation()
 
     def next_pos(self, new_positions):
@@ -216,15 +241,23 @@ class Droplet:
                     index += 1
                 cfg[i] = ["SP", f[1], f[2], f[3], new_f, f[5]]
             elif f[0] == "PR":
-                cfg[i] = ["PR", f[1], f[2], self.space.get_value(f"{f[0]}_{i}", values[index])]
-                index += 1
+                if f[3] != "auto_unroll_max_step$0":
+                    cfg[i] = [
+                        "PR",
+                        f[1],
+                        f[2],
+                        self.space.get_value(f"{f[0]}_{i}", values[index]),
+                    ]
+                    index += 1
         return j_file_modified
 
     def tune(self):
-        '''
-            tune function:
-            input: task
-        '''
+        """
+        tune function:
+        input: task
+        """
+        # print(self.execution, self.total_execution)
+        # print(self.next)
         self.speculation()
         while self.has_next():
             res = self.next_batch(self.batch)
@@ -248,7 +281,7 @@ class Droplet:
                 self.enable_cpu_cache_flush,
                 self.device,
                 self.n_parallel,
-                self.build_func
+                self.build_func,
             )
             _ffi_api.SaveRecords(self.final_log, inp, res)
             results[i] = [v.value for v in res[0].costs]
