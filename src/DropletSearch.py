@@ -47,7 +47,7 @@ class Space:
 
     def create_space(self) -> None:
         SP_space = [4, 8, 16, 24, 32, 48, 64]
-        PR_space = [64, 128, 256, 512, 1024]
+        PR_space = [64, 128, 256, 512]
         for i in range(len(self.__cfg)):
             f = self.__cfg[i]
             if f[0] == "SP" and f[3] != 1:
@@ -97,7 +97,7 @@ class Droplet:
     trials = 100
     space = None
     pos = None
-    batch = os.cpu_count()
+    batch = 10
     next = []
     final_log = None
     best_choice = []
@@ -141,7 +141,7 @@ class Droplet:
         self.count = 1
         self.execution = 1
         self.trying = 0
-        self.visited = []
+        self.visited = [0]
 
         if len(self.space.dims) > 0:
             self.total_execution = max(self.space.dims)
@@ -151,11 +151,10 @@ class Droplet:
         )
 
     def has_next(self):
-        # print("cond", self.count, min(self.trials, self.space.total_dims), len(self.next), self.best_choice)
         return (
             self.count < min(self.trials, self.space.total_dims)
             and len(self.next) > 0
-            and self.trying < 2
+            and self.trying < 1
         )
 
     def next_batch(self, batch_size):
@@ -187,7 +186,6 @@ class Droplet:
     def speculation(self):
         # Gradient descending direction prediction and search space filling
         while len(self.next) < self.batch and self.execution < self.total_execution:
-            # print(self.next)
             self.next += self.next_pos(self.search_space(self.execution))
             self.execution += 1
 
@@ -207,7 +205,7 @@ class Droplet:
             ):  # and self.p_value(self.best_choice[2], results[i]):
                 self.best_choice = [self.next[i], value, results[i]]
                 found_best_pos = True
-        self.next = self.next[self.batch : -1]
+        self.next = []
         self.trying += 1
         if found_best_pos:
             self.next += self.next_pos(self.search_space())
@@ -256,8 +254,6 @@ class Droplet:
         tune function:
         input: task
         """
-        # print(self.execution, self.total_execution)
-        # print(self.next)
         self.speculation()
         while self.has_next():
             res = self.next_batch(self.batch)

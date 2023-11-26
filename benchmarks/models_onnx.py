@@ -51,6 +51,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
     print(
         "Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup"
     )
+
     for layer, workload in enumerate(cfg):
         if index != -1 and layer != index:
             continue
@@ -59,7 +60,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         clean_file(log)
 
         _, _, json_file = cfg[workload]
-        t, _, _ = cfg_10k[workload] # get the best value in 10k
+        t, _, _ = cfg_10k[workload]  # get the best value in 10k
         droplet = Droplet(json_file, workload, target, log, trials)
         start = time.time()
         droplet.tune()
@@ -68,7 +69,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         droplet_avg, droplet_cfg = get_best_time(log)
 
         print(
-            "%d, %.7f, %.2f, %d, %.7f, %d, %.2f"
+            "%d, %.8f, %.2f, %d, %.8f, %d, %.2f"
             % (
                 layer,
                 np.mean(droplet_avg),
@@ -91,7 +92,6 @@ def run(logfile, bench, target, dev):
 
     result = tvmc.run(package, device=dev)
     print(result)
-    # print(package.__module__.__mod__)
 
 
 if __name__ == "__main__":
