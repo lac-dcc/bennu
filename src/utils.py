@@ -169,6 +169,33 @@ def get_best_multilayers(log, top=1000):
     f.close()
     return hash_map
 
+def get_best_multilayers_cache(log, top=1000):
+    import json
+
+    hash_map = dict()
+    count = dict()
+    f = open(log, "r")
+    for line in f.readlines():
+        data = json.loads(line)
+        if "i" in data:
+            r = data["r"][0]
+            name = data["i"][0][0]
+            hash = name.split(",")[0]
+            cfg = data["i"][1][1]
+            
+            # TODO: thinking in the logic
+            # limit the number of task
+            if hash not in count:
+                count[hash] = 1
+            elif count[hash] < top:
+                continue
+            else:
+                count[hash] += 1
+
+            if name not in hash_map or np.mean(hash_map[name][0]) > np.mean(r):
+                hash_map[name] = (r, cfg, data)
+    f.close()
+    return hash_map
 
 def get_task_multilayers(log):
     import json
