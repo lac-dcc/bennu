@@ -15,6 +15,9 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from src.utils import *
 from src.DropletSearch import Droplet
 
+num_threads = os.cpu_count()
+os.environ["TVM_NUM_THREADS"] = str(num_threads)
+
 
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)

@@ -1,33 +1,33 @@
 #!/bin/bash
 
-ARCH="x86"
+ARCH="cuda"
 
 BENCH=(
-    alexnet
-    densenet121
-    densenet161
-    densenet169
-    densenet201
-    googlenet
-    inception_v3
-    mnasnet1_0
-    mobilenet_v2
-    resnet101
-    resnet152
-    #resnet18
-    resnet34
-    resnet50
+    #alexnet
+    #densenet121
+    #densenet161
+    #densenet169
+    #densenet201
+    #inception_v3
+    #mnasnet1_0
+    #mobilenet_v2
+    #resnet101
+    #resnet152
+    resnet18
+    #googlenet
+    #resnet34
+    #resnet50
     #shufflenet
     #squeezenet
-    vgg11
-    vgg13
-    vgg16
-    vgg19
+    #vgg11
+    #vgg13
+    #vgg16
+    #vgg19
 )
 
 trials=10000
 
-time_ansor="time.txt"
+time_ansor="time_"$ARCH".txt"
 echo "" > $time_ansor
 for ((i = 0; i < ${#BENCH[@]}; i++)); do
     echo "BENCH: "${BENCH[i]} 

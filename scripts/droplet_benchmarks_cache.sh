@@ -9,13 +9,13 @@ BENCH=(
     #densenet161
     #densenet169
     #densenet201
-    #googlenet
+    googlenet
     #inception_v3
     #mnasnet1_0
     #mobilenet_v2
     #resnet101
     #resnet152
-    resnet18
+    #resnet18
     #resnet34
     #resnet50
     #shufflenet
@@ -38,11 +38,13 @@ SIZE=(
 )
 
 for ((i = 0; i < ${#BENCH[@]}; i++)); do
-    echo "BENCH: "${BENCH[i]}
     output=${BENCH[i]}"_cache.txt"
+    echo "BENCH: "${BENCH[i]}
+    echo "BENCH: ${BENCH[i]}" > $output
     for ((j = 0; j < ${#SIZE[@]}; j++)); do
         echo "SIZE: "${SIZE[j]}
-        python3 benchmarks/models_onnx.py -m droplet -a $ARCH -t $TRIALS -k ${SIZE[j]} -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx > $output
+        echo "SIZE: "${SIZE[j]} >> $output
+        python3 benchmarks/models_onnx_cache.py -m droplet -a $ARCH -t $TRIALS -k ${SIZE[j]} -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx >> $output
     done
 done
 

@@ -4,19 +4,19 @@ ARCH="x86"
 TRIALS=100
 
 BENCH=(
-    alexnet
-    densenet121
-    densenet161
-    densenet169
-    densenet201
-    #googlenet
+    #alexnet
+    #densenet121
+    #densenet161
+    #densenet169
+    #densenet201
+    googlenet
     #inception_v3
-    mnasnet1_0
-    mobilenet_v2
-    resnet101
-    resnet152
+    #mnasnet1_0
+    #mobilenet_v2
+    #resnet101
+    #resnet152
     #resnet18
-    resnet34
+    #resnet34
     #resnet50
     #shufflenet
     #squeezenet
@@ -27,14 +27,13 @@ BENCH=(
 )
 
 SIZE=(
-    1
-    10
-    25
-    50
-    100
-    200
+    #1
+    #10
+    #25
+    #50
+    #100
+    #200
     300
-    500
     10000
 )
 
