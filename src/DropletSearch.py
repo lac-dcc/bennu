@@ -65,8 +65,8 @@ class Space:
         self.__dims = []
         for key in self.__config_space:
             self.__dims.append(len(self.__config_space[key]))
+        self.__total_dims = 1
         if len(self.__dims) > 0:
-            self.__total_dims = 1
             for d in self.__dims:
                 self.__total_dims *= d
 
