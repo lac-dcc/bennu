@@ -29,6 +29,7 @@ def generate_ansor_template(bench, logfile, target, trials):
         tuning_records=logfile,
         repeat=3,
         timeout=100,
+        parallel=os.cpu_count(),
         trials=trials,
         enable_autoscheduler=True,
     )
