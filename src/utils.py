@@ -169,31 +169,51 @@ def get_best_multilayers(log, top=1000):
     f.close()
     return hash_map
 
+def get_hash(value):
+    return value.split(",")[0].replace("[\"","").replace("\"","")
+
+
+def reuse_cache():
+    pass
+
 def get_best_multilayers_cache(log, top=1000):
     import json
 
     hash_map = dict()
+    name_list = []
     count = dict()
+    
     f = open(log, "r")
     for line in f.readlines():
         data = json.loads(line)
         if "i" in data:
             r = data["r"][0]
             name = data["i"][0][0]
-            hash = name.split(",")[0]
+            hash = get_hash(name)
             cfg = data["i"][1][1]
-            
-            # TODO: thinking in the logic
+
+            for l in name_list:
+                # verify if already have the same hash before
+                if hash in l and name not in hash_map:
+                    new_params = hash_map[l][2].copy()
+                    new_params["i"][0][0] = name
+                    hash_map[name] = ([10000], cfg, data)
+                    count[name] = 100000
+                    name_list.append(name)
+                    break
+
             # limit the number of task
-            if hash not in count:
-                count[hash] = 1
-            elif count[hash] < top:
+            if name not in count:
+                count[name] = 1
+                name_list.append(name)
+            elif count[name] > top:
                 continue
             else:
-                count[hash] += 1
+                count[name] += 1
 
             if name not in hash_map or np.mean(hash_map[name][0]) > np.mean(r):
                 hash_map[name] = (r, cfg, data)
+
     f.close()
     return hash_map
 

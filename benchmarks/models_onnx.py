@@ -76,7 +76,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
                 end - start,
                 get_tasks(log),
                 np.mean(t),
-                get_task_multilayers(logfile)[workload],
+                min(top, get_task_multilayers(logfile)[workload]),
                 np.mean(t) / np.mean(droplet_avg),
             )
         )

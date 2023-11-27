@@ -55,16 +55,11 @@ def build_template(bench, logfile, index, target, trials, top=1000):
     for layer, workload in enumerate(cfg):
         if index != -1 and layer != index:
             continue
-        
-        _, _, json_file = cfg[workload]
-        print(workload)
-
-        continue
 
         log = f"layer_{layer}.log"
         clean_file(log)
 
-        _, _, json_file = cfg[workload]
+        t_droplet, _, json_file = cfg[workload]
         t, _, _ = cfg_10k[workload]  # get the best value in 10k
         droplet = Droplet(json_file, workload, target, log, trials)
         start = time.time()
@@ -72,6 +67,10 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         end = time.time()
 
         droplet_avg, droplet_cfg = get_best_time(log)
+
+        calc_top = top
+        if np.mean(t_droplet) == 10000:
+            calc_top = 0
 
         print(
             "%d, %.8f, %.2f, %d, %.8f, %d, %.2f"
@@ -81,7 +80,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
                 end - start,
                 get_tasks(log),
                 np.mean(t),
-                get_task_multilayers(logfile)[workload],
+                min(calc_top, get_task_multilayers(logfile)[workload]),
                 np.mean(t) / np.mean(droplet_avg),
             )
         )
