@@ -18,7 +18,6 @@ from src.DropletSearch import Droplet
 num_threads = os.cpu_count()
 os.environ["TVM_NUM_THREADS"] = str(num_threads)
 
-
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)
     clean_file(logfile)
@@ -28,7 +27,7 @@ def generate_ansor_template(bench, logfile, target, trials):
         target=target,
         tuning_records=logfile,
         repeat=3,
-        timeout=100,
+        timeout=20 if target != "cuda" else 10,
         parallel=os.cpu_count(),
         trials=trials,
         enable_autoscheduler=True,
