@@ -18,7 +18,7 @@ RUN apt-get install -y gcc g++ graphviz vim python3 python3-pip python3-dev auto
 
 RUN pip3 install numpy==1.24.4 decorator scipy pytest psutil typing_extensions tornado cloudpickle \ 
     'xgboost>=1.1.0' synr mxnet 
-RUN pip3 install transformers==3.0 torch==1.15 
+RUN pip3 install transformers==3.0 torch==1.13.1 
 
 ########################################### INSTALL TVM #################################################
 RUN cd $HOME && git clone -b v0.13.0 --recursive https://github.com/apache/tvm 
