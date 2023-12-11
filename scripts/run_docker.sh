@@ -16,10 +16,10 @@ else
     if [ $oper == "help" ]; then
         help # call helper function
     elif [ $oper == "x86" ]; then
-        docker run -v $PWD:/root/bennu -ti droplet-x86
+        docker run -v $PWD:/root/bennu -ti bennu-x86
     elif [ $oper == "arm" ]; then
-        docker run -v $PWD:/root/bennu -ti droplet-arm32v7
+        docker run -v $PWD:/root/bennu -ti bennu-arm32v7
     elif [ $oper == "cuda" ]; then
-        docker run -v $PWD:/root/bennu -it --gpus all droplet-cuda
+        docker run -v $PWD:/root/bennu -it --gpus all bennu-cuda
     fi
 fi

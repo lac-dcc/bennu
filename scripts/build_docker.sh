@@ -16,10 +16,10 @@ else
     if [ $oper == "help" ]; then
         help # call helper function
     elif [ $oper == "x86" ]; then
-        docker build ./docker/x86/. -t droplet-x86
+        docker build ./docker/x86/. -t bennu-x86
     elif [ $oper == "arm" ]; then
-        docker build ./docker/arm32v7/. -t garkain-arm32v7
+        docker build ./docker/arm32v7/. -t bennu-arm32v7
     elif [ $oper == "cuda" ]; then
-        docker build ./docker/cuda/. -t droplet-cuda
+        docker build ./docker/cuda/. -t bennu-cuda
     fi
 fi
