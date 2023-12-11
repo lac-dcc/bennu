@@ -205,7 +205,7 @@ set(USE_EDGETPU OFF)
 # - ON: enable cuDNN with cmake's auto search in CUDA directory
 # - OFF: disable cuDNN
 # - /path/to/cudnn: use specific path to cuDNN path
-set(USE_CUDNN ON)
+set(USE_CUDNN OFF)
 
 # Whether use cuBLAS
 set(USE_CUBLAS OFF)
