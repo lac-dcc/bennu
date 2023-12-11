@@ -45,6 +45,7 @@ def get_network(name, batch_size, layout="NHWC", dtype="float32"):
             batch_size=batch_size, layout=layout, dtype=dtype, image_shape=image_shape
         )
     elif name == "squeezenet_v1.1":
+        layout = "NCHW"
         assert layout == "NCHW", "squeezenet_v1.1 only supports NCHW layout"
         mod, params = relay.testing.squeezenet.get_workload(
             version="1.1",
@@ -106,7 +107,7 @@ def get_network(name, batch_size, layout="NHWC", dtype="float32"):
         mod = tvm.relay.transform.CombineParallelBatchMatmul()(mod)
         mod = tvm.relay.transform.FoldConstant()(mod)
     else:
-        raise f"Error: not find {name} model"
+        raise ValueError(f"Network {name} not found.")
 
     return mod, params, input_shape, output_shape
 
@@ -151,12 +152,16 @@ def generate_ansor_template(name, log_file, target, trials):
     print("Time spent to search:", end - start)
 
 
-def build_template_multilayers(name, logfile, target, trials):
+def build_template(bench, logfile, index, target, trials, top=1000):
     batch_size = 1
-    mod, params, input_shape, output_shape = get_network(name, batch_size)
+    mod, params, input_shape, output_shape = get_network(bench, batch_size)
     tasks, task_weights = auto_scheduler.extract_tasks(mod["main"], params, target)
 
-    cfg = get_best_multilayers(logfile)
+    droplet_log = ".".join(logfile.split(".")[:-1]) + "_droplet.json"
+    clean_file(droplet_log)
+
+    cfg = get_best_multilayers(logfile, top)
+    cfg_10k = get_best_multilayers(logfile, 10000)
 
     #for task in tasks:
     #    auto_scheduler.workload_registry.register_workload_tensors(
@@ -167,10 +172,14 @@ def build_template_multilayers(name, logfile, target, trials):
         "Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup"
     )
     for layer, workload in enumerate(cfg):
+        if index != -1 and layer != index:
+            continue
+
         log = f"layer_{layer}.log"
         clean_file(log)
 
-        t, _, json_file = cfg[workload]
+        _, _, json_file = cfg[workload]
+        t, _, _ = cfg_10k[workload]  # get the best value in 10k
         droplet = Droplet(json_file, workload, target, log, trials)
         start = time.time()
         droplet.tune()
@@ -179,47 +188,55 @@ def build_template_multilayers(name, logfile, target, trials):
         droplet_avg, droplet_cfg = get_best_time(log)
 
         print(
-            "%d, %.7f, %.2f, %d, %.7f, %d, %.2f"
+            "%d, %.8f, %.2f, %d, %.8f, %d, %.2f"
             % (
                 layer,
                 np.mean(droplet_avg),
                 end - start,
                 get_tasks(log),
                 np.mean(t),
-                get_task_multilayers(logfile)[workload],
+                min(top, get_task_multilayers(logfile)[workload]),
                 np.mean(t) / np.mean(droplet_avg),
             )
         )
+        append_file(droplet_cfg, droplet_log)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        "python print_record_info.py -m 'ansor' -a x86 -l 'results/cpu_matmul.json' -i 3"
+        "python print_record_info.py -m ansor -a x86 -l results/model.json -i 3"
     )
     parser.add_argument(
         "-m", "--method", type=str, required=True, help="Options: ansor, droplet"
     )
     parser.add_argument(
-        "-a", "--arch", type=str, required=True, help="Options: x86, aarch64, cuda"
+        "-a", "--arch", type=str, required=True, help="Options: x86, arm, cuda"
     )
     parser.add_argument("-l", "--logfile", type=str, required=True)
     parser.add_argument("-b", "--benchmark", type=str, required=True)
+    parser.add_argument("-i", "--index", type=int, default=-1)
     parser.add_argument("-t", "--trials", type=int, default=100)
+    parser.add_argument("-k", "--top", type=int, default=1000)
     args = parser.parse_args()
 
     method = args.method
     arch = args.arch
-    bench = args.benchmark
     logfile = args.logfile
+    bench = args.benchmark
+    index = args.index
     trials = args.trials
+    top = args.top
 
     if arch == "x86":
+        target_name = "llvm"
         target = tvm.target.Target("llvm")
         dev = tvm.cpu()
     elif arch == "cuda":
+        target_name = "cuda"
         target = tvm.target.Target("cuda")
         dev = tvm.cuda()
-    elif arch == "aarch64":
+    elif arch == "arm":
+        target_name = "llvm -mcpu=a64fx"
         target = tvm.target.Target("llvm -mcpu=a64fx")
         dev = tvm.cpu()
     else:
@@ -229,4 +246,4 @@ if __name__ == "__main__":
     if method == "ansor":
         generate_ansor_template(bench, logfile, target, trials)
     elif method == "droplet":
-        build_template_multilayers(bench, logfile, target, trials)
+        build_template(bench, logfile, index, target, trials, top)
