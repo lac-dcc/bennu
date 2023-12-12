@@ -1,5 +1,6 @@
 #!/bin/bash
 
+NAME="GTX1650"
 ARCH="cuda"
 
 BENCH=(
@@ -25,9 +26,9 @@ BENCH=(
     #vgg19
 )
 
-trials=10000
+trials=1000
 
 for ((i = 0; i < ${#BENCH[@]}; i++)); do
     echo "BENCH: "${BENCH[i]} 
-    python3 benchmarks/models_onnx.py -m ansor -a $ARCH -t $trials -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx
+    python3 benchmarks/models_onnx.py -m ansor -a $ARCH -t $trials -l results/$NAME"_"${BENCH[i]}_1k.json -b models/${BENCH[i]}.onnx
 done
