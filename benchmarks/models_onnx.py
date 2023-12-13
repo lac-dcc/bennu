@@ -31,6 +31,7 @@ def generate_ansor_template(bench, logfile, target, trials):
         parallel=os.cpu_count(),
         trials=trials,
         enable_autoscheduler=True,
+        verbose=0
     )
     end = time.time()
     print("time search:", end - start)
@@ -42,17 +43,15 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         mod=model.mod, params=model.params, target=target
     )
 
-    if "ansor" in logfile:
-        droplet_log = logfile.replace("ansor", "droplet")
-    else:
-        droplet_log = ".".join(logfile.split(".")[:-1]) + "_droplet.json"
+    droplet_log = ".".join(logfile.split(".")[:-1]) + "_droplet.json"
     clean_file(droplet_log)
 
     cfg = get_best_multilayers(logfile, top)
     cfg_10k = get_best_multilayers(logfile, 10000)
+    _, time_each_point_ansor = get_time_total(logfile)
 
     print(
-        "Layer, Time Droplet (s), Tuning time Droplet (s), tasks Droplet, Time Ansor (s), tasks Ansor, speedup"
+        f"Layer, Time Droplet (s), Tuning time Droplet (s), Tuning time Droplet+Ansor (s), tasks Droplet, Time Ansor top-{top} (s), Time Ansor 10k (s), tasks Ansor, speedup top-{top}, speedup 10k"
     )
 
     for layer, workload in enumerate(cfg):
@@ -65,21 +64,25 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         _, _, json_file = cfg[workload]
         t, _, _ = cfg_10k[workload]  # get the best value in 10k
         droplet = Droplet(json_file, workload, target, log, trials)
-        start = time.time()
         droplet.tune()
-        end = time.time()
-
+        
+        time_droplet, _ = get_time_total(log)
         droplet_avg, droplet_cfg = get_best_time(log)
+        top_avg, _, _ = cfg[workload]
+        task_ansor = get_task_multilayers(logfile)[workload]
 
         print(
-            "%d, %.8f, %.2f, %d, %.8f, %d, %.2f"
+            "%d, %.8f, %.2f, %.2f, %d, %.8f, %.8f, %d, %.2f"
             % (
                 layer,
                 np.mean(droplet_avg),
-                end - start,
+                time_droplet,
+                time_droplet + min(top, task_ansor) * time_each_point_ansor,
                 get_tasks(log),
+                np.mean(top_avg),
                 np.mean(t),
-                min(top, get_task_multilayers(logfile)[workload]),
+                min(top, task_ansor),
+                np.mean(top_avg) / np.mean(droplet_avg),
                 np.mean(t) / np.mean(droplet_avg),
             )
         )

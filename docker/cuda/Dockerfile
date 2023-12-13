@@ -24,8 +24,10 @@ RUN pip3 install transformers torch==1.13.1 onnx==1.15.0
 RUN cd $HOME && git clone -b v0.13.0 --recursive https://github.com/apache/tvm 
 RUN cd $HOME/tvm && mkdir -p build && \
     wget https://raw.githubusercontent.com/lac-dcc/DropletSearch/main/docker/cuda/config.cmake && \
+    wget https://raw.githubusercontent.com/lac-dcc/bennu/main/src/run_state.cc && \
+    wget https://raw.githubusercontent.com/lac-dcc/bennu/main/src/run_state.h && \
     mv config.cmake $HOME/tvm/build && \
-    mv *.py $HOME/tvm/python/tvm/autotvm/tuner/ && \ 
+    mv run_state.* $HOME/tvm/src/auto_scheduler/ && \ 
     cd build && cmake .. && make -j4 
 
 RUN echo "export PYTHONPATH=/root/tvm/python:/python:" >> ~/.bashrc

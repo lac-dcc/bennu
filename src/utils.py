@@ -145,7 +145,7 @@ def get_best_time(log):
 
 def get_time_total(log):
     import json
-    time_total = 0
+    time_total, count = 0, 0
     f = open(log, "r")
     for line in f.readlines():
         data = json.loads(line)
@@ -153,8 +153,9 @@ def get_time_total(log):
             time_total += data["r"][2]
         else:
             time_total += data["result"][2]
+        count += 1
     f.close()
-    return time_total
+    return time_total, time_total / count
 
 
 def get_best_multilayers(log, top=1000):
