@@ -10,7 +10,7 @@ else
     # Go to TVM project and compile it
     cd $TVM_HOME/build
     cmake ..
-    make -j16
+    make -j$(nproc)
     # Go back to the project
     cd -
 fi
