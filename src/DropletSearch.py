@@ -108,7 +108,7 @@ class Droplet:
     trying = 0
 
     # params
-    timeout = 15
+    timeout = 20
     number = 3
     repeat = 3
     min_repeat_ms = 100
@@ -150,6 +150,8 @@ class Droplet:
             self.task.workload_key, self.task.compute_dag.tensors
         )
 
+        #print(self.space)
+
     def has_next(self):
         return (
             self.count < min(self.trials, self.space.total_dims)
@@ -179,15 +181,19 @@ class Droplet:
 
     def search_space(self, factor=1):
         search_space = []
-        for i in range(2 ** len(self.space.dims) - 1, 0, -1):
+        for i in range(1, 2 ** len(self.space.dims) - 1):
+            if len(search_space) > 2 * self.batch:
+                break
             search_space += [self.num_to_bin(i, factor)] + [self.num_to_bin(i, -factor)]
         return search_space
 
     def speculation(self):
         # Gradient descending direction prediction and search space filling
         while len(self.next) < self.batch and self.execution < self.total_execution:
+            #print(self.execution)
             self.next += self.next_pos(self.search_space(self.execution))
             self.execution += 1
+            #print(self.execution)
 
     def combination_space(self, p1, p2):
         new_p = np.zeros(len(p1), dtype=int)
@@ -254,8 +260,10 @@ class Droplet:
         tune function:
         input: task
         """
+        #print("opa")
         self.speculation()
         while self.has_next():
+            #print(self.next)
             res = self.next_batch(self.batch)
             self.update(res)
 
