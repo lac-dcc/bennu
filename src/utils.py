@@ -143,6 +143,20 @@ def get_best_time(log):
     return best_avg, best_cfg
 
 
+def get_time_total(log):
+    import json
+    time_total = 0
+    f = open(log, "r")
+    for line in f.readlines():
+        data = json.loads(line)
+        if "r" in data:
+            time_total += data["r"][2]
+        else:
+            time_total += data["result"][2]
+    f.close()
+    return time_total
+
+
 def get_best_multilayers(log, top=1000):
     import json
 
