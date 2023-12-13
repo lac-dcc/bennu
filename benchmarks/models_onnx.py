@@ -51,7 +51,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
     _, time_each_point_ansor = get_time_total(logfile)
 
     print(
-        f"Layer, Time Droplet (s), Tuning time Droplet (s), Tuning time Droplet+Ansor (s), tasks Droplet, Time Ansor top-{top} (s), Time Ansor 10k (s), time Ansor search 10k (s), tasks Ansor, speedup top-{top}, speedup 10k, speed time 10k"
+        f"Layer, Time Droplet (s), Tuning time Droplet (s), Tuning time Droplet+Ansor (s), tasks Droplet, Time Ansor-{top} (s), tuning time Ansor-{top}, task Ansor-{top}, Time Ansor 10k (s), tuning time 10k (s), tasks Ansor, speedup top-{top}, speedup 10k, speed tuning time top-{top}, speed tuning time 10k"
     )
 
     for layer, workload in enumerate(cfg):
@@ -75,7 +75,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         time_ansor_droplet = time_droplet + min(top, task_ansor) * time_each_point_ansor
 
         print(
-            "%d, %.8f, %.2f, %.2f, %d, %.8f, %.8f, %d, %.2f, %.2f, %.2f"
+            "%d, %.8f, %.2f, %.2f, %d, %.8f, %.2f, %2d, %.8f, %.2f, %d, %.2f, %.2f, %.2f, %.2f"
             % (
                 layer,
                 np.mean(droplet_avg),
@@ -83,10 +83,14 @@ def build_template(bench, logfile, index, target, trials, top=1000):
                 time_ansor_droplet,
                 get_tasks(log),
                 np.mean(top_avg),
-                np.mean(t),
+                min(top, task_ansor) * time_each_point_ansor,
                 min(top, task_ansor),
+                np.mean(t),
+                time_ansor,
+                task_ansor,
                 np.mean(top_avg) / np.mean(droplet_avg),
                 np.mean(t) / np.mean(droplet_avg),
+                min(top, task_ansor) * time_each_point_ansor / time_ansor_droplet,
                 time_ansor / time_ansor_droplet,
             )
         )

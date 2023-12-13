@@ -149,9 +149,9 @@ def get_time_total(log):
     f = open(log, "r")
     for line in f.readlines():
         data = json.loads(line)
-        if "r" in data:
+        if "r" in data and data["r"][0] != 1e+10:
             time_total += data["r"][2]
-        else:
+        elif data["result"][0] != 1e+10:
             time_total += data["result"][2]
         count += 1
     f.close()
