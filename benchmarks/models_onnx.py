@@ -99,11 +99,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
 
 def run(logfile, bench, target, dev):
     model = tvmc.load(bench)
-
     package = tvmc.compile(model, target=target, tuning_records=logfile)
-
-    package = tvmc.compile(model, target=target)
-
     result = tvmc.run(package, device=dev)
     print(result)
 
