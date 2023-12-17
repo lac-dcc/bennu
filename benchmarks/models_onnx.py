@@ -31,7 +31,7 @@ def generate_ansor_template(bench, logfile, target, trials):
         parallel=os.cpu_count(),
         trials=trials,
         enable_autoscheduler=True,
-        verbose=0
+        # verbose=0
     )
     end = time.time()
     print("time search:", end - start)
