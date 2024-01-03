@@ -4,26 +4,26 @@ ARCH="x86"
 TRIALS=100
 
 BENCH=(
-    #alexnet
-    #densenet121
-    #densenet161
-    #densenet169
-    #densenet201
+    alexnet
+    densenet121
+    densenet161
+    densenet169
+    densenet201
     googlenet
-    #inception_v3
-    #mnasnet1_0
-    #mobilenet_v2
-    #resnet101
-    #resnet152
-    #resnet18
-    #resnet34
-    #resnet50
-    #shufflenet
-    #squeezenet
-    #vgg11
-    #vgg13
-    #vgg16
-    #vgg19
+    inception_v3
+    mnasnet1_0
+    mobilenet_v2
+    resnet101
+    resnet152
+    resnet18
+    resnet34
+    resnet50
+    shufflenet
+    squeezenet
+    vgg11
+    vgg13
+    vgg16
+    vgg19
 )
 
 SIZE=(
@@ -37,13 +37,13 @@ SIZE=(
     10000
 )
 
+mkdir -p results/perf_stats
+
 for ((i = 0; i < ${#BENCH[@]}; i++)); do
-    output=${BENCH[i]}"_cache.txt"
-    echo "BENCH: "${BENCH[i]}
-    echo "BENCH: ${BENCH[i]}" > $output
+    output="results/perf_stats/"${BENCH[i]}"_cache.csv"
+    echo ${BENCH[i]} > $output # clean the output
     for ((j = 0; j < ${#SIZE[@]}; j++)); do
-        echo "SIZE: "${SIZE[j]}
-        echo "SIZE: "${SIZE[j]} >> $output
+        echo "TOP ${SIZE[j]}" >> $output
         python3 benchmarks/models_onnx_cache.py -m droplet -a $ARCH -t $TRIALS -k ${SIZE[j]} -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx >> $output
     done
 done

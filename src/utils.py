@@ -142,6 +142,20 @@ def get_best_time(log):
 
     return best_avg, best_cfg
 
+def get_first_time(log):
+    import json
+
+    f = open(log, "r")
+    for line in f.readlines():
+        data = json.loads(line)
+        if "r" in data:
+            r = data["r"][0]
+        else:
+            r = data["result"][0]
+        f.close()
+        return r, data
+    f.close()
+
 
 def get_time_total(log):
     import json
