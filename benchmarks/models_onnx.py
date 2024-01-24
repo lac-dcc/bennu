@@ -1,13 +1,9 @@
 import tvm, argparse, os, sys, json, time
-from tvm import auto_scheduler
 from tvm.driver import tvmc
 from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
-from tvm.auto_scheduler import MeasureInput, MeasureResult
-
-from tvm.auto_scheduler.search_task import SearchTask
-
-import tvm._ffi
-from tvm.auto_scheduler import _ffi_api
+#from tvm.auto_scheduler.task_scheduler import opt_model
+from scipy import stats
+from decimal import Decimal
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -27,12 +23,13 @@ def generate_ansor_template(bench, logfile, target, trials):
         target=target,
         tuning_records=logfile,
         repeat=3,
-        timeout=20 if target != "cuda" else 10,
+        timeout=100 if target != "cuda" else 10,
         parallel=os.cpu_count(),
         trials=trials,
         enable_autoscheduler=True,
         # verbose=0
     )
+    #opt_model(logfile, target)
     end = time.time()
     print("time search:", end - start)
 
@@ -51,7 +48,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
     _, time_each_point_ansor = get_time_total(logfile)
 
     print(
-        f"Layer, Time Droplet (s), Tuning time Droplet (s), Tuning time Droplet+Ansor (s), tasks Droplet, Time Ansor-{top} (s), tuning time Ansor-{top}, task Ansor-{top}, Time Ansor 10k (s), tuning time 10k (s), tasks Ansor, speedup top-{top}, speedup 10k, speed tuning time top-{top}, speed tuning time 10k"
+        f"Layer, Time Droplet (s), std droplet (s), Tuning time Droplet (s), Tuning time Droplet+Ansor (s), tasks Droplet, Time Ansor-{top} (s), std Ansor-{top}, tuning time Ansor-{top}, task Ansor-{top}, Time Ansor 10k (s), std Ansor 10k, tuning time 10k (s), tasks Ansor, speedup top-{top}, speedup 10k, speed tuning time top-{top}, speed tuning time 10k, p-value"
     )
 
     for layer, workload in enumerate(cfg):
@@ -73,25 +70,30 @@ def build_template(bench, logfile, index, target, trials, top=1000):
 
         time_ansor = task_ansor * time_each_point_ansor
         time_ansor_droplet = time_droplet + min(top, task_ansor) * time_each_point_ansor
+        pvalue = stats.ttest_ind(np.array(time_droplet), np.array(t)).pvalue
 
         print(
-            "%d, %.8f, %.2f, %.2f, %d, %.8f, %.2f, %2d, %.8f, %.2f, %d, %.2f, %.2f, %.2f, %.2f"
+            "%d, %.8f, %.8f, %.2f, %.2f, %d, %.8f, %.8f, %.2f, %2d, %.8f, %.8f, %.2f, %d, %.2f, %.2f, %.2f, %.2f, %.2E"
             % (
                 layer,
                 np.mean(droplet_avg),
+                np.std(droplet_avg),
                 time_droplet,
                 time_ansor_droplet,
                 get_tasks(log),
                 np.mean(top_avg),
+                np.std(top_avg),
                 min(top, task_ansor) * time_each_point_ansor,
                 min(top, task_ansor),
                 np.mean(t),
+                np.std(t),
                 time_ansor,
                 task_ansor,
                 np.mean(top_avg) / np.mean(droplet_avg),
                 np.mean(t) / np.mean(droplet_avg),
                 min(top, task_ansor) * time_each_point_ansor / time_ansor_droplet,
                 time_ansor / time_ansor_droplet,
+                pvalue
             )
         )
         append_file(droplet_cfg, droplet_log)
