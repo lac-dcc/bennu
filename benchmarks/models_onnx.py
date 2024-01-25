@@ -12,6 +12,9 @@ from src.DropletSearch import Droplet
 
 num_threads = os.cpu_count()
 os.environ["TVM_NUM_THREADS"] = str(num_threads)
+os.environ["MKL_NUM_THREADS"] = str(num_threads*2//3)
+os.environ["NUMEXPR_NUM_THREADS"] = str(num_threads*2//3)
+os.environ["OMP_NUM_THREADS"] = str(num_threads*2//3)
 
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)
@@ -72,7 +75,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         pvalue = stats.ttest_ind(np.array(droplet_avg), np.array(t)).pvalue
 
         print(
-            "%d, %.8f, %.8f, %.2f, %.2f, %d, %.8f, %.8f, %.2f, %2d, %.8f, %.8f, %.2f, %d, %.2f, %.2f, %.2f, %.2f, %.4f"
+            "%d, %.8f, %.8f, %.2f, %.2f, %d, %.8f, %.8f, %.2f, %2d, %.8f, %.8f, %.2f, %d, %.2f, %.2f, %.2f, %.2f, %.8f"
             % (
                 layer,
                 np.mean(droplet_avg),
