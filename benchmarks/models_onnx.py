@@ -3,7 +3,6 @@ from tvm.driver import tvmc
 from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
 #from tvm.auto_scheduler.task_scheduler import opt_model
 from scipy import stats
-from decimal import Decimal
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
