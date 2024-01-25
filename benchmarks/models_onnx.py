@@ -3,7 +3,6 @@ from tvm.driver import tvmc
 from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
 #from tvm.auto_scheduler.task_scheduler import opt_model
 from scipy import stats
-from decimal import Decimal
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -70,10 +69,10 @@ def build_template(bench, logfile, index, target, trials, top=1000):
 
         time_ansor = task_ansor * time_each_point_ansor
         time_ansor_droplet = time_droplet + min(top, task_ansor) * time_each_point_ansor
-        pvalue = stats.ttest_ind(np.array(time_droplet), np.array(t)).pvalue
+        pvalue = stats.ttest_ind(np.array(droplet_avg), np.array(t)).pvalue
 
         print(
-            "%d, %.8f, %.8f, %.2f, %.2f, %d, %.8f, %.8f, %.2f, %2d, %.8f, %.8f, %.2f, %d, %.2f, %.2f, %.2f, %.2f, %.2E"
+            "%d, %.8f, %.8f, %.2f, %.2f, %d, %.8f, %.8f, %.2f, %2d, %.8f, %.8f, %.2f, %d, %.2f, %.2f, %.2f, %.2f, %.4f"
             % (
                 layer,
                 np.mean(droplet_avg),
