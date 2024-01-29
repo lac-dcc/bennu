@@ -2,9 +2,9 @@ import tvm, sys, os, json, threading
 from tvm import autotvm, auto_scheduler
 from copy import deepcopy
 import tvm._ffi
-from tvm.auto_scheduler import MeasureInput, MeasureResult, _ffi_api
+from tvm.auto_scheduler import MeasureInput, _ffi_api
 from tvm.auto_scheduler.search_task import SearchTask
-from tvm.auto_scheduler.measure import local_builder_build
+from tvm.auto_scheduler.measure import local_builder_build, local_run
 from tvm.auto_scheduler.workload_registry import (
     workload_key_to_tensors,
     register_workload_tensors,
@@ -150,7 +150,7 @@ class Droplet:
             self.task.workload_key, self.task.compute_dag.tensors
         )
 
-        #print(self.space)
+        # print(self.space)
 
     def has_next(self):
         return (
@@ -190,10 +190,10 @@ class Droplet:
     def speculation(self):
         # Gradient descending direction prediction and search space filling
         while len(self.next) < self.batch and self.execution < self.total_execution:
-            #print(self.execution)
+            # print(self.execution)
             self.next += self.next_pos(self.search_space(self.execution))
             self.execution += 1
-            #print(self.execution)
+            # print(self.execution)
 
     def combination_space(self, p1, p2):
         new_p = np.zeros(len(p1), dtype=int)
@@ -260,33 +260,23 @@ class Droplet:
         tune function:
         input: task
         """
-        #print("opa")
+        # print("opa")
         self.speculation()
         while self.has_next():
-            #print(self.next)
+            # print(self.next)
             res = self.next_batch(self.batch)
             self.update(res)
 
     def run(self, log):
-        inputs, _ = auto_scheduler.RecordReader(log).read_lines()
-        results = np.zeros((len(inputs), self.repeat), dtype=float)
-        for i in range(len(inputs)):
-            state = self.task.compute_dag.infer_bound_from_state(inputs[i].state)
+        readlines, _ = auto_scheduler.RecordReader(log).read_lines()
+        results = []
+        for i in range(len(readlines)):
+            state = self.task.compute_dag.infer_bound_from_state(readlines[i].state)
             inp = [MeasureInput(self.task, state)]
 
-            res = _ffi_api.Run(
-                self.task,
-                state.state_object,
-                self.timeout,
-                self.number,
-                self.repeat,
-                self.min_repeat_ms,
-                self.cooldown_interval,
-                self.enable_cpu_cache_flush,
-                self.device,
-                self.n_parallel,
-                self.build_func,
-            )
+            build_res = local_builder_build(inp, 20, os.cpu_count(), "default", 0)
+            res = local_run(inp, build_res, 20, 3, 3, 0, 0, False, 0, 0)
+
             _ffi_api.SaveRecords(self.final_log, inp, res)
-            results[i] = [v.value for v in res[0].costs]
+            results.append([v.value for v in res[0].costs])
         return results

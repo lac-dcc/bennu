@@ -18,14 +18,13 @@ RUN apt-get install -y gcc g++ graphviz vim python3 python3-pip python3-dev auto
 
 RUN pip3 install numpy==1.24.4 decorator scipy pytest psutil typing_extensions tornado cloudpickle \ 
     'xgboost>=1.1.0' synr mxnet 
-RUN pip3 install transformers==3.0 torch==1.13.1 onnx==1.15.0
+RUN pip3 install transformers torch==1.13.1 onnx==1.15.0
 
 ########################################### INSTALL TVM #################################################
 RUN cd $HOME && git clone -b v0.13.0 --recursive https://github.com/apache/tvm 
 RUN cd $HOME/tvm && mkdir -p build && \
     wget https://raw.githubusercontent.com/lac-dcc/DropletSearch/main/docker/cuda/config.cmake && \
     mv config.cmake $HOME/tvm/build && \
-    mv *.py $HOME/tvm/python/tvm/autotvm/tuner/ && \ 
     cd build && cmake .. && make -j4 
 
 RUN echo "export PYTHONPATH=/root/tvm/python:/python:" >> ~/.bashrc
