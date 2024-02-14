@@ -1,8 +1,14 @@
-import tvm, argparse, os, sys, json, time
+import tvm, argparse, os, sys, time, onnx
+from scipy import stats
 from tvm.driver import tvmc
 from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
-#from tvm.auto_scheduler.task_scheduler import opt_model
-from scipy import stats
+
+# from tvm.auto_scheduler.task_scheduler import droplet_exploitation
+
+# meta schedule
+from tvm import meta_schedule as ms
+from tvm.relay.frontend import from_onnx
+from tvm.meta_schedule.runner.config import EvaluatorConfig
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -12,9 +18,10 @@ from src.DropletSearch import Droplet
 
 num_threads = os.cpu_count()
 os.environ["TVM_NUM_THREADS"] = str(num_threads)
-os.environ["MKL_NUM_THREADS"] = str(num_threads*2//3)
-os.environ["NUMEXPR_NUM_THREADS"] = str(num_threads*2//3)
-os.environ["OMP_NUM_THREADS"] = str(num_threads*2//3)
+os.environ["MKL_NUM_THREADS"] = str(num_threads * 2 // 3)
+os.environ["NUMEXPR_NUM_THREADS"] = str(num_threads * 2 // 3)
+os.environ["OMP_NUM_THREADS"] = str(num_threads * 2 // 3)
+
 
 def generate_ansor_template(bench, logfile, target, trials):
     model = tvmc.load(bench)
@@ -31,9 +38,45 @@ def generate_ansor_template(bench, logfile, target, trials):
         enable_autoscheduler=True,
         # verbose=0
     )
-    #opt_model(logfile, target)
+    # droplet_exploitation(logfile, target)
     end = time.time()
     print("time search:", end - start)
+
+
+def generate_meta_template(bench, logfile, target, trials):
+    target = target + " -num-cores 8" # Think to get this value automatically
+    mod, params = from_onnx(onnx.load(bench))
+
+    with ms.Profiler() as profiler:
+        database = ms.relay_integration.tune_relay(
+            mod=mod,
+            target=target,
+            params=params,
+            work_dir=logfile,
+            max_trials_global=trials,
+            num_trials_per_iter=64,
+            runner=ms.runner.LocalRunner(
+                evaluator_config=EvaluatorConfig(
+                    number=3,
+                    repeat=3,
+                    min_repeat_ms=100,
+                    enable_cpu_cache_flush=False,
+                )
+            ),
+            cost_model=ms.cost_model.XGBModel(  # type: ignore
+                extractor=ms.feature_extractor.PerStoreFeature(),
+                adaptive_training=False,
+            ),
+            strategy=ms.search_strategy.EvolutionarySearch(),
+        )
+        lib = ms.relay_integration.compile_relay(
+            database=database,
+            mod=mod,
+            target=target,
+            params=params,
+        )
+    print("Tuning Time:")
+    print(profiler.table())
 
 
 def build_template(bench, logfile, index, target, trials, top=1000):
@@ -64,7 +107,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         t, _, _ = cfg_10k[workload]  # get the best value in 10k
         droplet = Droplet(json_file, workload, target, log, trials)
         droplet.tune()
-        
+
         time_droplet, _ = get_time_total(log)
         droplet_avg, droplet_cfg = get_best_time(log)
         top_avg, _, _ = cfg[workload]
@@ -95,7 +138,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
                 np.mean(t) / np.mean(droplet_avg),
                 min(top, task_ansor) * time_each_point_ansor / time_ansor_droplet,
                 time_ansor / time_ansor_droplet,
-                pvalue
+                pvalue,
             )
         )
         append_file(droplet_cfg, droplet_log)
@@ -153,5 +196,7 @@ if __name__ == "__main__":
         generate_ansor_template(bench, logfile, target_name, trials)
     elif method == "droplet":
         build_template(bench, logfile, index, target, trials, top)
+    elif method == "meta":
+        generate_meta_template(bench, logfile, target_name, trials)
     elif method == "run":
         run(logfile, target, dev)
