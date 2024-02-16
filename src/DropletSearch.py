@@ -1,8 +1,8 @@
 """ Droplet algorithm """
 
 import sys, os, logging
-#from tvm.auto_scheduler.space import Space
 from tvm.auto_scheduler.search_task import SearchTask
+#from tvm.auto_scheduler.space import Space
 #from tvm.autotvm.tuner.droplet_tuner import DropletTuner
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -33,7 +33,6 @@ class GridSearch():
         self.begin_idx, self.end_idx = 0, self.space.total_dims
         self.range_length = self.end_idx - self.begin_idx
         self.visited_max = self.range_length
-        print(self.space.dims)
 
     def has_next(self):
         return len(self.visited) < self.visited_max and self.count < self.trials
@@ -41,7 +40,6 @@ class GridSearch():
     def next_batch(self, batch_size):
         i, json_file_list = 0, []
         while i < batch_size and self.has_next():
-            print(self.index)
             self.visited.add(self.index)
             self.index += 1
             json_file_list.append(self.space.apply_opt(self.space.point2knob(self.index)))
