@@ -1,9 +1,9 @@
 """ Droplet algorithm """
 
-import sys, os
+import sys, os, logging
 #from tvm.auto_scheduler.space import Space
 from tvm.auto_scheduler.search_task import SearchTask
-from tvm.autotvm.tuner.droplet_tuner import DropletTuner
+#from tvm.autotvm.tuner.droplet_tuner import DropletTuner
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -12,7 +12,9 @@ import os
 from src.utils import *
 from src.space import Space
 
-class Droplet(DropletTuner):
+LOGGER = logging.getLogger("autotvm")
+
+class Droplet():
     """Tuner with droplet algorithm in Ansor.
 
     Parameters
@@ -32,7 +34,7 @@ class Droplet(DropletTuner):
     def __init__(self, json_file, target, log, pvalue=0.05) -> None:
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
-        super(DropletTuner, self).__init__(self.task)
+        #super(DropletTuner, self).__init__(self.task)
         self.space = Space(json_file, self.task)
         self.final_log = write_file([json_file], log)
         self.log, self.pvalue = write_file([json_file]), pvalue
@@ -67,3 +69,76 @@ class Droplet(DropletTuner):
         while self.has_next():
             ins, res = self.next_batch(self.batch)
             self.update(ins, res)
+    
+    def num_to_bin(self, value, factor=1):
+        bin_format = str(0) * (len(self.dims) - len(bin(value)[2:])) + bin(value)[2:]
+        return [int(i) * factor for i in bin_format]
+
+    def search_space(self, factor=1):
+        search_space = []
+        for i in range(1, 2 ** len(self.space.dims) - 1):
+            if len(search_space) > 2 * self.batch:
+                break
+            search_space += [self.num_to_bin(i, factor)] + [self.num_to_bin(i, -factor)]
+        return search_space
+
+    def next_pos(self, new_positions):
+        "returns the neighbors of the best solution"
+        next_set = []
+        for p in new_positions:
+            if len(next_set) > self.batch:
+                break
+            new_p = [
+                (x + y) % self.dims[i] if (x + y > 0) else 0
+                for i, (x, y) in enumerate(zip(p, self.best_choice[1]))
+            ]
+            idx_p = self.space.knob2point(new_p)
+            if idx_p not in self.visited:
+                self.visited.add(idx_p)
+                next_set.append((idx_p, new_p))
+        return next_set
+
+    def p_value(self, elem_1, elem_2):
+        if len(elem_1) <= 1 or len(elem_2) <= 1:
+            return True
+        from scipy import stats  # pylint: disable=import-outside-toplevel
+
+        return stats.ttest_ind(np.array(elem_1), np.array(elem_2)).pvalue <= self.pvalue
+
+    def speculation(self):
+        # Gradient descending direction prediction and search space filling
+        while len(self.next) < self.batch and self.execution < self.total_execution:
+            self.execution += self.step
+            self.next += self.next_pos(self.search_space(self.execution))
+
+    def update(self, inputs, results):
+        self.found_best_pos, count_valids = False, 0
+        for i, (_, res) in enumerate(zip(inputs, results)):
+            try:
+                if np.mean(self.best_choice[2]) > np.mean(res.costs) and self.p_value(
+                    self.best_choice[2], res.costs
+                ):
+                    self.best_choice = (self.next[i][0], self.next[i][1], res.costs)
+                    self.found_best_pos = True
+                count_valids += 1
+            except TypeError:
+                LOGGER.debug("Solution is not valid")
+                continue
+            else:
+                continue
+
+        self.next = self.next[self.batch : -1]
+        if self.found_best_pos:
+            self.next += self.next_pos(self.search_space())
+            self.execution = 1
+        self.speculation()
+        # stop, because all neighborhoods are invalid.
+        if count_valids == 0 and self.iter > 3:
+            self.next = []
+            LOGGER.warning(
+                f"Warning: early termination due to an all-invalid neighborhood \
+                after {self.iter} iterations"
+            )
+
+    def has_next(self):
+        return len(self.next) > 0

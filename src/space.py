@@ -141,3 +141,11 @@ class Space:
             value += arr[i] * self.dims[i]
         value += arr[-1]
         return value
+
+    def point2knob(self, point):
+        """Convert point form (single integer) to knob (vector)"""
+        knob = []
+        for dim in self.dims:
+            knob.append(point % dim)
+            point //= dim
+        return knob
