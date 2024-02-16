@@ -4,13 +4,6 @@ import tvm, json, os, time
 import tvm.contrib.graph_executor as runtime
 
 
-def write_file(json_file, log="/tmp/file.json") -> str:
-    with open(log, "w", encoding="utf-8") as outfile:
-        outfile.write(json.dumps(json_file))
-        outfile.write("\n")
-    return log
-
-
 def append_file(json_file, log="/tmp/file.json") -> str:
     with open(log, "a", encoding="utf-8") as outfile:
         outfile.write(json.dumps(json_file))
@@ -24,6 +17,54 @@ def create_file(json_list: list, log="/tmp/file.json") -> str:
             outfile.write(json.dumps(j))
             outfile.write("\n")
     return log
+
+
+def write_file(json_list, log="/tmp/file.json", mode="w"):
+    """Write the log file
+
+    Parameters
+    ----------
+    json_list: list
+        The list input json
+    log: Optional[str]
+        Path destiny to save the log file
+    mode: Optional[str]
+        Mode save, "a" means append and "w" means write
+
+    Returns
+    -------
+    ret: str
+        log path file
+    """
+    with open(log, mode, encoding="utf-8") as outfile:
+        for j in json_list:
+            outfile.write(json.dumps(j) + "\n")
+    return log
+
+
+def get_time(log):
+    """Colect the time from log file
+
+    Parameters
+    ----------
+    log: str
+        The input log path with the Ansor parameter
+
+    Returns
+    -------
+    ret: Union[float, float, dict]
+        Returns the best time, total time, and data
+    """
+    time_total, best_time, best_cfg = 0, 1e10, {}
+    with open(log, "r", encoding="utf-8") as log_file:
+        for line in log_file.readlines():
+            data = json.loads(line)
+            if "r" in data:
+                res = data["r"][0]
+                time_total += data["r"][2]
+                if np.mean(res) < np.mean(best_time):
+                    best_time, best_cfg = res, data
+    return best_time, time_total, best_cfg
 
 
 def clean_file(filename):
@@ -142,6 +183,7 @@ def get_best_time(log):
 
     return best_avg, best_cfg
 
+
 def get_first_time(log):
     import json
 
@@ -159,13 +201,14 @@ def get_first_time(log):
 
 def get_time_total(log):
     import json
+
     time_total, count = 0, 0
     f = open(log, "r")
     for line in f.readlines():
         data = json.loads(line)
-        if "r" in data and data["r"][0] != 1e+10:
+        if "r" in data and data["r"][0] != 1e10:
             time_total += data["r"][2]
-        elif data["result"][0] != 1e+10:
+        elif data["result"][0] != 1e10:
             time_total += data["result"][2]
         count += 1
     f.close()
@@ -198,12 +241,14 @@ def get_best_multilayers(log, top=1000):
     f.close()
     return hash_map
 
+
 def get_hash(value):
-    return value.split(",")[0].replace("[\"","").replace("\"","")
+    return value.split(",")[0].replace('["', "").replace('"', "")
 
 
 def reuse_cache():
     pass
+
 
 def get_best_multilayers_cache(log, top=1000):
     import json
@@ -211,7 +256,7 @@ def get_best_multilayers_cache(log, top=1000):
     hash_map = dict()
     name_list = []
     count = dict()
-    
+
     f = open(log, "r")
     for line in f.readlines():
         data = json.loads(line)
@@ -245,6 +290,7 @@ def get_best_multilayers_cache(log, top=1000):
 
     f.close()
     return hash_map
+
 
 def get_task_multilayers(log):
     import json

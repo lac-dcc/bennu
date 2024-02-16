@@ -64,9 +64,9 @@ def build_template(bench, logfile, index, target, trials, top=1000):
 
         t_droplet, _, json_file = cfg[workload]
         t, _, _ = cfg_10k[workload]  # get the best value in 10k
-        droplet = Droplet(json_file, workload, target, log, trials)
+        droplet = Droplet(json_file, target, log, trials)
         droplet.tune()
-        
+
         time_droplet, _ = get_time_total(log)
         droplet_avg, droplet_cfg = get_best_time(log)
         top_avg, _, _ = cfg[workload]
@@ -77,7 +77,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
         if np.mean(t_droplet) == 10000:
             new_top = 0
             top_avg, _ = get_first_time(log)
-        
+
         time_ansor = task_ansor * time_each_point_ansor
         time_ansor_droplet = time_droplet + min(top, new_top) * time_each_point_ansor
 

@@ -105,7 +105,7 @@ def build_template(bench, logfile, index, target, trials, top=1000):
 
         _, _, json_file = cfg[workload]
         t, _, _ = cfg_10k[workload]  # get the best value in 10k
-        droplet = Droplet(json_file, workload, target, log, trials)
+        droplet = Droplet(json_file, target, log)
         droplet.tune()
 
         time_droplet, _ = get_time_total(log)
