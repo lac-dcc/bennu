@@ -15,6 +15,7 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 from src.utils import *
 from src.DropletSearch import Droplet
+from src.GridSearch import GridSearch
 
 num_threads = os.cpu_count()
 os.environ["TVM_NUM_THREADS"] = str(num_threads)
@@ -44,7 +45,7 @@ def generate_ansor_template(bench, logfile, target, trials):
 
 
 def generate_meta_template(bench, logfile, target, trials):
-    target = target + " -num-cores 8" # Think to get this value automatically
+    target = target + " -num-cores 8"  # Think to get this value automatically
     mod, params = from_onnx(onnx.load(bench))
 
     with ms.Profiler() as profiler:
@@ -79,14 +80,14 @@ def generate_meta_template(bench, logfile, target, trials):
     print(profiler.table())
 
 
-def build_template(bench, logfile, index, target, trials, top=1000):
+def build_template(bench, logfile, index, target, trials, top=1000, method="droplet"):
     model = tvmc.load(bench)
     tasks, weights = autoscheduler_get_tuning_tasks(
         mod=model.mod, params=model.params, target=target
     )
 
-    droplet_log = ".".join(logfile.split(".")[:-1]) + "_droplet.json"
-    clean_file(droplet_log)
+    m_log = ".".join(logfile.split(".")[:-1]) + "_droplet.json"
+    clean_file(m_log)
 
     cfg = get_best_multilayers(logfile, top)
     cfg_10k = get_best_multilayers(logfile, 10000)
@@ -105,26 +106,32 @@ def build_template(bench, logfile, index, target, trials, top=1000):
 
         _, _, json_file = cfg[workload]
         t, _, _ = cfg_10k[workload]  # get the best value in 10k
-        droplet = Droplet(json_file, target, log)
-        droplet.tune()
+        if method == "droplet":
+            m = Droplet(json_file, target, log)
+        elif method == "grid":
+            m = GridSearch(json_file, target, log)
+        else:
+            raise (f"Method {method} is not implemeted yet")
 
-        time_droplet, _ = get_time_total(log)
-        droplet_avg, droplet_cfg = get_best_time(log)
+        m.tune(n_trial=trials)
+
+        time_m, _ = get_time_total(log)
+        m_avg, m_cfg = get_best_time(log)
         top_avg, _, _ = cfg[workload]
         task_ansor = get_task_multilayers(logfile)[workload]
 
         time_ansor = task_ansor * time_each_point_ansor
-        time_ansor_droplet = time_droplet + min(top, task_ansor) * time_each_point_ansor
-        pvalue = stats.ttest_ind(np.array(droplet_avg), np.array(t)).pvalue
+        time_ansor_m = time_m + min(top, task_ansor) * time_each_point_ansor
+        pvalue = stats.ttest_ind(np.array(m_avg), np.array(t)).pvalue
 
         print(
             "%d, %.8f, %.8f, %.2f, %.2f, %d, %.8f, %.8f, %.2f, %2d, %.8f, %.8f, %.2f, %d, %.2f, %.2f, %.2f, %.2f, %.8f"
             % (
                 layer,
-                np.mean(droplet_avg),
-                np.std(droplet_avg),
-                time_droplet,
-                time_ansor_droplet,
+                np.mean(m_avg),
+                np.std(m_avg),
+                time_m,
+                time_ansor_m,
                 get_tasks(log),
                 np.mean(top_avg),
                 np.std(top_avg),
@@ -134,14 +141,14 @@ def build_template(bench, logfile, index, target, trials, top=1000):
                 np.std(t),
                 time_ansor,
                 task_ansor,
-                np.mean(top_avg) / np.mean(droplet_avg),
-                np.mean(t) / np.mean(droplet_avg),
-                min(top, task_ansor) * time_each_point_ansor / time_ansor_droplet,
-                time_ansor / time_ansor_droplet,
+                np.mean(top_avg) / np.mean(m_avg),
+                np.mean(t) / np.mean(m_avg),
+                min(top, task_ansor) * time_each_point_ansor / time_ansor_m,
+                time_ansor / time_ansor_m,
                 pvalue,
             )
         )
-        append_file(droplet_cfg, droplet_log)
+        append_file(m_cfg, m_log)
 
 
 def run(logfile, bench, target, dev):
@@ -156,7 +163,7 @@ if __name__ == "__main__":
         "python print_record_info.py -m ansor -a x86 -l results/model.json -i 3"
     )
     parser.add_argument(
-        "-m", "--method", type=str, required=True, help="Options: ansor, droplet"
+        "-m", "--method", type=str, required=True, help="Options: ansor, droplet, grid"
     )
     parser.add_argument(
         "-a", "--arch", type=str, required=True, help="Options: x86, arm, cuda"
@@ -194,8 +201,8 @@ if __name__ == "__main__":
 
     if method == "ansor":
         generate_ansor_template(bench, logfile, target_name, trials)
-    elif method == "droplet":
-        build_template(bench, logfile, index, target, trials, top)
+    elif method in ["droplet", "grid"]:
+        build_template(bench, logfile, index, target, trials, top, method)
     elif method == "meta":
         generate_meta_template(bench, logfile, target_name, trials)
     elif method == "run":

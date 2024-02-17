@@ -51,13 +51,16 @@ class Space:
             if opt[idx_sp] == "SP" and opt[idx_size] != 1:
                 for j in range(len(opt[idx_tile])):
                     self.config_space[f"{opt[idx_sp]}_{i}_{j}"] = self.add_space(
-                        sp_space, [opt[idx_tile][j]] if ansor_value else [1], opt[idx_size]
+                        sp_space,
+                        [opt[idx_tile][j]] if ansor_value else [1],
+                        opt[idx_size],
                     )
             elif opt[idx_sp] == "PR":
                 start_value = int(opt[idx_size].split("$")[-1])
                 if start_value != 0:
                     self.config_space[f"{opt[idx_sp]}_{i}"] = [
-                        f"auto_unroll_max_step${v}" for v in self.add_space(pr_space, [start_value])
+                        f"auto_unroll_max_step${v}"
+                        for v in self.add_space(pr_space, [start_value])
                     ]
         self.dims = []
         for key in self.config_space:
@@ -76,12 +79,16 @@ class Space:
             if opt[idx_sp] == "SP" and opt[idx_size] != 1:
                 new_value = []
                 for j in range(len(opt[idx_tile])):
-                    new_value.append(self.get_value(f"{opt[idx_sp]}_{i}_{j}", vals[index]))
+                    new_value.append(
+                        self.get_value(f"{opt[idx_sp]}_{i}_{j}", vals[index])
+                    )
                     index += 1
                 config[i][idx_tile] = new_value
             elif opt[idx_sp] == "PR":
                 if opt[idx_size] != "auto_unroll_max_step$0":
-                    config[i][idx_size] = self.get_value(f"{opt[idx_sp]}_{i}", vals[index])
+                    config[i][idx_size] = self.get_value(
+                        f"{opt[idx_sp]}_{i}", vals[index]
+                    )
                     index += 1
         return self.cfg
 
@@ -104,7 +111,9 @@ class Space:
         for i in range(len(readlines)):
             state = self.task.compute_dag.infer_bound_from_state(readlines[i].state)
             inp = [tvm.auto_scheduler.MeasureInput(self.task, state)]
-            build_res = local_builder_build(inp, timeout, os.cpu_count(), "default", verbose)
+            build_res = local_builder_build(
+                inp, timeout, os.cpu_count(), "default", verbose
+            )
             res = local_run(
                 inp,
                 build_res,

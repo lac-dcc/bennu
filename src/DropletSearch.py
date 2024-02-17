@@ -2,8 +2,9 @@
 
 import sys, os, logging
 from tvm.auto_scheduler.search_task import SearchTask
-#from tvm.auto_scheduler.space import Space
-#from tvm.autotvm.tuner.droplet_tuner import DropletTuner
+
+# from tvm.auto_scheduler.space import Space
+# from tvm.autotvm.tuner.droplet_tuner import DropletTuner
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
@@ -14,7 +15,8 @@ from src.space import Space
 
 LOGGER = logging.getLogger("autotvm")
 
-class Droplet():
+
+class Droplet:
     """Tuner with droplet algorithm in Ansor.
 
     Parameters
@@ -34,7 +36,7 @@ class Droplet():
     def __init__(self, json_file, target, log, pvalue=0.05) -> None:
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
-        #super(DropletTuner, self).__init__(self.task)
+        # super(DropletTuner, self).__init__(self.task)
         self.space = Space(json_file, self.task)
         self.final_log = write_file([json_file], log)
         self.log, self.pvalue = write_file([json_file]), pvalue
@@ -62,14 +64,19 @@ class Droplet():
         return len(self.next) > 0 and self.found_best_pos
 
     def tune(
-        self, n_trial=100, measure_option=None, early_stopping=None, callbacks=(), si_prefix="G"
+        self,
+        n_trial=100,
+        measure_option=None,
+        early_stopping=None,
+        callbacks=(),
+        si_prefix="G",
     ):
         self.trials = n_trial
         self.speculation()
         while self.has_next():
             ins, res = self.next_batch(self.batch)
             self.update(ins, res)
-    
+
     def num_to_bin(self, value, factor=1):
         bin_format = str(0) * (len(self.dims) - len(bin(value)[2:])) + bin(value)[2:]
         return [int(i) * factor for i in bin_format]

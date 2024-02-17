@@ -45,7 +45,7 @@ def generate_ansor_template(bench, logfile, target, trials):
 
 
 def generate_meta_template(bench, logfile, target, trials):
-    target = target + " -num-cores 8" # Think to get this value automatically
+    target = target + " -num-cores 8"  # Think to get this value automatically
     mod, params = from_onnx(onnx.load(bench))
 
     with ms.Profiler() as profiler:
@@ -93,7 +93,9 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
     cfg_10k = get_best_multilayers(logfile, 10000)
     _, time_each_point_ansor = get_time_total(logfile)
 
-    print(f"layer, droplet-{top} exec, droplet-{top}, {method}-{top} exec, {method}-{top}, exec speedup, tuning speedup")
+    print(
+        f"layer, droplet-{top} exec, droplet-{top} tuning, droplet-{top} trials, {method}-{top} exec, {method}-{top} tuning, {method}-{top} trials, exec speedup, tuning speedup"
+    )
 
     for layer, workload in enumerate(cfg):
         if index != -1 and layer != index:
@@ -109,31 +111,38 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
         elif method == "grid":
             m = GridSearch(json_file, target, log)
         else:
-            raise(f"Method {method} is not implemeted yet")    
-        m.tune(n_trial=trials)
+            raise (f"Method {method} is not implemeted yet")
 
-        m_time, _ = get_time_total(log)
+        start = time.time()
+        m.tune(n_trial=trials)
+        m_time = time.time() - start
+
+        _, m_trials = get_time_total(log)
         m_avg, _ = get_best_time(log)
 
         droplet_log = f"droplet_layer_{layer}.log"
         clean_file(droplet_log)
 
         droplet = Droplet(json_file, target, droplet_log)
+        start = time.time()
         droplet.tune(n_trial=trials)
+        time_droplet = time.time() - start
 
-        time_droplet, _ = get_time_total(droplet_log)
+        _, trials_droplet = get_time_total(droplet_log)
         avg_droplet, _ = get_best_time(droplet_log)
 
         print(
-            "%d, %.8f, %.2f, %.8f, %.2f, %.2f, %.2f" 
+            "%d, %.8f, %.2f, %d, %.8f, %.2f, %d, %.2f, %.2f"
             % (
                 layer,
                 np.mean(avg_droplet),
                 time_droplet,
+                trials_droplet,
                 np.mean(m_avg),
                 m_time,
+                m_trials,
                 np.mean(avg_droplet) / np.mean(m_avg),
-                time_droplet / m_time
+                time_droplet / m_time,
             )
         )
 
@@ -188,7 +197,7 @@ if __name__ == "__main__":
 
     if method == "ansor":
         generate_ansor_template(bench, logfile, target_name, trials)
-    elif method in ["droplet", "grid"] :
+    elif method in ["droplet", "grid"]:
         build_template(bench, logfile, index, target, trials, top, method)
     elif method == "meta":
         generate_meta_template(bench, logfile, target_name, trials)
