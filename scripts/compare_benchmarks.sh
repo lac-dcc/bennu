@@ -35,10 +35,10 @@ SIZE=(
 
 mkdir -p "perf_stats/"$NAME
 for ((i = 0; i < ${#BENCH[@]}; i++)); do
-    #RES="perf_stats/$NAME/"${BENCH[i]}".csv"
-    echo "BENCH: "${BENCH[i]} #> $RES
+    RES="perf_stats/$NAME/"${BENCH[i]}".csv"
+    echo "BENCH: "${BENCH[i]} > $RES
     for ((j = 0; j < ${#SIZE[@]}; j++)); do
         echo "SIZE: "${SIZE[j]}
-        python3 benchmarks/models_onnx_compare.py -m grid -a $ARCH -t $TRIALS -k ${SIZE[j]} -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx #>> $RES
+        python3 benchmarks/models_onnx_compare.py -m grid -a $ARCH -t $TRIALS -k ${SIZE[j]} -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx >> $RES
     done
 done
