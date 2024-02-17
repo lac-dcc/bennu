@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from src.utils import *
 from src.DropletSearch import Droplet
 from src.GridSearch import GridSearch
+from src.RandomSearch import RandomSearch
 
 num_threads = os.cpu_count()
 os.environ["TVM_NUM_THREADS"] = str(num_threads)
@@ -105,11 +106,13 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
         clean_file(log)
 
         _, _, json_file = cfg[workload]
-        t, _, _ = cfg_10k[workload]  # get the best value in 10k
+
         if method == "droplet":
             m = Droplet(json_file, target, log)
         elif method == "grid":
             m = GridSearch(json_file, target, log)
+        elif method == "random":
+            m = RandomSearch(json_file, target, log)
         else:
             raise (f"Method {method} is not implemeted yet")
 
@@ -159,7 +162,11 @@ if __name__ == "__main__":
         "python print_record_info.py -m ansor -a x86 -l results/model.json -i 3"
     )
     parser.add_argument(
-        "-m", "--method", type=str, required=True, help="Options: ansor, droplet, grid"
+        "-m",
+        "--method",
+        type=str,
+        required=True,
+        help="Options: ansor, droplet, grid, random",
     )
     parser.add_argument(
         "-a", "--arch", type=str, required=True, help="Options: x86, arm, cuda"
@@ -197,7 +204,7 @@ if __name__ == "__main__":
 
     if method == "ansor":
         generate_ansor_template(bench, logfile, target_name, trials)
-    elif method in ["droplet", "grid"]:
+    elif method in ["droplet", "grid", "random"]:
         build_template(bench, logfile, index, target, trials, top, method)
     elif method == "meta":
         generate_meta_template(bench, logfile, target_name, trials)
