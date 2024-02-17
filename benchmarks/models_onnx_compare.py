@@ -114,8 +114,6 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
 
         m_time, _ = get_time_total(log)
         m_avg, _ = get_best_time(log)
-        #top_avg, _, _ = cfg[workload]
-        #task_ansor = get_task_multilayers(logfile)[workload]
 
         droplet_log = f"droplet_layer_{layer}.log"
         clean_file(droplet_log)

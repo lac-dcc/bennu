@@ -17,18 +17,11 @@ class GridSearch():
 
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
-        self.space = Space(json_file, self.task)
-        self.final_log = write_file([json_file], log)
-        self.log = write_file([json_file])
-        self.next = [(0, [0] * len(self.space.dims))]
-        best_avg, _, _ = get_time(self.log)
-        self.best_choice = [0, [0] * len(self.space.dims), best_avg]
-        self.count, self.execution, self.found_best_pos = 1, 1, True
+        self.space = Space(json_file, self.task, False)
+        self.final_log = log
+        self.count, self.index = 1, 0
         self.visited, self.batch = set([0]), max(os.cpu_count(), 16)
-        self.total_execution, self.index = 1, 1
-        if len(self.space.dims) > 0:
-            self.total_execution = max(self.space.dims)
-        self.dims, self.step = self.space.dims, 1
+        self.dims = self.space.dims
 
         self.begin_idx, self.end_idx = 0, self.space.total_dims
         self.range_length = self.end_idx - self.begin_idx

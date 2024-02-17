@@ -34,15 +34,15 @@ class Space:
         The SearchTask of this measurement.
     """
 
-    def __init__(self, cfg, task):
+    def __init__(self, cfg, task, ansor_value=True):
         self.cfg = deepcopy(cfg)
         self.total_dims, self.dims, self.task = 0, [], task
         self.config_space = {}
-        self.create_space()
+        self.create_space(ansor_value)
 
-    def create_space(self):
+    def create_space(self, ansor_value=True):
         """Create the space using Ansor's space"""
-        sp_space = [4, 8, 16, 24, 32, 48, 64]
+        sp_space = [2, 4, 8, 16, 24, 32, 48, 64]
         pr_space = [64, 128, 256, 512]
         idx_sp, idx_pos, idx_size, idx_tile = 0, 1, 3, 4
         config = self.cfg["i"][idx_pos][idx_pos]
@@ -51,7 +51,7 @@ class Space:
             if opt[idx_sp] == "SP" and opt[idx_size] != 1:
                 for j in range(len(opt[idx_tile])):
                     self.config_space[f"{opt[idx_sp]}_{i}_{j}"] = self.add_space(
-                        sp_space, [opt[idx_tile][j]], opt[idx_size]
+                        sp_space, [opt[idx_tile][j]] if ansor_value else [1], opt[idx_size]
                     )
             elif opt[idx_sp] == "PR":
                 start_value = int(opt[idx_size].split("$")[-1])
