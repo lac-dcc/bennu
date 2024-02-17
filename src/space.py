@@ -56,7 +56,7 @@ class Space:
                         opt[idx_size],
                     )
             elif opt[idx_sp] == "PR":
-                start_value = int(opt[idx_size].split("$")[-1])
+                start_value = int(opt[idx_size].split("$")[-1]) if ansor_value else 64
                 if start_value != 0:
                     self.config_space[f"{opt[idx_sp]}_{i}"] = [
                         f"auto_unroll_max_step${v}"

@@ -115,7 +115,7 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
 
         start = time.time()
         m.tune(n_trial=trials)
-        m_time = time.time() - start
+        m_time = max(2, time.time() - start)
 
         _, m_trials = get_time_total(log)
         m_avg, _ = get_best_time(log)

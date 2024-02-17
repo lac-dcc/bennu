@@ -25,6 +25,10 @@ class GridSearch:
         self.visited, self.batch = set([0]), max(os.cpu_count(), 16)
         self.dims = self.space.dims
 
+        # if doesn't have opt just copy the solution from Ansor template
+        if self.space.total_dims == 1:
+            self.final_log = write_file([json_file], log)
+
         self.begin_idx, self.end_idx = 0, self.space.total_dims
         self.range_length = self.end_idx - self.begin_idx
         self.visited_max = self.range_length
