@@ -1,6 +1,8 @@
 """ The class of Space used to optimize the Ansor parameters """
 
 import os
+import numpy as np
+from random import randrange
 from copy import deepcopy
 import tvm
 from tvm.auto_scheduler.measure import local_builder_build, local_run
@@ -158,3 +160,33 @@ class Space:
             knob.append(point % dim)
             point //= dim
         return knob
+    
+    def is_index_valid(self, index):
+        return index >= 0 and index < self.total_dims
+
+    def sample_ints(self, m):
+        """
+        Sample m different integer numbers from [0, self.range_length) without replacement
+        This function is an alternative of `np.random.choice` when self.range_length > 2 ^ 32, in
+        which case numpy does not work.
+
+        Parameters
+        ----------
+        m: int
+            The number of sampled int
+
+        Returns
+        -------
+        ints: an numpy array of size m
+        """
+        assert m <= len(self)
+        vis = set()
+        while len(vis) < m:
+            new = randrange(0, self.total_dims)
+            if self.is_index_valid(new):
+                vis.add(new)
+        return np.fromiter(vis, int, len(vis))
+    
+    @property
+    def range_length(self):
+        return self.total_dims

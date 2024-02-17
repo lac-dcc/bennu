@@ -17,6 +17,7 @@ from src.utils import *
 from src.DropletSearch import Droplet
 from src.GridSearch import GridSearch
 from src.RandomSearch import RandomSearch
+from src.GASearch import GASearch
 
 num_threads = os.cpu_count()
 os.environ["TVM_NUM_THREADS"] = str(num_threads)
@@ -113,6 +114,8 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
             m = GridSearch(json_file, target, log)
         elif method == "random":
             m = RandomSearch(json_file, target, log)
+        elif method == "ga":
+            m = GASearch(json_file, target, log)
         else:
             raise (f"Method {method} is not implemeted yet")
 
@@ -204,7 +207,7 @@ if __name__ == "__main__":
 
     if method == "ansor":
         generate_ansor_template(bench, logfile, target_name, trials)
-    elif method in ["droplet", "grid", "random"]:
+    elif method in ["droplet", "grid", "random", "ga"]:
         build_template(bench, logfile, index, target, trials, top, method)
     elif method == "meta":
         generate_meta_template(bench, logfile, target_name, trials)
