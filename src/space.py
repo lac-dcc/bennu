@@ -53,7 +53,9 @@ class Space:
             if opt[idx_sp] == "SP" and opt[idx_size] != 1:
                 for j in range(len(opt[idx_tile])):
                     self.config_space[f"{opt[idx_sp]}_{i}_{j}"] = self.add_space(
-                        sp_space,
+                        sp_space
+                        if ansor_value
+                        else sorted(sp_space + [opt[idx_tile][j]]),
                         [opt[idx_tile][j]] if ansor_value else [1],
                         opt[idx_size],
                     )
@@ -160,7 +162,7 @@ class Space:
             knob.append(point % dim)
             point //= dim
         return knob
-    
+
     def is_index_valid(self, index):
         return index >= 0 and index < self.total_dims
 
@@ -186,7 +188,7 @@ class Space:
             if self.is_index_valid(new):
                 vis.add(new)
         return np.fromiter(vis, int, len(vis))
-    
+
     @property
     def range_length(self):
         return self.total_dims
