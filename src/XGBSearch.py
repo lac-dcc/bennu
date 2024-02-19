@@ -15,8 +15,8 @@ import os
 from src.utils import *
 from src.space import Space
 
+
 class XGBSearch:
-    
     def __init__(
         self,
         task,
@@ -39,12 +39,14 @@ class XGBSearch:
             optimizer = SimulatedAnnealingOptimizer(task, log_interval=log_interval)
         else:
             assert isinstance(optimizer, ModelOptimizer), (
-                "Optimizer must be " "a supported name string" "or a ModelOptimizer object."
+                "Optimizer must be "
+                "a supported name string"
+                "or a ModelOptimizer object."
             )
 
         super(XGBTuner, self).__init__(
             task, cost_model, optimizer, plan_size, diversity_filter_ratio
         )
-    
+
     def tune():
         pass

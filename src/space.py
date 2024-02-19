@@ -24,6 +24,10 @@ class MeasureResultSpace:
     def costs(self):
         return [v.value for v in self._costs]
 
+    @property
+    def error_no(self):
+        return 0 if np.mean(self.costs) > 1000 else 1
+
 
 class Space:
     """Space class
@@ -192,3 +196,7 @@ class Space:
     @property
     def range_length(self):
         return self.total_dims
+
+    def __len__(self):
+        """Returns the number of valid indexes in the space"""
+        return self.range_length

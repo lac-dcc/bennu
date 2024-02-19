@@ -13,22 +13,28 @@ import os
 from src.utils import *
 from src.space import Space
 
-class GASearch:
 
-    def __init__(self, json_file, target, log,  pop_size=100, elite_num=3, mutation_prob=0.1):
+class GASearch:
+    def __init__(
+        self, json_file, target, log, pop_size=100, elite_num=3, mutation_prob=0.1
+    ):
 
         # added variables
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
         self.space = Space(json_file, self.task, False)
         self.final_log = log
+        self.batch = max(16, os.cpu_count())
+        self.count = 0
 
         # algorithm configurations
         self.pop_size = pop_size
         self.elite_num = elite_num
         self.mutation_prob = mutation_prob
 
-        assert elite_num <= pop_size, "The number of elites must be less than population size"
+        assert (
+            elite_num <= pop_size
+        ), "The number of elites must be less than population size"
 
         # random initialization
         self.pop_size = min(self.pop_size, len(self.space))
@@ -41,22 +47,22 @@ class GASearch:
         self.elites = []
         self.elite_scores = []
         self.trial_pt = 0
-    
+
     def next_batch(self, batch_size):
         ret = []
         while len(ret) < batch_size and self.has_next():
             gene = self.genes[self.trial_pt % self.pop_size]
             self.trial_pt += 1
-            ret.append(
-                self.space.apply_opt(gene)
-            )
+            ret.append(self.space.apply_opt(gene))
             log = write_file(ret)
+            self.count += 1
         return self.space.run(log, self.final_log)
 
     def update(self, inputs, results):
         for inp, res in zip(inputs, results):
             if res.error_no == 0:
-                y = inp.task.flop / np.mean(res.costs)
+                # y = inp.task.flop / np.mean(res.costs)
+                y = 1.0 / np.mean(res.costs)
                 self.scores.append(y)
             else:
                 self.scores.append(0.0)
@@ -76,7 +82,9 @@ class GASearch:
 
                 # reserve elite
                 self.elites, self.elite_scores = [], []
-                elite_indexes = np.argpartition(scores, -self.elite_num)[-self.elite_num :]
+                elite_indexes = np.argpartition(scores, -self.elite_num)[
+                    -self.elite_num :
+                ]
                 for ind in elite_indexes:
                     self.elites.append(genes[ind])
                     self.elite_scores.append(scores[ind])
@@ -104,8 +112,11 @@ class GASearch:
             self.scores = []
 
     def has_next(self):
-        return len(self.visited) - (len(self.genes) - self.trial_pt) < len(self.space) and self.trial_pt < self.trials
-    
+        return (
+            len(self.visited) - (len(self.genes) - self.trial_pt) < len(self.space)
+            and self.count < self.trials
+        )
+
     def tune(
         self,
         n_trial=100,
