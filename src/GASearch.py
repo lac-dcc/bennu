@@ -18,7 +18,6 @@ class GASearch:
     def __init__(
         self, json_file, target, log, pop_size=100, elite_num=3, mutation_prob=0.1
     ):
-
         # added variables
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
@@ -54,15 +53,14 @@ class GASearch:
             gene = self.genes[self.trial_pt % self.pop_size]
             self.trial_pt += 1
             ret.append(self.space.apply_opt(gene))
-            log = write_file(ret)
             self.count += 1
+        log = write_file(ret)
         return self.space.run(log, self.final_log)
 
     def update(self, inputs, results):
         for inp, res in zip(inputs, results):
             if res.error_no == 0:
-                # y = inp.task.flop / np.mean(res.costs)
-                y = 1.0 / np.mean(res.costs)
+                y = inp.task.flop / np.mean(res.costs)
                 self.scores.append(y)
             else:
                 self.scores.append(0.0)

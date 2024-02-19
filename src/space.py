@@ -7,6 +7,7 @@ from copy import deepcopy
 import tvm
 from tvm.auto_scheduler.measure import local_builder_build, local_run
 
+_index = 0
 
 class MeasureResultSpace:
     """Store the results of a measurement.
@@ -26,8 +27,30 @@ class MeasureResultSpace:
 
     @property
     def error_no(self):
-        return 0 if np.mean(self.costs) > 1000 else 1
+        return 0 if np.mean(self.costs) > 1000 else 1    
 
+class MeaureInputSpace:
+    """Store the inputs of a measurement.
+
+    Parameters
+    ----------
+    measureInput: List[MeasureInputs]
+        A List of MeasureInput.
+    """
+    
+    def __init__(self, measure_input, index=0):
+        global _index
+        self._task = measure_input[0].task
+        self._index = index
+        print(index)
+
+    @property
+    def index(self):
+        return self._index
+
+    @property
+    def flop(self):
+        return 1
 
 class Space:
     """Space class
@@ -135,7 +158,7 @@ class Space:
                 dev,
             )
             tvm.auto_scheduler._ffi_api.SaveRecords(final_log, inp, res)
-            inputs.append(inp[0])
+            inputs.append(MeaureInputSpace(inp, i))
             results.append(MeasureResultSpace(res))
         return inputs, results
 
@@ -175,15 +198,6 @@ class Space:
         Sample m different integer numbers from [0, self.range_length) without replacement
         This function is an alternative of `np.random.choice` when self.range_length > 2 ^ 32, in
         which case numpy does not work.
-
-        Parameters
-        ----------
-        m: int
-            The number of sampled int
-
-        Returns
-        -------
-        ints: an numpy array of size m
         """
         assert m <= len(self)
         vis = set()
@@ -192,6 +206,15 @@ class Space:
             if self.is_index_valid(new):
                 vis.add(new)
         return np.fromiter(vis, int, len(vis))
+
+    def get_rand_index(self, start=None, end=None, to_exclude=None):
+        """Returns a random valid index unlisted to exclusion"""
+        start = start or 0
+        end = end or self.range_length
+        while True:
+            index = randrange(start, end)
+            if self.is_index_valid(index) and index not in (to_exclude or []):
+                return index
 
     @property
     def range_length(self):
