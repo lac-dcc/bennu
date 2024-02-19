@@ -4,7 +4,7 @@ ARCH="x86"
 TRIALS=100
 NAME="Ryzen3700X"
 
-set -x
+#set -x
 
 BENCH=(
     alexnet
