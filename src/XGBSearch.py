@@ -95,7 +95,7 @@ class XGBSearch:
         self.train_ct = 0
 
     def next_batch(self, batch_size):
-        ret = []
+        ret, index_list = [], []
         while len(ret) < batch_size and self.has_next():
             while self.trial_pt < len(self.next):
                 index = self.next[self.trial_pt]
@@ -108,16 +108,16 @@ class XGBSearch:
                 # the tuner is doing the last 5% trials (e-greedy), choose randomly
                 index = self.space.get_rand_index(to_exclude=self.visited)
             ret.append(self.space.apply_opt(self.space.point2knob(index)))
+            index_list.append(index)
             self.visited.add(index)
             self.count += 1
         log = write_file(ret)
-        return self.space.run(log, self.final_log)
+        return self.space.run(log, self.final_log, index_list=index_list)
     
     def update(self, inputs, results):
         for inp, res in zip(inputs, results):
             #index = inp.config.index
             index = inp.index
-            print(index)
             if res.error_no == 0:
                 self.xs.append(index)
                 flops = inp.task.flop / np.mean(res.costs)

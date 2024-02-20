@@ -42,7 +42,6 @@ class MeaureInputSpace:
         global _index
         self._task = measure_input[0].task
         self._index = index
-        print(index)
 
     @property
     def index(self):
@@ -127,6 +126,7 @@ class Space:
         self,
         log,
         final_log,
+        index_list=None,
         timeout=20,
         verbose=0,
         number=3,
@@ -158,7 +158,10 @@ class Space:
                 dev,
             )
             tvm.auto_scheduler._ffi_api.SaveRecords(final_log, inp, res)
-            inputs.append(MeaureInputSpace(inp, i))
+            if index_list is not None:
+                inputs.append(MeaureInputSpace(inp, index_list[i]))
+            else:
+                inputs.append(MeaureInputSpace(inp))
             results.append(MeasureResultSpace(res))
         return inputs, results
 

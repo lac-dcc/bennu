@@ -2,31 +2,41 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import sys
 
+def swap(x):
+    for i in range(len(x) // 2):
+        x[i], x[len(x)-i-1] = x[len(x)-i-1], x[i]
 
-def print_graph(x, y, l):
+# I changed the x and y-axis
+def print_graph(x, y, l, swap=False):
 
-    leg = ["1", "10", "25", "50", "100", "200", "300", "1000"]
+    leg = ["1", "", "", "", "", "", "", "1k"]
+    markers = ["o", "*", "^", "s"]
 
     # Plotting the lines
     for i in range(len(x)):
-        plt.plot(x[i], y[i], label="Line 1", marker="o")
+        plt.plot(x[i], y[i], label="Line 1", marker=markers[i % len(markers)])
 
         # legend in each points
-        """
         k = 0
         for px, py in zip(x[i], y[i]):
-            print(leg[k])
+            # print(leg[k])
             label = leg[k]
-            plt.annotate(label, # this is the text
-                 (px, py), # these are the coordinates to position the label
-                 textcoords="offset points", # how to position the text
-                 xytext=(0, 10), # distance from text to points (x,y)
-                 ha='center') # horizontal alignment can be left, right or center
+            plt.annotate(
+                label,  # this is the text
+                (px, py),  # these are the coordinates to position the label
+                textcoords="offset points",  # how to position the text
+                xytext=(0, 10),  # distance from text to points (x,y)
+                ha="center",
+            )  # horizontal alignment can be left, right or center
             k += 1
-        """
+
     # Adding labels and title
-    plt.xlabel("execution time speedup")
-    plt.ylabel("tuning time speedup")
+    if swap:
+        plt.ylabel("Execution time speedup")
+        plt.xlabel("Tuning time speedup")
+    else: 
+        plt.xlabel("Execution time speedup")
+        plt.ylabel("Tuning time speedup")
     # plt.title('Plot with Three Lines')
 
     # Adding a legend
@@ -52,6 +62,15 @@ if __name__ == "__main__":
         x.append(list(df.iloc[i, 2:10]))
         y.append(list(df.iloc[i, 10:]))
 
-    print(x, y, l)
+    is_swap = False 
+    
+    if is_swap:
+        for yl in y:
+            swap(yl)
+            print(yl)
+        print(y)
 
-    print_graph(x, y, l)
+    if is_swap:
+        print_graph(y, x, l, is_swap)
+    else:
+        print_graph(x, y, l, is_swap)

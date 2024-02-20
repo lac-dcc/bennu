@@ -34,10 +34,10 @@ SIZE=(
 )
 
 METHOD=(
-    #grid
+    grid
     random
-    #ga
-    #xgb
+    ga
+    xgb
 )
 
 mkdir -p "perf_stats/"$NAME
@@ -47,10 +47,10 @@ for ((k = 0; k < ${#METHOD[@]}; k++)); do
     mkdir -p "perf_stats/$NAME/"${METHOD[k]}
     for ((i = 0; i < ${#BENCH[@]}; i++)); do
         RES="perf_stats/$NAME/"${METHOD[k]}/${BENCH[i]}".csv"
-        echo "BENCH: "${BENCH[i]} > $RES
+        echo "BENCH: "${BENCH[i]} #> $RES
         for ((j = 0; j < ${#SIZE[@]}; j++)); do
             echo "SIZE: "${SIZE[j]}
-            python3 benchmarks/models_onnx_compare.py -m ${METHOD[k]} -a $ARCH -t $TRIALS -k ${SIZE[j]} -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx >> $RES
+            python3 benchmarks/models_onnx_compare.py -m ${METHOD[k]} -a $ARCH -t $TRIALS -k ${SIZE[j]} -l results/$ARCH"_"${BENCH[i]}_10k.json -b models/${BENCH[i]}.onnx #>> $RES
         done
     done
 done
