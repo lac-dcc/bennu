@@ -2,9 +2,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import sys
 
+
 def swap(x):
     for i in range(len(x) // 2):
-        x[i], x[len(x)-i-1] = x[len(x)-i-1], x[i]
+        x[i], x[len(x) - i - 1] = x[len(x) - i - 1], x[i]
+
 
 # I changed the x and y-axis
 def print_graph(x, y, l, swap=False):
@@ -34,7 +36,7 @@ def print_graph(x, y, l, swap=False):
     if swap:
         plt.ylabel("Execution time speedup")
         plt.xlabel("Tuning time speedup")
-    else: 
+    else:
         plt.xlabel("Execution time speedup")
         plt.ylabel("Tuning time speedup")
     # plt.title('Plot with Three Lines')
@@ -62,8 +64,8 @@ if __name__ == "__main__":
         x.append(list(df.iloc[i, 2:10]))
         y.append(list(df.iloc[i, 10:]))
 
-    is_swap = False 
-    
+    is_swap = False
+
     if is_swap:
         for yl in y:
             swap(yl)

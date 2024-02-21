@@ -9,6 +9,7 @@ from tvm.auto_scheduler.measure import local_builder_build, local_run
 
 _index = 0
 
+
 class MeasureResultSpace:
     """Store the results of a measurement.
 
@@ -27,7 +28,8 @@ class MeasureResultSpace:
 
     @property
     def error_no(self):
-        return 0 if np.mean(self.costs) > 1000 else 1    
+        return 0 if np.mean(self.costs) > 1000 else 1
+
 
 class MeaureInputSpace:
     """Store the inputs of a measurement.
@@ -37,7 +39,7 @@ class MeaureInputSpace:
     measureInput: List[MeasureInputs]
         A List of MeasureInput.
     """
-    
+
     def __init__(self, measure_input, index=0):
         global _index
         self._task = measure_input[0].task
@@ -50,6 +52,7 @@ class MeaureInputSpace:
     @property
     def flop(self):
         return 1
+
 
 class Space:
     """Space class

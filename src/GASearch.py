@@ -60,7 +60,8 @@ class GASearch:
     def update(self, inputs, results):
         for inp, res in zip(inputs, results):
             if res.error_no == 0:
-                y = inp.task.flop / np.mean(res.costs)
+                # y = inp.task.flop / np.mean(res.costs)
+                y = 1.0 / np.mean(res.costs)
                 self.scores.append(y)
             else:
                 self.scores.append(0.0)

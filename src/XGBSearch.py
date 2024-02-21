@@ -3,13 +3,17 @@ import heapq
 
 # from tvm.auto_scheduler.space import Space
 from tvm.auto_scheduler.search_task import SearchTask
-#from tvm.autotvm.tuner.xgboost_tuner import XGBTuner
-#from tvm.autotvm.tuner.sa_model_optimizer import SimulatedAnnealingOptimizer
+
+# from tvm.autotvm.tuner.xgboost_tuner import XGBTuner
+# from tvm.autotvm.tuner.sa_model_optimizer import SimulatedAnnealingOptimizer
 from tvm.autotvm.tuner.model_based_tuner import ModelOptimizer
 
-#from tvm.autotvm.tuner.xgboost_cost_model import XGBoostCostModel
+# from tvm.autotvm.tuner.xgboost_cost_model import XGBoostCostModel
 from tvm.autotvm.tuner.model_based_tuner import submodular_pick, FeatureCache
-from tvm.autotvm.tuner.xgboost_cost_model import CustomCallback, xgb_average_recalln_curve_score
+from tvm.autotvm.tuner.xgboost_cost_model import (
+    CustomCallback,
+    xgb_average_recalln_curve_score,
+)
 from tvm.autotvm import feature
 from tvm.autotvm.env import GLOBAL_SCOPE
 
@@ -25,11 +29,12 @@ xgb = None
 
 from tvm.contrib.popen_pool import PopenPoolExecutor, StatusKind
 
+
 class XGBSearch:
     def __init__(
         self,
-        json_file, 
-        target, 
+        json_file,
+        target,
         log,
         plan_size=64,
         feature_type="itervar",
@@ -39,7 +44,7 @@ class XGBSearch:
         diversity_filter_ratio=None,
         log_interval=50,
     ):
-        
+
         # added variables
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
@@ -56,10 +61,12 @@ class XGBSearch:
             loss_type=loss_type,
             num_threads=num_threads,
             log_interval=log_interval // 2,
-            space=self.space
+            space=self.space,
         )
         if optimizer == "sa":
-            optimizer = SimulatedAnnealingOptimizer(self.task, space=self.space, log_interval=log_interval)
+            optimizer = SimulatedAnnealingOptimizer(
+                self.task, space=self.space, log_interval=log_interval
+            )
         else:
             assert isinstance(optimizer, ModelOptimizer), (
                 "Optimizer must be "
@@ -67,9 +74,9 @@ class XGBSearch:
                 "or a ModelOptimizer object."
             )
 
-        #super(XGBTuner, self).__init__(
+        # super(XGBTuner, self).__init__(
         #    self.task, cost_model, optimizer, plan_size, diversity_filter_ratio
-        #)
+        # )
         # space
         self.target = target
         self.plan_size = plan_size
@@ -113,14 +120,15 @@ class XGBSearch:
             self.count += 1
         log = write_file(ret)
         return self.space.run(log, self.final_log, index_list=index_list)
-    
+
     def update(self, inputs, results):
         for inp, res in zip(inputs, results):
-            #index = inp.config.index
+            # index = inp.config.index
             index = inp.index
             if res.error_no == 0:
                 self.xs.append(index)
-                flops = inp.task.flop / np.mean(res.costs)
+                # flops = inp.task.flop / np.mean(res.costs)
+                flops = 1.0 / np.mean(res.costs)
                 self.flops_max = max(self.flops_max, flops)
                 self.ys.append(flops)
             else:
@@ -134,15 +142,22 @@ class XGBSearch:
             assert self.space.is_index_valid(index)
             self.visited.add(index)
         # if we have enough new training samples
-        if len(self.xs) >= self.plan_size * (self.train_ct + 1) and self.flops_max > 1e-6:
+        if (
+            len(self.xs) >= self.plan_size * (self.train_ct + 1)
+            and self.flops_max > 1e-6
+        ):
             self.cost_model.fit(self.xs, self.ys, self.plan_size)
             if self.diversity_filter_ratio:
                 candidate = self.model_optimizer.find_maximums(
-                    self.cost_model, self.plan_size * self.diversity_filter_ratio, self.visited
+                    self.cost_model,
+                    self.plan_size * self.diversity_filter_ratio,
+                    self.visited,
                 )
                 scores = self.cost_model.predict(candidate)
                 knobs = [self.space.point2knob(x) for x in candidate]
-                pick_index = submodular_pick(0 * scores, knobs, self.plan_size, knob_weight=1)
+                pick_index = submodular_pick(
+                    0 * scores, knobs, self.plan_size, knob_weight=1
+                )
                 maximums = np.array(candidate)[pick_index]
             else:
                 maximums = self.model_optimizer.find_maximums(
@@ -168,7 +183,9 @@ class XGBSearch:
         # use base model to select initial points
         if not self.next:
             # no plan yet, use base model to select initial trials
-            maximums = self.model_optimizer.find_maximums(base_model, self.plan_size, self.visited)
+            maximums = self.model_optimizer.find_maximums(
+                base_model, self.plan_size, self.visited
+            )
             self.next = maximums
             self.trial_pt = 0
 
@@ -190,6 +207,7 @@ class XGBSearch:
         while self.has_next():
             inp, res = self.next_batch(self.batch)
             self.update(inp, res)
+
 
 class SimulatedAnnealingOptimizer:
     """parallel simulated annealing optimization algorithm
@@ -308,7 +326,10 @@ class SimulatedAnnealingOptimizer:
         heap_items.sort(key=lambda item: -item[0])
         heap_items = [x for x in heap_items if x[0] >= 0]
         logger.debug(
-            "SA iter: %d\tlast_update: %d\telapsed: %.2f", k, k_last_modify, time.time() - tic
+            "SA iter: %d\tlast_update: %d\telapsed: %.2f",
+            k,
+            k_last_modify,
+            time.time() - tic,
         )
         logger.debug("SA Maximums: %s", heap_items)
 
@@ -316,6 +337,7 @@ class SimulatedAnnealingOptimizer:
             self.points = points
 
         return [x[1] for x in heap_items]
+
 
 # Global variables for passing arguments to extract functions.
 _extract_space = None
@@ -416,8 +438,11 @@ def _binarize_evals(evals):
         blabel[blabel < 0.5] = 0.0
         blabel[blabel >= 0.5] = 1.0
         # pylint: disable=R1721
-        bin_evals.append(tuple([xgb.DMatrix(barray, blabel)] + [e for e in evalset[1:]]))
+        bin_evals.append(
+            tuple([xgb.DMatrix(barray, blabel)] + [e for e in evalset[1:]])
+        )
     return bin_evals
+
 
 class XGBoostCostModel:
     """XGBoost as cost model
@@ -589,7 +614,9 @@ class XGBoostCostModel:
                 self.base_model.upper_model = None
                 self.base_model = None
             else:
-                dtrain.set_base_margin(discount * self.base_model.predict(xs, output_margin=True))
+                dtrain.set_base_margin(
+                    discount * self.base_model.predict(xs, output_margin=True)
+                )
 
         self.bst = xgb.train(
             self.xgb_params,
@@ -701,7 +728,8 @@ class XGBoostCostModel:
 
         if self.base_model:
             dtest.set_base_margin(
-                self._base_model_discount() * self.base_model.predict(xs, output_margin=True)
+                self._base_model_discount()
+                * self.base_model.predict(xs, output_margin=True)
             )
 
         return self.bst.predict(dtest, output_margin=output_margin)
@@ -713,7 +741,12 @@ class XGBoostCostModel:
 
     def spawn_base_model(self):
         return XGBoostCostModel(
-            self.task, self.fea_type, self.loss_type, self.num_threads, self.log_interval, self
+            self.task,
+            self.fea_type,
+            self.loss_type,
+            self.num_threads,
+            self.log_interval,
+            self,
         )
 
     def _get_feature(self, indexes):
