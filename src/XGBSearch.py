@@ -48,10 +48,14 @@ class XGBSearch:
         # added variables
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
-        self.space = Space(json_file, self.task, False)
+        self.space = Space(json_file, self.task, True)
         self.final_log = log
         self.batch = max(16, os.cpu_count())
         self.count = 0
+
+        # if doesn't have opt just copy the solution from Ansor template
+        if self.space.total_dims == 1:
+            self.final_log = write_file([json_file], log)
 
         self.pool = None
 
