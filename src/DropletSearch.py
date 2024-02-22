@@ -140,7 +140,7 @@ class Droplet:
             self.execution = 1
         self.speculation()
         # stop, because all neighborhoods are invalid.
-        if count_valids == 0 and self.iter > 3:
+        if count_valids == 0:
             self.next = []
             LOGGER.warning(
                 f"Warning: early termination due to an all-invalid neighborhood \
