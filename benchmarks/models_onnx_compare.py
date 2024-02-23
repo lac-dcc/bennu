@@ -96,9 +96,7 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
     cfg_10k = get_best_multilayers(logfile, 10000)
     _, time_each_point_ansor = get_time_total(logfile)
 
-    print(
-        f"layer, droplet-{top} exec, droplet-{top} tuning, droplet-{top} trials, {method}-{top} exec, {method}-{top} tuning, {method}-{top} trials, exec speedup, tuning speedup"
-    )
+    print(f"layer, {method}-{top} exec, {method}-{top} tuning, {method}-{top} trials")
 
     for layer, workload in enumerate(cfg):
         if index != -1 and layer != index:
@@ -129,29 +127,13 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
         _, m_trials = get_time_total(log)
         m_avg, _ = get_best_time(log)
 
-        droplet_log = f"droplet_layer_{layer}.log"
-        clean_file(droplet_log)
-
-        droplet = Droplet(json_file, target, droplet_log)
-        start = time.time()
-        droplet.tune(n_trial=trials)
-        time_droplet = time.time() - start
-
-        _, trials_droplet = get_time_total(droplet_log)
-        avg_droplet, _ = get_best_time(droplet_log)
-
         print(
-            "%d, %.8f, %.2f, %d, %.8f, %.2f, %d, %.2f, %.2f"
+            "%d, %.8f, %.2f, %d"
             % (
                 layer,
-                np.mean(avg_droplet),
-                time_droplet,
-                trials_droplet,
                 np.mean(m_avg),
                 m_time,
                 m_trials,
-                np.mean(avg_droplet) / np.mean(m_avg),
-                time_droplet / m_time,
             )
         )
 
