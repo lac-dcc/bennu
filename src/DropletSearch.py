@@ -144,7 +144,7 @@ class Droplet:
             self.next = []
             LOGGER.warning(
                 f"Warning: early termination due to an all-invalid neighborhood \
-                after {self.iter} iterations"
+                after iterations"
             )
 
     def has_next(self):
