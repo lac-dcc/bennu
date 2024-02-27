@@ -48,7 +48,8 @@ def generate_ansor_template(bench, logfile, target, trials):
 
 
 def generate_meta_template(bench, logfile, target, trials):
-    target = target + " -num-cores 8"  # Think to get this value automatically
+    if target == "llvm":
+        target = target + " -num-cores 8"  # Think to get this value automatically
     mod, params = from_onnx(onnx.load(bench))
 
     with ms.Profiler() as profiler:
@@ -96,7 +97,7 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
     cfg_10k = get_best_multilayers(logfile, 10000)
     _, time_each_point_ansor = get_time_total(logfile)
 
-    print(f"layer, {method}-{top} exec, {method}-{top} tuning, {method}-{top} trials")
+    print(f"layer, {method}-{top} exec, {method}-{top} std, {method}-{top} tuning, {method}-{top} trials")
 
     for layer, workload in enumerate(cfg):
         if index != -1 and layer != index:
@@ -128,10 +129,11 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
         m_avg, _ = get_best_time(log)
 
         print(
-            "%d, %.8f, %.2f, %d"
+            "%d, %.8f, %.8f, %.2f, %d"
             % (
                 layer,
                 np.mean(m_avg),
+                np.std(m_avg),
                 m_time,
                 m_trials,
             )
