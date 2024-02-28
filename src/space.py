@@ -106,7 +106,8 @@ class Space:
     def apply_opt(self, vals):
         """Apply the space using Ansor's space"""
         idx_sp, idx_pos, idx_size, idx_tile = 0, 1, 3, 4
-        index, config = 0, self.cfg["i"][idx_pos][idx_pos]
+        cfg = deepcopy(self.cfg)
+        index, config = 0, cfg["i"][idx_pos][idx_pos]
         for i in range(len(config)):
             opt = config[i]
             if opt[idx_sp] == "SP" and opt[idx_size] != 1:
@@ -123,7 +124,7 @@ class Space:
                         f"{opt[idx_sp]}_{i}", vals[index]
                     )
                     index += 1
-        return self.cfg
+        return deepcopy(cfg)
 
     def run(
         self,
@@ -206,7 +207,7 @@ class Space:
         which case numpy does not work.
         """
         assert m <= len(self)
-        vis = set()
+        vis = set([0])
         while len(vis) < m:
             new = randrange(0, self.total_dims)
             if self.is_index_valid(new):

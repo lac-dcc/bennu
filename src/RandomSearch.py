@@ -35,7 +35,7 @@ class RandomSearch:
     def next_batch(self, batch_size):
         i, json_file_list = 0, []
         while i < batch_size and self.has_next() and self.count < self.space.total_dims:
-            index = random.randint(0, self.space.total_dims)
+            index = random.randint(0, self.space.total_dims) if self.count > 0 else 0
             if index not in self.visited and index < self.space.total_dims:
                 self.visited.add(index)
                 json_file_list.append(

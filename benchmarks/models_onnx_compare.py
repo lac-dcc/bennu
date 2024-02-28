@@ -97,7 +97,9 @@ def build_template(bench, logfile, index, target, trials, top=1000, method="drop
     cfg_10k = get_best_multilayers(logfile, 10000)
     _, time_each_point_ansor = get_time_total(logfile)
 
-    print(f"layer, {method}-{top} exec, {method}-{top} std, {method}-{top} tuning, {method}-{top} trials")
+    print(
+        f"layer, {method}-{top} exec, {method}-{top} std, {method}-{top} tuning, {method}-{top} trials"
+    )
 
     for layer, workload in enumerate(cfg):
         if index != -1 and layer != index:

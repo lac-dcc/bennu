@@ -21,7 +21,7 @@ class GASearch:
         # added variables
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
-        self.space = Space(json_file, self.task, True)
+        self.space = Space(json_file, self.task, False)
         self.final_log = log
         self.batch = max(16, os.cpu_count())
         self.count = 0
