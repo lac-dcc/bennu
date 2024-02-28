@@ -48,7 +48,7 @@ class XGBSearch:
         # added variables
         workload_key = json_file["i"][0][0]
         self.task = SearchTask(workload_key=workload_key, target=target)
-        self.space = Space(json_file, self.task, True)
+        self.space = Space(json_file, self.task, False)
         self.final_log = log
         self.batch = max(16, os.cpu_count())
         self.count = 0
@@ -117,7 +117,12 @@ class XGBSearch:
             if self.trial_pt >= len(self.next) - int(0.05 * self.plan_size):
                 # if the trial list is empty or
                 # the tuner is doing the last 5% trials (e-greedy), choose randomly
-                index = self.space.get_rand_index(to_exclude=self.visited)
+                index = (
+                    self.space.get_rand_index(to_exclude=self.visited)
+                    if self.count > 0
+                    else 0
+                )
+            print(index)
             ret.append(self.space.apply_opt(self.space.point2knob(index)))
             index_list.append(index)
             self.visited.add(index)
