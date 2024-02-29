@@ -131,9 +131,9 @@ class Space:
         log,
         final_log,
         index_list=None,
-        timeout=20,
+        timeout=10,
         verbose=0,
-        number=3,
+        number=2,
         repeat=3,
         min_repeat_ms=0,
         cooldown_interval=0,
@@ -167,6 +167,7 @@ class Space:
             else:
                 inputs.append(MeaureInputSpace(inp))
             results.append(MeasureResultSpace(res))
+            #print(i, results[i].costs)
         return inputs, results
 
     def get_value(self, key, pos):
