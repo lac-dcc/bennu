@@ -8,8 +8,8 @@ import numpy as np
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
-from src.utils.utils import *
-from src.DropletSearch import Droplet
+from src.utils import *
+from DropletSearch import Droplet
 
 @auto_scheduler.register_workload
 def matmul_layer(batch, in_dim, out_dim):
@@ -74,28 +74,22 @@ def microkernel(logfile, bench, target, top=1000):
     elif bench == "conv2d":
         N, CI, H, W, CO, KH, KW, strides, padding = 128, 128, 28, 28, 128, 3, 3, 1, "SAME"
         task = auto_scheduler.SearchTask(
-            func=conv2d_layer,
-            args=(N, CI, H, W, CO, KH, KW, strides, padding),
-            target=target,
+            func=conv2d_layer, args=(N, CI, H, W, CO, KH, KW, strides, padding), target=target,
         )
     elif bench == "depthwise":
         N, CI, H, W, KH, KW, strides, padding = 128, 84, 83, 83, 5, 5, 2, "SAME"
         task = auto_scheduler.SearchTask(
-            func=depthwise_conv2d_layer, 
-            args=(N, CI, H, W, KH, KW, strides, padding), 
-            target=target
+            func=depthwise_conv2d_layer, args=(N, CI, H, W, KH, KW, strides, padding), target=target
         )
     elif bench == "pooling":
         pool_type, N, CI, H, W, KH, KW, strides, padding = "avg", 128, 168, 83, 83, 1, 1, 2, "VALID"
         task = auto_scheduler.SearchTask(
-            func=pool_layer,
-            args=(pool_type, N, CI, H, W, KH, KW, strides, padding),
-            target=target,
+            func=pool_layer, args=(pool_type, N, CI, H, W, KH, KW, strides, padding), target=target,
         )
     elif bench == "reduce":
         shape, axis, keep_dim = (128, 512, 1024), 2, False
         task = auto_scheduler.SearchTask(
-            func=layer, args=(shape, axis, keep_dim), target=target
+            func=reduction_layer, args=(shape, axis, keep_dim), target=target
         )
     elif bench == "relu":
         shape = (4096, 4096)

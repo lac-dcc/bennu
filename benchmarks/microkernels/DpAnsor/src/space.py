@@ -167,7 +167,7 @@ class Space:
             else:
                 inputs.append(MeaureInputSpace(inp))
             results.append(MeasureResultSpace(res))
-            #print(i, results[i].costs)
+            # print(i, results[i].costs)
         return inputs, results
 
     def get_value(self, key, pos):

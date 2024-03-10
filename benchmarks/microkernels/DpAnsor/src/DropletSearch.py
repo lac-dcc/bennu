@@ -7,7 +7,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
 
 import os
-from src.utils.utils import *
+from src.utils import *
 from src.space import Space
 
 LOGGER = logging.getLogger("autotvm")

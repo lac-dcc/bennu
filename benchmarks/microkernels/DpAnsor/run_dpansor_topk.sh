@@ -16,9 +16,9 @@ TOP=(
 BENCH=(
     #matmul
     #conv2d
-    depthwise
+    #depthwise
     #pooling
-    #reduce
+    reduce
     #relu
 )
 
@@ -26,7 +26,7 @@ for ((i = 0; i < ${#BENCH[@]}; i++)); do
     echo "Executing "${BENCH[i]}"..."
     for ((j = 0; j < ${#TOP[@]}; j++)); do
         echo "Top-"${TOP[j]}
-        python3 dpansor.py -a cuda -l log/${BENCH[i]}.log -t ${TOP[j]} -b ${BENCH[i]} > results/${BENCH[i]}.csv
-        cat results/${BENCH[i]}.csv
+        python3 src/dpansor.py -a cuda -l log/${BENCH[i]}.log -t ${TOP[j]} -b ${BENCH[i]} > results/${BENCH[i]}.csv
+        python3 src/print_output.py results/${BENCH[i]}.csv
     done
 done

@@ -199,12 +199,14 @@ def get_first_time(log):
     f.close()
 
 
-def get_time_total(log):
+def get_time_total(log, trials=10000):
     import json
 
     time_total, count = 0, 0
     f = open(log, "r")
     for line in f.readlines():
+        if count >= trials:
+            break
         data = json.loads(line)
         if "r" in data:
             time_total += data["r"][2]
