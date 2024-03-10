@@ -30,6 +30,6 @@ for ((j = 0; j < ${#TOP[@]}; j++)); do
     echo "bench, avg (ms), std (ms), trials, time total (min), ansor exec (ms), ansor tuning, speedup" >> $RESULT
     for ((i = 0; i < ${#BENCH[@]}; i++)); do
         echo "Executing "${BENCH[i]}"..."
-        python3 src/dpansor.py -m dpansor -a cuda -l log/${BENCH[i]}.log -k ${TOP[j]} -b ${BENCH[i]} >> $RESULT
+        python3 src/dpansor.py -m dpansor -a cuda -l log/$NAME"_"${BENCH[i]}.log -k ${TOP[j]} -b ${BENCH[i]} >> $RESULT
     done
 done
