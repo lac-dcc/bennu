@@ -26,7 +26,7 @@ BENCH=(
 
 for ((j = 0; j < ${#TOP[@]}; j++)); do
     echo "Top-"${TOP[j]}
-    RESULT=results/$NAME"_"${TOP[j]}".csv"
+    RESULT=results/$NAME"_top"${TOP[j]}".csv"
     echo "Top-"${TOP[j]} > $RESULT
     for ((i = 0; i < ${#BENCH[@]}; i++)); do
         echo "Executing "${BENCH[i]}"..."
