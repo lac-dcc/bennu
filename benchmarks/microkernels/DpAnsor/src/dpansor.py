@@ -63,7 +63,7 @@ def relu_layer(*shape):
     relu = topi.nn.relu(data)
     return [data, relu]
 
-def microkernel(logfile, bench, target, top=1000):
+def microkernels(bench):
 
     if bench == "matmul":
         batch, in_dim, out_dim = 1, 1024, 1024
@@ -98,6 +98,11 @@ def microkernel(logfile, bench, target, top=1000):
         raise Exception(
             f"Bench {bench} is not implemented! The benchmarks that microkernel give support are: \n -> matmul\n -> depthwise\n -> pooling\n -> reduce\n -> relu"
         )
+    return task
+
+def ansor(logfile, bench, target, trial=1000):
+
+    task = microkernels(bench)
 
     # clean the log
     clean_file(logfile)
@@ -107,7 +112,7 @@ def microkernel(logfile, bench, target, top=1000):
     )
 
     tune_option = auto_scheduler.TuningOptions(
-        num_measure_trials=max(10, top),  # top-k
+        num_measure_trials=trial,  # top-k
         runner=measure_ctx.runner,
         measure_callbacks=[auto_scheduler.RecordToFile(logfile)],
         verbose=0,
@@ -116,11 +121,15 @@ def microkernel(logfile, bench, target, top=1000):
     # Run Ansor
     task.tune(tune_option)
 
+def dpansor(logfile, bench, target, top=1000):
+
+    task = microkernels(bench)
+
     # DPAnsor
     cfg = get_best_multilayers(logfile, top)
     log = f"{logfile}_droplet.log"
 
-    print("results")
+    print("results: ")
     for layer, workload in enumerate(cfg):
         _, _, json_file = cfg[workload]
 
@@ -131,6 +140,9 @@ def microkernel(logfile, bench, target, top=1000):
         droplet_avg, _ = get_best_time(log)
         droplet_time, droplet_trial = get_time_total(log)
         ansor_time, _ = get_time_total(logfile, top)
+
+        ansor_avg_1000, _ = get_best_time(logfile)
+        ansor_time_1000, _ = get_time_total(logfile)
 
         print(
             "%s, %.8f, %.8f, %d, %.2f"
@@ -153,12 +165,16 @@ if __name__ == "__main__":
     )
     parser.add_argument("-l", "--logfile", type=str, required=True)
     parser.add_argument("-b", "--benchmark", type=str, required=True)
-    parser.add_argument("-t", "--top", type=int, default=100)
+    parser.add_argument("-m", "--method", type=str, required=True)
+    parser.add_argument("-k", "--top", type=int, default=100)
+    parser.add_argument("-t", "--trials", type=int, default=1000)
     args = parser.parse_args()
 
     arch = args.arch
     logfile = args.logfile
     bench = args.benchmark
+    method = args.method
+    trials = args.trials
     top = args.top
 
     if arch != "cuda":
@@ -168,4 +184,7 @@ if __name__ == "__main__":
         target = tvm.target.Target("cuda")
         dev = tvm.cuda()
 
-    microkernel(logfile, bench, target, top)
+    if method == "ansor":
+        ansor(logfile, bench, target, trials)
+    elif method == "dpansor":
+        dpansor(logfile, bench, target, top)

@@ -1,4 +1,3 @@
-rm -rf log
 mkdir -p log
 mkdir -p results
 
@@ -28,10 +27,9 @@ for ((j = 0; j < ${#TOP[@]}; j++)); do
     echo "Top-"${TOP[j]}
     RESULT=results/$NAME"_top"${TOP[j]}".csv"
     echo "Top-"${TOP[j]} > $RESULT
-    echo "bench, avg (ms), std (ms), trials, time total (min)" >> $RESULT
+    echo "bench, avg (ms), std (ms), trials, time total (min), ansor exec (ms), ansor tuning, speedup" >> $RESULT
     for ((i = 0; i < ${#BENCH[@]}; i++)); do
         echo "Executing "${BENCH[i]}"..."
-        python3 src/dpansor.py -a cuda -l log/${BENCH[i]}.log -t ${TOP[j]} -b ${BENCH[i]} > results/${BENCH[i]}.csv
-        python3 src/print_output.py results/${BENCH[i]}.csv >> $RESULT
+        python3 src/dpansor.py -m dpansor -a cuda -l log/${BENCH[i]}.log -k ${TOP[j]} -b ${BENCH[i]} >> $RESULT
     done
 done
