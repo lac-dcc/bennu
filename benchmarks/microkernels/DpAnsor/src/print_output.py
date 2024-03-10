@@ -12,6 +12,7 @@ if __name__ == "__main__":
     pr = False
     for l in f.readlines():
         l = l.strip()
-        if l.split(" ")[0] == "avg" or pr == True:
+        if l.split(" ")[0] == "results:": 
             pr = True
+        elif pr == True:
             print(l)

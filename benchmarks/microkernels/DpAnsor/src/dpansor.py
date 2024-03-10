@@ -120,7 +120,7 @@ def microkernel(logfile, bench, target, top=1000):
     cfg = get_best_multilayers(logfile, top)
     log = f"{logfile}_droplet.log"
 
-    print("avg (ms), std (ms), trials, time total (min)")
+    print("results")
     for layer, workload in enumerate(cfg):
         _, _, json_file = cfg[workload]
 
@@ -133,12 +133,13 @@ def microkernel(logfile, bench, target, top=1000):
         ansor_time, _ = get_time_total(logfile, top)
 
         print(
-            "%.8f, %.8f, %d, %.2f"
+            "%s, %.8f, %.8f, %d, %.2f"
             % (
+                bench,
                 np.mean(droplet_avg) * 1000,  # ms
                 np.std(droplet_avg) * 1000,  # ms
                 droplet_trial,
-                (droplet_time + ansor_time) / 60.0,
+                (droplet_time + ansor_time) / 60.0, # min
             )
         )
 

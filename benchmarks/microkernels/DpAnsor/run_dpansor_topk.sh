@@ -28,6 +28,7 @@ for ((j = 0; j < ${#TOP[@]}; j++)); do
     echo "Top-"${TOP[j]}
     RESULT=results/$NAME"_top"${TOP[j]}".csv"
     echo "Top-"${TOP[j]} > $RESULT
+    echo "avg (ms), std (ms), trials, time total (min)" >> $RESULT
     for ((i = 0; i < ${#BENCH[@]}; i++)); do
         echo "Executing "${BENCH[i]}"..."
         python3 src/dpansor.py -a cuda -l log/${BENCH[i]}.log -t ${TOP[j]} -b ${BENCH[i]} > results/${BENCH[i]}.csv
