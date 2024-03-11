@@ -129,7 +129,6 @@ def dpansor(logfile, bench, target, top=1000):
     cfg = get_best_multilayers(logfile, top)
     log = f"{logfile}_droplet.log"
 
-    print("results: ")
     for layer, workload in enumerate(cfg):
         _, _, json_file = cfg[workload]
 
