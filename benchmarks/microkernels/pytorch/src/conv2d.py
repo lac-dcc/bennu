@@ -10,8 +10,8 @@ import sys
 if __name__ == "__main__":
     repeat_time = 1000
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {dev}")
 
     if len(sys.argv) == 11:
         N = int(sys.argv[1])
@@ -29,14 +29,15 @@ if __name__ == "__main__":
         P = str(sys.argv[10])
     print("N, C, H, W, F, K, S, D, P, repeat_time:", N, C, H, W, F, K, S, D, P, repeat_time)
     
-    a = torch.ones(size=[N, C, H, W], dtype=torch.float32)
-    b = torch.ones(size=[C, F, K, K], dtype=torch.float32)
+    a = torch.ones(size=[N, C, H, W], dtype=torch.float32, device=dev)
+    b = torch.ones(size=[C, F, K, K], dtype=torch.float32, device=dev)
     
-    t = torch.sum(b).numpy()
+    t = torch.sum(b)
     st = time.time()
     for i in range(repeat_time):
-        c = torch.conv2d(input=a, weight=b, stride=(S,S), padding=P, dilation=(D,D))
+        c = torch.conv2d(input=a, weight=b, stride=S, padding=P, dilation=D).to(dev)
     x = torch.sum(c)
+    x = x.cpu()
     _ = x.numpy()
     ed = time.time()
     print("{} ms on avg".format((ed-st)*1000.0/repeat_time))

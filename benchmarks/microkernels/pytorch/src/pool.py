@@ -9,8 +9,8 @@ import sys
 
 if __name__ == "__main__":
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {dev}")
 
     if len(sys.argv) == 9:
         N = int(sys.argv[1])
@@ -23,13 +23,14 @@ if __name__ == "__main__":
         repeat_time = int(sys.argv[8])
     print("N, C, H, W, K, S, P, repeat_time:", N, C, H, W, K, S, P, repeat_time)
     
-    a = torch.ones(size=[N, H, W, C], dtype=torch.float32)
-    t = torch.sum(a).numpy()
+    a = torch.ones(size=[N, H, W, C], dtype=torch.float32, device=dev)
+    t = torch.sum(a)
     st = time.time()
     for i in range(repeat_time):
-        pool = torch.nn.AvgPool2d(kernel_size=K, stride=(S, S))
+        pool = torch.nn.AvgPool2d(kernel_size=K, stride=(S, S)).to(dev)
         c = pool(a)
     x = torch.sum(c)
+    x = x.cpu()
     _ = x.numpy()
     ed = time.time()
     print("{} ms on avg".format((ed-st)*1000.0/repeat_time))

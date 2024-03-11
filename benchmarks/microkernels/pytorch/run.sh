@@ -1,4 +1,4 @@
-#mkdir -p results
+mkdir -p results
 echo "matmul"
 python3 src/matmul.py 16 1024 1024 1000 #> results/results_matmul.txt
 echo "conv2d"

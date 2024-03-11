@@ -13,8 +13,8 @@ K_list = [True, True, False, True]
 
 if __name__ == "__main__":
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
+    dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {dev}")
 
     if len(sys.argv) == 3:
         id = int(sys.argv[1])
@@ -30,35 +30,38 @@ if __name__ == "__main__":
     
     if id == 0:
         A1 = A_list[id][0]
-        a = torch.ones(size=[N, C, H], dtype=torch.float32)
-        t = torch.sum(a).numpy()
+        a = torch.ones(size=[N, C, H], dtype=torch.float32, device=dev)
+        t = torch.sum(a)
         st = time.time()
         for i in range(repeat_time):
             c = torch.sum(input=a, dim=[A1], keepdim=K)
         x = torch.sum(c)
+        x = x.cpu()
         _ = x.numpy()
         ed = time.time()
         print("{} ms on avg".format((ed-st)*1000.0/repeat_time))
     elif id == 1:
         A1 = A_list[id][0]
-        a = torch.ones([N, C], torch.float32)
-        t = torch.sum(a).numpy()
+        a = torch.ones([N, C], torch.float32, device=dev)
+        t = torch.sum(a)
         st = time.time()
         for i in range(repeat_time):
             c = torch.sum(input=a, dim=[A1], keepdim=K)
         x = torch.sum(c)
+        x = x.cpu()
         _ = x.numpy()
         ed = time.time()
         print("{} ms on avg".format((ed-st)*1000.0/repeat_time))
     else:
         A1 = A_list[id][0]
         A2 = A_list[id][1]
-        a = torch.ones([N, C, H, W], torch.float32)
-        t = torch.sum(a).numpy()
+        a = torch.ones([N, C, H, W], torch.float32, device=dev)
+        t = torch.sum(a)
         st = time.time()
         for i in range(repeat_time):
             c = torch.sum(input=a, dim=[A1, A2], keepdim=K)
         x = torch.sum(c)
+        x = x.cpu()
         _ = x.numpy()
         ed = time.time()
         print("{} ms on avg".format((ed-st)*1000.0/repeat_time))
