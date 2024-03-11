@@ -8,6 +8,10 @@ import sys
 import torch
 
 if __name__ == "__main__":
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     if len(sys.argv) == 5:
         M = int(sys.argv[1])
         K = int(sys.argv[2])

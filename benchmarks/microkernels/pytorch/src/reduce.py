@@ -12,6 +12,10 @@ A_list = [[2], [1], [2,3], [2,3]]
 K_list = [True, True, False, True]
 
 if __name__ == "__main__":
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     if len(sys.argv) == 3:
         id = int(sys.argv[1])
         N = S_list[id][0] 

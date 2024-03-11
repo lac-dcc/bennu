@@ -9,6 +9,10 @@ import sys
 
 if __name__ == "__main__":
     N, C, H, W, K, S, D, P, repeat_time = 128, 84, 83, 83, 5, 2, 1, "SAME", 1000
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     if len(sys.argv) == 10:
         N = int(sys.argv[1])
         C = int(sys.argv[2])

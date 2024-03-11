@@ -11,6 +11,10 @@ C = 4096
 repeat_time = 1000
 
 if __name__ == "__main__":
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     if len(sys.argv) == 2:
         N = int(sys.argv[1])
     print("N, C, repeat_time:", N, C, repeat_time)
