@@ -146,6 +146,3 @@ class Droplet:
                 f"Warning: early termination due to an all-invalid neighborhood \
                 after iterations"
             )
-
-    def has_next(self):
-        return len(self.next) > 0
