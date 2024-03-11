@@ -152,7 +152,7 @@ def dpansor(logfile, bench, target, top=1000):
                 droplet_trial,
                 (droplet_time + ansor_time) / 60.0, # min
                 np.mean(ansor_avg_1000) * 1000,
-                ansor_time_1000,
+                ansor_time_1000 / 60.0,
                 np.mean(ansor_avg_1000) / np.mean(droplet_avg)  
             )
         )
