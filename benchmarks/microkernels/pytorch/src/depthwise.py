@@ -26,18 +26,14 @@ if __name__ == "__main__":
     print("N, C, H, W, K, S, D, P, repeat_time:", N, C, H, W, K, S, D, P, repeat_time)
 
     a = torch.ones(size=[N, C, H, W], dtype=torch.float32, device=dev)
-    #b = torch.ones([C, 1, K, K], dtype=torch.float32, device=dev)
-    #t = torch.sum(b)
+    b = torch.ones(size=[C, C, K, K], dtype=torch.float32, device=dev)
+    t = torch.sum(b)
     st = time.time()
     for i in range(repeat_time):
         ### Depthwise convolution is a type of convolution where we apply a single 
         # convolutional filter for each input channel
         # by adding 'groups' param, you perform depthwise conv
-        depthwise_layer = torch.nn.Conv2d(in_channels=C, out_channels=N, kernel_size=K, stride=1, groups=1, device=dev)
-        depthwise_layer_n_params = sum(p.numel() for p in depthwise_layer.parameters() if p.requires_grad)
-        depthwise_out = depthwise_layer(input=a)
-
-        #c = torch.depthwise(input=a, filter=b, strides=[1, S, S, 1], padding=P, data_format='NHWC')
+        depthwise_out = torch.conv2d(input=a, weight=b, stride=S, dilation=D, groups=1).to(dev)
     x = torch.sum(depthwise_out)
     x = x.cpu()
     _ = x.detach().numpy()
