@@ -45,9 +45,13 @@ def generate_ansor_template(bench, logfile, target, trials):
 
 
 def generate_meta_template(bench, logfile, target, trials):
-    target = target + " -num-cores 8"  # Think to get this value automatically
+    if target == "llvm":
+        target += " -num-cores 8"  # TODO: Get this value automatically
+    elif target == "cuda":
+        target += " -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
     mod, params = from_onnx(onnx.load(bench))
 
+    start = time.time()
     with ms.Profiler() as profiler:
         database = ms.relay_integration.tune_relay(
             mod=mod,
@@ -64,7 +68,7 @@ def generate_meta_template(bench, logfile, target, trials):
                     enable_cpu_cache_flush=False,
                 )
             ),
-            cost_model=ms.cost_model.XGBModel(  # type: ignore
+            cost_model=ms.cost_model.XGBModel(
                 extractor=ms.feature_extractor.PerStoreFeature(),
                 adaptive_training=False,
             ),
@@ -76,7 +80,8 @@ def generate_meta_template(bench, logfile, target, trials):
             target=target,
             params=params,
         )
-    print("Tuning Time:")
+    end = time.time()
+    print(f"Tuning Time (min): {(end-start)/60:.2f}")
     print(profiler.table())
 
 

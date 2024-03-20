@@ -2,7 +2,7 @@
 
 NAME="test" # change this
 ARCH="cuda"
-trials=10000
+trials=1000
 
 BENCH=(
     alexnet
@@ -27,7 +27,12 @@ BENCH=(
     vgg19
 )
 
+mkdir -p results
+mkdir -p results/ms
+
 for ((i = 0; i < ${#BENCH[@]}; i++)); do
     echo "BENCH: "${BENCH[i]} 
-    python3 benchmarks/models_onnx.py -m meta -a $ARCH -t $trials -l results/meta_$ARCH"_"$NAME"_"${BENCH[i]}_10k -b models/${BENCH[i]}.onnx
+    DIR=results/ms/meta_$ARCH"_"$NAME"_"${BENCH[i]}_1k
+    mkdir -p $DIR
+    python3 benchmarks/models_onnx.py -m meta -a $ARCH -t $trials -l $DIR -b models/${BENCH[i]}.onnx &> $DIR/output.txt
 done
