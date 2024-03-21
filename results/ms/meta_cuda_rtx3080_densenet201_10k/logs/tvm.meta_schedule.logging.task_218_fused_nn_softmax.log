@@ -1,0 +1,452 @@
+2024-03-21 13:42:34 [INFO] [task_scheduler.cc:160] Initializing Task #218: "fused_nn_softmax"
+2024-03-21 13:42:34 [INFO] [task_scheduler.cc:35] 
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+        T_softmax_exp = T.alloc_buffer((T.int64(1), T.int64(1000)))
+        T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+        for i0, k in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_softmax_maxelem"):
+                v_i0, v_k = T.axis.remap("SR", [i0, k])
+                T.reads(p0[v_i0, v_k])
+                T.writes(T_softmax_maxelem[v_i0])
+                with T.init():
+                    T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], p0[v_i0, v_k])
+        for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_softmax_exp"):
+                v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0])
+                T.writes(T_softmax_exp[v_i0, v_i1])
+                T_softmax_exp[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0])
+        for i0, k in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_softmax_expsum"):
+                v_i0, v_k = T.axis.remap("SR", [i0, k])
+                T.reads(T_softmax_exp[v_i0, v_k])
+                T.writes(T_softmax_expsum[v_i0])
+                with T.init():
+                    T_softmax_expsum[v_i0] = T.float32(0)
+                T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_exp[v_i0, v_k]
+        for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_softmax_norm"):
+                v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                T.reads(T_softmax_exp[v_i0, v_i1], T_softmax_expsum[v_i0])
+                T.writes(T_softmax_norm[v_i0, v_i1])
+                T.block_attr({"axis": 1})
+                T_softmax_norm[v_i0, v_i1] = T_softmax_exp[v_i0, v_i1] / T_softmax_expsum[v_i0]
+2024-03-21 13:42:34 [INFO] [task_scheduler.cc:164] Total 4 design space(s) generated
+2024-03-21 13:42:34 [INFO] [task_scheduler.cc:170] Design space #0:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 16})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            for i0_fused_0 in T.thread_binding(T.int64(1), thread="blockIdx.x"):
+                for i0_fused_1 in T.thread_binding(T.int64(1), thread="threadIdx.x"):
+                    for k in range(T.int64(1000)):
+                        with T.block("T_softmax_maxelem"):
+                            v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                            v_k = T.axis.reduce(T.int64(1000), k)
+                            T.reads(p0[v_i0, v_k])
+                            T.writes(T_softmax_maxelem[v_i0])
+                            with T.init():
+                                T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                            T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], p0[v_i0, v_k])
+            for i0_fused_0 in T.thread_binding(T.int64(1), thread="blockIdx.x"):
+                for i0_fused_1 in T.thread_binding(T.int64(1), thread="threadIdx.x"):
+                    for k in range(T.int64(1000)):
+                        with T.block("T_softmax_expsum"):
+                            v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                            v_k = T.axis.reduce(T.int64(1000), k)
+                            T.reads(p0[v_i0, v_k], T_softmax_maxelem[v_i0])
+                            T.writes(T_softmax_expsum[v_i0])
+                            with T.init():
+                                T_softmax_expsum[v_i0] = T.float32(0)
+                            T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T.exp(p0[v_i0, v_k] - T_softmax_maxelem[v_i0])
+            for i0_i1_fused_0 in T.thread_binding(T.int64(16), thread="blockIdx.x"):
+                for i0_i1_fused_1 in T.thread_binding(T.int64(64), thread="threadIdx.x"):
+                    with T.block("T_softmax_norm"):
+                        v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                        v_i1 = T.axis.spatial(T.int64(1000), i0_i1_fused_0 * T.int64(64) + i0_i1_fused_1)
+                        T.where(i0_i1_fused_0 * T.int64(64) + i0_i1_fused_1 < T.int64(1000))
+                        T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0], T_softmax_expsum[v_i0])
+                        T.writes(T_softmax_norm[v_i0, v_i1])
+                        T.block_attr({"axis": 1})
+                        T_softmax_norm[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0]) / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="T_softmax_norm", func_name="main")
+b4 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b1)
+v5 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=1)
+sch.annotate(block_or_loop=b4, ann_key="meta_schedule.unroll_explicit", ann_val=v5)
+l6, l7 = sch.get_loops(block=b3)
+l8 = sch.fuse(l6, l7, preserve_unit_iters=True)
+v9 = sch.sample_categorical(candidates=[32, 64, 128, 256, 512], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=1)
+l10, l11 = sch.split(loop=l8, factors=[None, v9], preserve_unit_iters=True)
+sch.bind(loop=l10, thread_axis="blockIdx.x")
+sch.bind(loop=l11, thread_axis="threadIdx.x")
+l12, l13 = sch.get_loops(block=b2)
+l14 = sch.fuse(l12, preserve_unit_iters=True)
+l15, l16 = sch.split(loop=l14, factors=[None, 1], preserve_unit_iters=True)
+sch.bind(loop=l15, thread_axis="blockIdx.x")
+sch.bind(loop=l16, thread_axis="threadIdx.x")
+l17, l18 = sch.get_loops(block=b0)
+l19 = sch.fuse(l17, preserve_unit_iters=True)
+l20, l21 = sch.split(loop=l19, factors=[None, 1], preserve_unit_iters=True)
+sch.bind(loop=l20, thread_axis="blockIdx.x")
+sch.bind(loop=l21, thread_axis="threadIdx.x")
+2024-03-21 13:42:34 [INFO] [task_scheduler.cc:170] Design space #1:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            for i0_fused in T.thread_binding(T.int64(1), thread="blockIdx.x"):
+                for k_0 in range(T.int64(8)):
+                    for k_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                        with T.block("T_softmax_maxelem"):
+                            v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                            v_k = T.axis.reduce(T.int64(1000), k_0 * T.int64(128) + k_1)
+                            T.where(k_0 * T.int64(128) + k_1 < T.int64(1000))
+                            T.reads(p0[v_i0, v_k])
+                            T.writes(T_softmax_maxelem[v_i0])
+                            with T.init():
+                                T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                            T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], p0[v_i0, v_k])
+            for i0_fused_0 in T.thread_binding(T.int64(1), thread="blockIdx.x"):
+                for i0_fused_1 in T.thread_binding(T.int64(1), thread="threadIdx.x"):
+                    for k in range(T.int64(1000)):
+                        with T.block("T_softmax_expsum"):
+                            v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                            v_k = T.axis.reduce(T.int64(1000), k)
+                            T.reads(p0[v_i0, v_k], T_softmax_maxelem[v_i0])
+                            T.writes(T_softmax_expsum[v_i0])
+                            with T.init():
+                                T_softmax_expsum[v_i0] = T.float32(0)
+                            T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T.exp(p0[v_i0, v_k] - T_softmax_maxelem[v_i0])
+            for i0_i1_fused_0 in T.thread_binding(T.int64(16), thread="blockIdx.x"):
+                for i0_i1_fused_1 in T.thread_binding(T.int64(64), thread="threadIdx.x"):
+                    with T.block("T_softmax_norm"):
+                        v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                        v_i1 = T.axis.spatial(T.int64(1000), i0_i1_fused_0 * T.int64(64) + i0_i1_fused_1)
+                        T.where(i0_i1_fused_0 * T.int64(64) + i0_i1_fused_1 < T.int64(1000))
+                        T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0], T_softmax_expsum[v_i0])
+                        T.writes(T_softmax_norm[v_i0, v_i1])
+                        T.block_attr({"axis": 1})
+                        T_softmax_norm[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0]) / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="T_softmax_norm", func_name="main")
+b4 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b1)
+v5 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=5)
+l6, l7 = sch.get_loops(block=b0)
+l8, l9 = sch.split(loop=l7, factors=[None, v5], preserve_unit_iters=True)
+sch.bind(loop=l9, thread_axis="threadIdx.x")
+v10 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=2)
+sch.annotate(block_or_loop=b4, ann_key="meta_schedule.unroll_explicit", ann_val=v10)
+l11, l12 = sch.get_loops(block=b3)
+l13 = sch.fuse(l11, l12, preserve_unit_iters=True)
+v14 = sch.sample_categorical(candidates=[32, 64, 128, 256, 512], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=1)
+l15, l16 = sch.split(loop=l13, factors=[None, v14], preserve_unit_iters=True)
+sch.bind(loop=l15, thread_axis="blockIdx.x")
+sch.bind(loop=l16, thread_axis="threadIdx.x")
+l17, l18 = sch.get_loops(block=b2)
+l19 = sch.fuse(l17, preserve_unit_iters=True)
+l20, l21 = sch.split(loop=l19, factors=[None, 1], preserve_unit_iters=True)
+sch.bind(loop=l20, thread_axis="blockIdx.x")
+sch.bind(loop=l21, thread_axis="threadIdx.x")
+l22, l23, l24 = sch.get_loops(block=b0)
+l25 = sch.fuse(l22, preserve_unit_iters=True)
+sch.bind(loop=l25, thread_axis="blockIdx.x")
+2024-03-21 13:42:34 [INFO] [task_scheduler.cc:170] Design space #2:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 1024})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum_shared = T.alloc_buffer((T.int64(1),), scope="shared")
+            for i0_fused_0 in T.thread_binding(T.int64(1), thread="blockIdx.x"):
+                for i0_fused_1 in T.thread_binding(T.int64(1), thread="threadIdx.x"):
+                    for k in range(T.int64(1000)):
+                        with T.block("T_softmax_maxelem"):
+                            v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                            v_k = T.axis.reduce(T.int64(1000), k)
+                            T.reads(p0[v_i0, v_k])
+                            T.writes(T_softmax_maxelem[v_i0])
+                            with T.init():
+                                T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                            T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], p0[v_i0, v_k])
+            for i0_fused in T.thread_binding(T.int64(1), thread="blockIdx.x"):
+                for ax0, ax1_0 in T.grid(T.int64(1), T.int64(8)):
+                    for ax1_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                        with T.block("T_softmax_expsum"):
+                            v_i0 = T.axis.spatial(T.int64(1), ax0)
+                            v_k = T.axis.reduce(T.int64(1000), ax1_0 * T.int64(128) + ax1_1)
+                            T.where(ax1_0 * T.int64(128) + ax1_1 < T.int64(1000))
+                            T.reads(p0[v_i0, v_k], T_softmax_maxelem[v_i0])
+                            T.writes(T_softmax_expsum_shared[v_i0])
+                            with T.init():
+                                T_softmax_expsum_shared[v_i0] = T.float32(0)
+                            T_softmax_expsum_shared[v_i0] = T_softmax_expsum_shared[v_i0] + T.exp(p0[v_i0, v_k] - T_softmax_maxelem[v_i0])
+                for i1_0 in range(T.int64(8)):
+                    for i1_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                        with T.block("T_softmax_norm"):
+                            v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                            v_i1 = T.axis.spatial(T.int64(1000), i1_0 * T.int64(128) + i1_1)
+                            T.where(i1_0 * T.int64(128) + i1_1 < T.int64(1000))
+                            T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0], T_softmax_expsum_shared[v_i0])
+                            T.writes(T_softmax_norm[v_i0, v_i1])
+                            T.block_attr({"axis": 1})
+                            T_softmax_norm[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0]) / T_softmax_expsum_shared[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="T_softmax_norm", func_name="main")
+b4 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b1)
+b5, = sch.get_consumers(block=b2)
+l6, l7 = sch.get_loops(block=b5)
+v8 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=5)
+l9, l10 = sch.split(loop=l7, factors=[None, v8], preserve_unit_iters=True)
+sch.bind(loop=l10, thread_axis="threadIdx.x")
+sch.compute_at(block=b2, loop=l6, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b2, buffer_index=0, storage_scope="shared")
+l11, l12, l13 = sch.get_loops(block=b2)
+l14, l15 = sch.split(loop=l13, factors=[None, v8], preserve_unit_iters=True)
+sch.bind(loop=l15, thread_axis="threadIdx.x")
+v16 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=4)
+sch.annotate(block_or_loop=b4, ann_key="meta_schedule.unroll_explicit", ann_val=v16)
+l17, l18, l19 = sch.get_loops(block=b3)
+l20 = sch.fuse(l17, preserve_unit_iters=True)
+sch.bind(loop=l20, thread_axis="blockIdx.x")
+l21, l22 = sch.get_loops(block=b0)
+l23 = sch.fuse(l21, preserve_unit_iters=True)
+l24, l25 = sch.split(loop=l23, factors=[None, 1], preserve_unit_iters=True)
+sch.bind(loop=l24, thread_axis="blockIdx.x")
+sch.bind(loop=l25, thread_axis="threadIdx.x")
+2024-03-21 13:42:34 [INFO] [task_scheduler.cc:170] Design space #3:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 512})
+            T_softmax_maxelem_shared = T.alloc_buffer((T.int64(1),), scope="shared")
+            T_softmax_expsum_shared = T.alloc_buffer((T.int64(1),), scope="shared")
+            for i0_fused in T.thread_binding(T.int64(1), thread="blockIdx.x"):
+                for ax0, ax1_0 in T.grid(T.int64(1), T.int64(8)):
+                    for ax1_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                        with T.block("T_softmax_maxelem"):
+                            v_i0 = T.axis.spatial(T.int64(1), ax0)
+                            v_k = T.axis.reduce(T.int64(1000), ax1_0 * T.int64(128) + ax1_1)
+                            T.where(ax1_0 * T.int64(128) + ax1_1 < T.int64(1000))
+                            T.reads(p0[v_i0, v_k])
+                            T.writes(T_softmax_maxelem_shared[v_i0])
+                            with T.init():
+                                T_softmax_maxelem_shared[v_i0] = T.float32(-3.4028234663852886e+38)
+                            T_softmax_maxelem_shared[v_i0] = T.max(T_softmax_maxelem_shared[v_i0], p0[v_i0, v_k])
+                for ax0, ax1_0 in T.grid(T.int64(1), T.int64(8)):
+                    for ax1_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                        with T.block("T_softmax_expsum"):
+                            v_i0 = T.axis.spatial(T.int64(1), ax0)
+                            v_k = T.axis.reduce(T.int64(1000), ax1_0 * T.int64(128) + ax1_1)
+                            T.where(ax1_0 * T.int64(128) + ax1_1 < T.int64(1000))
+                            T.reads(p0[v_i0, v_k], T_softmax_maxelem_shared[v_i0])
+                            T.writes(T_softmax_expsum_shared[v_i0])
+                            with T.init():
+                                T_softmax_expsum_shared[v_i0] = T.float32(0)
+                            T_softmax_expsum_shared[v_i0] = T_softmax_expsum_shared[v_i0] + T.exp(p0[v_i0, v_k] - T_softmax_maxelem_shared[v_i0])
+                for i1_0 in range(T.int64(8)):
+                    for i1_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                        with T.block("T_softmax_norm"):
+                            v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                            v_i1 = T.axis.spatial(T.int64(1000), i1_0 * T.int64(128) + i1_1)
+                            T.where(i1_0 * T.int64(128) + i1_1 < T.int64(1000))
+                            T.reads(p0[v_i0, v_i1], T_softmax_maxelem_shared[v_i0], T_softmax_expsum_shared[v_i0])
+                            T.writes(T_softmax_norm[v_i0, v_i1])
+                            T.block_attr({"axis": 1})
+                            T_softmax_norm[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem_shared[v_i0]) / T_softmax_expsum_shared[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="T_softmax_norm", func_name="main")
+b4 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b1)
+b5, = sch.get_consumers(block=b2)
+l6, l7 = sch.get_loops(block=b5)
+v8 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=5)
+l9, l10 = sch.split(loop=l7, factors=[None, v8], preserve_unit_iters=True)
+sch.bind(loop=l10, thread_axis="threadIdx.x")
+sch.compute_at(block=b2, loop=l6, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b2, buffer_index=0, storage_scope="shared")
+l11, l12, l13 = sch.get_loops(block=b2)
+l14, l15 = sch.split(loop=l13, factors=[None, v8], preserve_unit_iters=True)
+sch.bind(loop=l15, thread_axis="threadIdx.x")
+b16, b17 = sch.get_consumers(block=b0)
+l18, l19, l20, l21 = sch.get_loops(block=b16)
+sch.compute_at(block=b0, loop=l18, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l22, l23, l24 = sch.get_loops(block=b0)
+l25, l26 = sch.split(loop=l24, factors=[None, v8], preserve_unit_iters=True)
+sch.bind(loop=l26, thread_axis="threadIdx.x")
+v27 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b4, ann_key="meta_schedule.unroll_explicit", ann_val=v27)
+l28, l29, l30 = sch.get_loops(block=b3)
+l31 = sch.fuse(l28, preserve_unit_iters=True)
+sch.bind(loop=l31, thread_axis="blockIdx.x")
+2024-03-21 15:46:52 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-03-21 15:46:52 [INFO] [evolutionary_search.cc:715] Picked top 0 candidate(s) from database
+2024-03-21 15:46:52 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f0e9c388)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f2605668)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e51328)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f0831148)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f597cbe8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2fa361b78)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f457c3c8)]: 0 failure(s)
+2024-03-21 15:46:52 [INFO] [evolutionary_search.cc:723] Sampled 512 candidate(s)
+2024-03-21 15:46:53 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f0e9c388)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f2605668)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e51328)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f0831148)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f597cbe8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2fa361b78)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f457c3c8)]: 0 failure(s)
+2024-03-21 15:46:53 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f0e9c388)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f2605668)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e51328)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f0831148)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f597cbe8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2fa361b78)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f457c3c8)]: 0 failure(s)
+2024-03-21 15:46:53 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f0e9c388)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f2605668)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e51328)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f0831148)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f597cbe8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2fa361b78)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f457c3c8)]: 0 failure(s)
+2024-03-21 15:46:53 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f0e9c388)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f2605668)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e51328)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f0831148)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f597cbe8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2fa361b78)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f457c3c8)]: 0 failure(s)
+2024-03-21 15:46:53 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	0.9928  0.9885  0.9839  0.9837  0.9834  0.9811  0.9752  0.9743  0.9640  0.9621  0.9555  0.9515  0.9463  0.9382  0.9367  0.9365
+[17 : 32]:	0.9365  0.9362  0.9360  0.9295  0.9268  0.9211  0.9088  0.9017  0.8931  0.8931  0.8900  0.8882  0.8874  0.8864  0.8863  0.8824
+[33 : 48]:	0.8738  0.8579  0.8521  0.8508  0.8500  0.8469  0.8433  0.8402  0.8320  0.8189  0.8142  0.8059  0.8029  0.7974  0.7943  0.7877
+[49 : 64]:	0.7749  0.7740  0.7698  0.7587  0.7524  0.7484  0.7461  0.7438  0.7414  0.7336  0.7334  0.7308  0.7260  0.7143  0.7142  0.7109
+2024-03-21 15:46:53 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-03-21 15:46:53 [INFO] [evolutionary_search.cc:730] Sending 63 candidates(s) for measurement
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #1: GFLOPs: 0.2187. Time: 18.2917 us. Best GFLOPs: 0.2187
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #2: GFLOPs: 0.1221. Time: 32.7690 us. Best GFLOPs: 0.2187
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #3: GFLOPs: 0.2135. Time: 18.7314 us. Best GFLOPs: 0.2187
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #4: GFLOPs: 0.1494. Time: 26.7821 us. Best GFLOPs: 0.2187
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #5: GFLOPs: 0.1494. Time: 26.7801 us. Best GFLOPs: 0.2187
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #6: GFLOPs: 0.7266. Time: 5.5047 us. Best GFLOPs: 0.7266
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #7: GFLOPs: 0.1220. Time: 32.7767 us. Best GFLOPs: 0.7266
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #8: GFLOPs: 0.1456. Time: 27.4794 us. Best GFLOPs: 0.7266
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #9: GFLOPs: 0.7452. Time: 5.3677 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #10: GFLOPs: 0.2993. Time: 13.3631 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #11: GFLOPs: 0.1494. Time: 26.7798 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #12: GFLOPs: 0.1307. Time: 30.6061 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #13: GFLOPs: 0.1471. Time: 27.1898 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #14: GFLOPs: 0.2187. Time: 18.2898 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #15: GFLOPs: 0.4191. Time: 9.5441 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #16: GFLOPs: 0.1491. Time: 26.8282 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #17: GFLOPs: 0.1494. Time: 26.7785 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #18: GFLOPs: 0.1224. Time: 32.6837 us. Best GFLOPs: 0.7452
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #19: GFLOPs: 1.7679. Time: 2.2625 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #20: GFLOPs: 0.1749. Time: 22.8661 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #21: GFLOPs: 0.1837. Time: 21.7746 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #22: GFLOPs: 1.7647. Time: 2.2667 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #23: GFLOPs: 0.1490. Time: 26.8478 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #24: GFLOPs: 0.1478. Time: 27.0694 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #25: GFLOPs: 0.3870. Time: 10.3370 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #26: GFLOPs: 0.2172. Time: 18.4136 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #27: GFLOPs: 0.2940. Time: 13.6068 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #28: GFLOPs: 0.1216. Time: 32.9009 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #29: GFLOPs: 0.1224. Time: 32.6823 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #30: GFLOPs: 0.2123. Time: 18.8377 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #31: GFLOPs: 0.1494. Time: 26.7796 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #32: GFLOPs: 1.4294. Time: 2.7984 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #33: GFLOPs: 0.2049. Time: 19.5226 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #34: GFLOPs: 0.1221. Time: 32.7697 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #35: GFLOPs: 0.1492. Time: 26.8151 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #36: GFLOPs: 0.1488. Time: 26.8871 us. Best GFLOPs: 1.7679
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #37: GFLOPs: 1.7691. Time: 2.2610 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #38: GFLOPs: 0.1473. Time: 27.1596 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #39: GFLOPs: 0.1365. Time: 29.3076 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #40: GFLOPs: 0.1494. Time: 26.7807 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #41: GFLOPs: 0.2049. Time: 19.5220 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #42: GFLOPs: 0.1370. Time: 29.2068 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #43: GFLOPs: 0.1492. Time: 26.8181 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #44: GFLOPs: 1.6979. Time: 2.3559 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #45: GFLOPs: 0.1470. Time: 27.2047 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #46: GFLOPs: 0.3500. Time: 11.4286 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #47: GFLOPs: 0.1307. Time: 30.6043 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #48: GFLOPs: 0.1492. Time: 26.8136 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #49: GFLOPs: 0.7091. Time: 5.6413 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #50: GFLOPs: 0.1494. Time: 26.7800 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #51: GFLOPs: 0.4150. Time: 9.6397 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #52: GFLOPs: 0.1471. Time: 27.1878 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #53: GFLOPs: 0.4398. Time: 9.0949 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #54: GFLOPs: 0.2038. Time: 19.6251 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #55: GFLOPs: 0.1456. Time: 27.4709 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #56: GFLOPs: 0.1494. Time: 26.7800 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #57: GFLOPs: 0.1370. Time: 29.2059 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #58: GFLOPs: 0.1470. Time: 27.2031 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #59: GFLOPs: 0.4195. Time: 9.5342 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #60: GFLOPs: 0.1494. Time: 26.7780 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #61: GFLOPs: 0.1494. Time: 26.7781 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #62: GFLOPs: 0.2069. Time: 19.3297 us. Best GFLOPs: 1.7691
+2024-03-21 15:51:18 [INFO] [task_scheduler.cc:131] [Task #218: fused_nn_softmax] Trial #63: GFLOPs: 0.7266. Time: 5.5052 us. Best GFLOPs: 1.7691

@@ -1,0 +1,916 @@
+2024-03-21 13:42:33 [INFO] [task_scheduler.cc:160] Initializing Task #207: "fused_nn_conv2d_1"
+2024-03-21 13:42:33 [INFO] [task_scheduler.cc:35] 
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), "float32"), p1: T.Buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), "float32"), conv2d_nchw: T.Buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        pad_temp = T.alloc_buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)))
+        for i0, i1, i2, i3 in T.grid(T.int64(1), T.int64(512), T.int64(28), T.int64(28)):
+            with T.block("pad_temp"):
+                v_i0, v_i1, v_i2, v_i3 = T.axis.remap("SSSS", [i0, i1, i2, i3])
+                T.reads(p0[v_i0, v_i1, v_i2, v_i3])
+                T.writes(pad_temp[v_i0, v_i1, v_i2, v_i3])
+                pad_temp[v_i0, v_i1, v_i2, v_i3] = p0[v_i0, v_i1, v_i2, v_i3]
+        for nn, ff, yy, xx, rc, ry, rx in T.grid(T.int64(1), T.int64(256), T.int64(28), T.int64(28), T.int64(512), T.int64(1), T.int64(1)):
+            with T.block("conv2d_nchw"):
+                v_nn, v_ff, v_yy, v_xx, v_rc, v_ry, v_rx = T.axis.remap("SSSSRRR", [nn, ff, yy, xx, rc, ry, rx])
+                T.reads(pad_temp[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx], p1[v_ff, v_rc, v_ry, v_rx])
+                T.writes(conv2d_nchw[v_nn, v_ff, v_yy, v_xx])
+                with T.init():
+                    conv2d_nchw[v_nn, v_ff, v_yy, v_xx] = T.float32(0)
+                conv2d_nchw[v_nn, v_ff, v_yy, v_xx] = conv2d_nchw[v_nn, v_ff, v_yy, v_xx] + pad_temp[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx] * p1[v_ff, v_rc, v_ry, v_rx]
+2024-03-21 13:42:33 [INFO] [task_scheduler.cc:164] Total 3 design space(s) generated
+2024-03-21 13:42:33 [INFO] [task_scheduler.cc:170] Design space #0:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), "float32"), p1: T.Buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), "float32"), conv2d_nchw: T.Buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 512})
+            conv2d_nchw_local = T.alloc_buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), scope="local")
+            pad_temp_shared = T.alloc_buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), scope="shared")
+            p1_shared = T.alloc_buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), scope="shared")
+            for nn_0_ff_0_yy_0_xx_0_fused in T.thread_binding(T.int64(32), thread="blockIdx.x"):
+                for nn_1_ff_1_yy_1_xx_1_fused in T.thread_binding(T.int64(8), thread="vthread.x"):
+                    for nn_2_ff_2_yy_2_xx_2_fused in T.thread_binding(T.int64(14), thread="threadIdx.x"):
+                        for rc_0, ry_0, rx_0 in T.grid(T.int64(1), T.int64(1), T.int64(1)):
+                            for ax0_ax1_ax2_ax3_fused in range(T.int64(50176)):
+                                with T.block("pad_temp_shared"):
+                                    v0 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    v1 = T.axis.spatial(T.int64(512), ax0_ax1_ax2_ax3_fused // T.int64(98))
+                                    v2 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + ax0_ax1_ax2_ax3_fused % T.int64(98) // T.int64(7))
+                                    v3 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + ax0_ax1_ax2_ax3_fused % T.int64(7))
+                                    T.reads(p0[v0, v1, v2, v3])
+                                    T.writes(pad_temp_shared[v0, v1, v2, v3])
+                                    T.block_attr({"meta_schedule.cooperative_fetch": 1})
+                                    pad_temp_shared[v0, v1, v2, v3] = p0[v0, v1, v2, v3]
+                            for ax0_ax1_ax2_ax3_fused in range(T.int64(32768)):
+                                with T.block("p1_shared"):
+                                    v0 = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + ax0_ax1_ax2_ax3_fused // T.int64(512))
+                                    v1 = T.axis.spatial(T.int64(512), ax0_ax1_ax2_ax3_fused % T.int64(512))
+                                    v2 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    v3 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    T.reads(p1[v0, v1, v2, v3])
+                                    T.writes(p1_shared[v0, v1, v2, v3])
+                                    T.block_attr({"meta_schedule.cooperative_fetch": 1})
+                                    p1_shared[v0, v1, v2, v3] = p1[v0, v1, v2, v3]
+                            for rc_1, ry_1, rx_1, nn_3, ff_3, yy_3, xx_3, rc_2, ry_2, rx_2, nn_4, ff_4, yy_4, xx_4 in T.grid(T.int64(512), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(8), T.int64(1), T.int64(7)):
+                                with T.block("conv2d_nchw"):
+                                    v_nn = T.axis.spatial(T.int64(1), nn_3 + nn_4)
+                                    v_ff = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + nn_1_ff_1_yy_1_xx_1_fused // T.int64(2) * T.int64(16) + nn_2_ff_2_yy_2_xx_2_fused // T.int64(7) * T.int64(8) + ff_3 * T.int64(8) + ff_4)
+                                    v_yy = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + nn_1_ff_1_yy_1_xx_1_fused % T.int64(2) * T.int64(7) + nn_2_ff_2_yy_2_xx_2_fused % T.int64(7) + yy_3 + yy_4)
+                                    v_xx = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + xx_3 * T.int64(7) + xx_4)
+                                    v_rc = T.axis.reduce(T.int64(512), rc_0 * T.int64(512) + rc_1 + rc_2)
+                                    v_ry = T.axis.reduce(T.int64(1), ry_0 + ry_1 + ry_2)
+                                    v_rx = T.axis.reduce(T.int64(1), rx_0 + rx_1 + rx_2)
+                                    T.reads(pad_temp_shared[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx], p1_shared[v_ff, v_rc, v_ry, v_rx])
+                                    T.writes(conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx])
+                                    T.block_attr({"meta_schedule.thread_extent_high_inclusive": 1024, "meta_schedule.thread_extent_low_inclusive": 32, "meta_schedule.tiling_structure": "SSSRRSRS"})
+                                    with T.init():
+                                        conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] = T.float32(0)
+                                    conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] = conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] + pad_temp_shared[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx] * p1_shared[v_ff, v_rc, v_ry, v_rx]
+                        for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(8), T.int64(1), T.int64(7)):
+                            with T.block("conv2d_nchw_local"):
+                                v0 = T.axis.spatial(T.int64(1), ax0)
+                                v1 = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + nn_1_ff_1_yy_1_xx_1_fused // T.int64(2) * T.int64(16) + nn_2_ff_2_yy_2_xx_2_fused // T.int64(7) * T.int64(8) + ax1)
+                                v2 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + nn_1_ff_1_yy_1_xx_1_fused % T.int64(2) * T.int64(7) + nn_2_ff_2_yy_2_xx_2_fused % T.int64(7) + ax2)
+                                v3 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + ax3)
+                                T.reads(conv2d_nchw_local[v0, v1, v2, v3])
+                                T.writes(conv2d_nchw[v0, v1, v2, v3])
+                                conv2d_nchw[v0, v1, v2, v3] = conv2d_nchw_local[v0, v1, v2, v3]
+b0 = sch.get_block(name="pad_temp", func_name="main")
+b1 = sch.get_block(name="conv2d_nchw", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSSRRSRS")
+l3, l4, l5, l6, l7, l8, l9 = sch.get_loops(block=b1)
+v10, v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l3, n=5, max_innermost_factor=64, decision=[1, 1, 1, 1, 1])
+l15, l16, l17, l18, l19 = sch.split(loop=l3, factors=[v10, v11, v12, v13, v14], preserve_unit_iters=True)
+v20, v21, v22, v23, v24 = sch.sample_perfect_tile(loop=l4, n=5, max_innermost_factor=64, decision=[4, 4, 2, 1, 8])
+l25, l26, l27, l28, l29 = sch.split(loop=l4, factors=[v20, v21, v22, v23, v24], preserve_unit_iters=True)
+v30, v31, v32, v33, v34 = sch.sample_perfect_tile(loop=l5, n=5, max_innermost_factor=64, decision=[2, 2, 7, 1, 1])
+l35, l36, l37, l38, l39 = sch.split(loop=l5, factors=[v30, v31, v32, v33, v34], preserve_unit_iters=True)
+v40, v41, v42, v43, v44 = sch.sample_perfect_tile(loop=l6, n=5, max_innermost_factor=64, decision=[4, 1, 1, 1, 7])
+l45, l46, l47, l48, l49 = sch.split(loop=l6, factors=[v40, v41, v42, v43, v44], preserve_unit_iters=True)
+v50, v51, v52 = sch.sample_perfect_tile(loop=l7, n=3, max_innermost_factor=64, decision=[1, 512, 1])
+l53, l54, l55 = sch.split(loop=l7, factors=[v50, v51, v52], preserve_unit_iters=True)
+v56, v57, v58 = sch.sample_perfect_tile(loop=l8, n=3, max_innermost_factor=64, decision=[1, 1, 1])
+l59, l60, l61 = sch.split(loop=l8, factors=[v56, v57, v58], preserve_unit_iters=True)
+v62, v63, v64 = sch.sample_perfect_tile(loop=l9, n=3, max_innermost_factor=64, decision=[1, 1, 1])
+l65, l66, l67 = sch.split(loop=l9, factors=[v62, v63, v64], preserve_unit_iters=True)
+sch.reorder(l15, l25, l35, l45, l16, l26, l36, l46, l17, l27, l37, l47, l53, l59, l65, l54, l60, l66, l18, l28, l38, l48, l55, l61, l67, l19, l29, l39, l49)
+l68 = sch.fuse(l15, l25, l35, l45, preserve_unit_iters=True)
+sch.bind(loop=l68, thread_axis="blockIdx.x")
+l69 = sch.fuse(l16, l26, l36, l46, preserve_unit_iters=True)
+sch.bind(loop=l69, thread_axis="vthread.x")
+l70 = sch.fuse(l17, l27, l37, l47, preserve_unit_iters=True)
+sch.bind(loop=l70, thread_axis="threadIdx.x")
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.thread_extent_low_inclusive", ann_val=32)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.thread_extent_high_inclusive", ann_val=1024)
+b71 = sch.cache_write(block=b1, write_buffer_index=0, storage_scope="local")
+sch.reverse_compute_at(block=b71, loop=l70, preserve_unit_loops=True, index=-1)
+b72 = sch.cache_read(block=b1, read_buffer_index=0, storage_scope="shared", consumer_blocks=[b1])
+sch.compute_at(block=b72, loop=l65, preserve_unit_loops=True, index=-1)
+l73, l74, l75, l76, l77, l78, l79, l80, l81, l82 = sch.get_loops(block=b72)
+l83 = sch.fuse(l79, l80, l81, l82, preserve_unit_iters=True)
+v84 = sch.sample_categorical(candidates=[1, 2, 3, 4], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b72, ann_key="meta_schedule.cooperative_fetch", ann_val=v84)
+b85 = sch.cache_read(block=b1, read_buffer_index=1, storage_scope="shared", consumer_blocks=[b1])
+sch.compute_at(block=b85, loop=l65, preserve_unit_loops=True, index=-1)
+l86, l87, l88, l89, l90, l91, l92, l93, l94, l95 = sch.get_loops(block=b85)
+l96 = sch.fuse(l92, l93, l94, l95, preserve_unit_iters=True)
+v97 = sch.sample_categorical(candidates=[1, 2, 3, 4], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b85, ann_key="meta_schedule.cooperative_fetch", ann_val=v97)
+sch.compute_inline(block=b0)
+v98 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v98)
+2024-03-21 13:42:33 [INFO] [task_scheduler.cc:170] Design space #1:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), "float32"), p1: T.Buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), "float32"), conv2d_nchw: T.Buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 16})
+            conv2d_nchw_local = T.alloc_buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), scope="local")
+            pad_temp_shared = T.alloc_buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), scope="shared")
+            p1_shared = T.alloc_buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), scope="shared")
+            for nn_0_ff_0_yy_0_xx_0_fused in T.thread_binding(T.int64(32), thread="blockIdx.x"):
+                for nn_1_ff_1_yy_1_xx_1_fused in T.thread_binding(T.int64(8), thread="vthread.x"):
+                    for nn_2_ff_2_yy_2_xx_2_fused in T.thread_binding(T.int64(14), thread="threadIdx.x"):
+                        for rc_0_ry_0_rx_0_fused in T.serial(T.int64(1), annotations={"software_pipeline_async_stages": [0], "software_pipeline_order": [0, 1, 2], "software_pipeline_stage": [0, 0, 2]}):
+                            for ax0_ax1_ax2_ax3_fused in range(T.int64(50176)):
+                                with T.block("pad_temp_shared"):
+                                    v0 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    v1 = T.axis.spatial(T.int64(512), ax0_ax1_ax2_ax3_fused // T.int64(98))
+                                    v2 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + ax0_ax1_ax2_ax3_fused % T.int64(98) // T.int64(7))
+                                    v3 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + ax0_ax1_ax2_ax3_fused % T.int64(7))
+                                    T.reads(p0[v0, v1, v2, v3])
+                                    T.writes(pad_temp_shared[v0, v1, v2, v3])
+                                    T.block_attr({"meta_schedule.cooperative_fetch": 1})
+                                    pad_temp_shared[v0, v1, v2, v3] = p0[v0, v1, v2, v3]
+                            for ax0_ax1_ax2_ax3_fused in range(T.int64(32768)):
+                                with T.block("p1_shared"):
+                                    v0 = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + ax0_ax1_ax2_ax3_fused // T.int64(512))
+                                    v1 = T.axis.spatial(T.int64(512), ax0_ax1_ax2_ax3_fused % T.int64(512))
+                                    v2 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    v3 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    T.reads(p1[v0, v1, v2, v3])
+                                    T.writes(p1_shared[v0, v1, v2, v3])
+                                    T.block_attr({"meta_schedule.cooperative_fetch": 1})
+                                    p1_shared[v0, v1, v2, v3] = p1[v0, v1, v2, v3]
+                            for rc_1, ry_1, rx_1, nn_3, ff_3, yy_3, xx_3, rc_2, ry_2, rx_2, nn_4, ff_4, yy_4, xx_4 in T.grid(T.int64(512), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(8), T.int64(1), T.int64(7)):
+                                with T.block("conv2d_nchw"):
+                                    v_nn = T.axis.spatial(T.int64(1), nn_3 + nn_4)
+                                    v_ff = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + nn_1_ff_1_yy_1_xx_1_fused // T.int64(2) * T.int64(16) + nn_2_ff_2_yy_2_xx_2_fused // T.int64(7) * T.int64(8) + ff_3 * T.int64(8) + ff_4)
+                                    v_yy = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + nn_1_ff_1_yy_1_xx_1_fused % T.int64(2) * T.int64(7) + nn_2_ff_2_yy_2_xx_2_fused % T.int64(7) + yy_3 + yy_4)
+                                    v_xx = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + xx_3 * T.int64(7) + xx_4)
+                                    v_rc = T.axis.reduce(T.int64(512), rc_1 + rc_2)
+                                    v_ry = T.axis.reduce(T.int64(1), ry_1 + ry_2)
+                                    v_rx = T.axis.reduce(T.int64(1), rx_1 + rx_2)
+                                    T.reads(pad_temp_shared[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx], p1_shared[v_ff, v_rc, v_ry, v_rx])
+                                    T.writes(conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx])
+                                    T.block_attr({"meta_schedule.thread_extent_high_inclusive": 1024, "meta_schedule.thread_extent_low_inclusive": 32, "meta_schedule.tiling_structure": "SSSRRSRS"})
+                                    with T.init():
+                                        conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] = T.float32(0)
+                                    conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] = conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] + pad_temp_shared[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx] * p1_shared[v_ff, v_rc, v_ry, v_rx]
+                        for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(8), T.int64(1), T.int64(7)):
+                            with T.block("conv2d_nchw_local"):
+                                v0 = T.axis.spatial(T.int64(1), ax0)
+                                v1 = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + nn_1_ff_1_yy_1_xx_1_fused // T.int64(2) * T.int64(16) + nn_2_ff_2_yy_2_xx_2_fused // T.int64(7) * T.int64(8) + ax1)
+                                v2 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + nn_1_ff_1_yy_1_xx_1_fused % T.int64(2) * T.int64(7) + nn_2_ff_2_yy_2_xx_2_fused % T.int64(7) + ax2)
+                                v3 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + ax3)
+                                T.reads(conv2d_nchw_local[v0, v1, v2, v3])
+                                T.writes(conv2d_nchw[v0, v1, v2, v3])
+                                conv2d_nchw[v0, v1, v2, v3] = conv2d_nchw_local[v0, v1, v2, v3]
+b0 = sch.get_block(name="pad_temp", func_name="main")
+b1 = sch.get_block(name="conv2d_nchw", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSSRRSRS")
+l3, l4, l5, l6, l7, l8, l9 = sch.get_loops(block=b1)
+v10, v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l3, n=5, max_innermost_factor=64, decision=[1, 1, 1, 1, 1])
+l15, l16, l17, l18, l19 = sch.split(loop=l3, factors=[v10, v11, v12, v13, v14], preserve_unit_iters=True)
+v20, v21, v22, v23, v24 = sch.sample_perfect_tile(loop=l4, n=5, max_innermost_factor=64, decision=[4, 4, 2, 1, 8])
+l25, l26, l27, l28, l29 = sch.split(loop=l4, factors=[v20, v21, v22, v23, v24], preserve_unit_iters=True)
+v30, v31, v32, v33, v34 = sch.sample_perfect_tile(loop=l5, n=5, max_innermost_factor=64, decision=[2, 2, 7, 1, 1])
+l35, l36, l37, l38, l39 = sch.split(loop=l5, factors=[v30, v31, v32, v33, v34], preserve_unit_iters=True)
+v40, v41, v42, v43, v44 = sch.sample_perfect_tile(loop=l6, n=5, max_innermost_factor=64, decision=[4, 1, 1, 1, 7])
+l45, l46, l47, l48, l49 = sch.split(loop=l6, factors=[v40, v41, v42, v43, v44], preserve_unit_iters=True)
+v50, v51, v52 = sch.sample_perfect_tile(loop=l7, n=3, max_innermost_factor=64, decision=[1, 512, 1])
+l53, l54, l55 = sch.split(loop=l7, factors=[v50, v51, v52], preserve_unit_iters=True)
+v56, v57, v58 = sch.sample_perfect_tile(loop=l8, n=3, max_innermost_factor=64, decision=[1, 1, 1])
+l59, l60, l61 = sch.split(loop=l8, factors=[v56, v57, v58], preserve_unit_iters=True)
+v62, v63, v64 = sch.sample_perfect_tile(loop=l9, n=3, max_innermost_factor=64, decision=[1, 1, 1])
+l65, l66, l67 = sch.split(loop=l9, factors=[v62, v63, v64], preserve_unit_iters=True)
+sch.reorder(l15, l25, l35, l45, l16, l26, l36, l46, l17, l27, l37, l47, l53, l59, l65, l54, l60, l66, l18, l28, l38, l48, l55, l61, l67, l19, l29, l39, l49)
+l68 = sch.fuse(l15, l25, l35, l45, preserve_unit_iters=True)
+sch.bind(loop=l68, thread_axis="blockIdx.x")
+l69 = sch.fuse(l16, l26, l36, l46, preserve_unit_iters=True)
+sch.bind(loop=l69, thread_axis="vthread.x")
+l70 = sch.fuse(l17, l27, l37, l47, preserve_unit_iters=True)
+sch.bind(loop=l70, thread_axis="threadIdx.x")
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.thread_extent_low_inclusive", ann_val=32)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.thread_extent_high_inclusive", ann_val=1024)
+b71 = sch.cache_write(block=b1, write_buffer_index=0, storage_scope="local")
+sch.reverse_compute_at(block=b71, loop=l70, preserve_unit_loops=True, index=-1)
+b72 = sch.cache_read(block=b1, read_buffer_index=0, storage_scope="shared", consumer_blocks=[b1])
+sch.compute_at(block=b72, loop=l65, preserve_unit_loops=True, index=-1)
+l73, l74, l75, l76, l77, l78, l79, l80, l81, l82 = sch.get_loops(block=b72)
+l83 = sch.fuse(l79, l80, l81, l82, preserve_unit_iters=True)
+v84 = sch.sample_categorical(candidates=[1, 2, 3, 4], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b72, ann_key="meta_schedule.cooperative_fetch", ann_val=v84)
+b85 = sch.cache_read(block=b1, read_buffer_index=1, storage_scope="shared", consumer_blocks=[b1])
+sch.compute_at(block=b85, loop=l65, preserve_unit_loops=True, index=-1)
+l86, l87, l88, l89, l90, l91, l92, l93, l94, l95 = sch.get_loops(block=b85)
+l96 = sch.fuse(l92, l93, l94, l95, preserve_unit_iters=True)
+v97 = sch.sample_categorical(candidates=[1, 2, 3, 4], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b85, ann_key="meta_schedule.cooperative_fetch", ann_val=v97)
+l98 = sch.fuse(l53, l59, l65, preserve_unit_iters=True)
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_stage", ann_val=[0, 0, 2])
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_order", ann_val=[0, 1, 2])
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_async_stages", ann_val=[0])
+sch.compute_inline(block=b0)
+v99 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=1)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v99)
+2024-03-21 13:42:33 [INFO] [task_scheduler.cc:170] Design space #2:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), "float32"), p1: T.Buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), "float32"), conv2d_nchw: T.Buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 512})
+            conv2d_nchw_local = T.alloc_buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), scope="local")
+            pad_temp_shared = T.alloc_buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), scope="shared")
+            p1_shared = T.alloc_buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), scope="shared")
+            for nn_0_ff_0_yy_0_xx_0_fused in T.thread_binding(T.int64(32), thread="blockIdx.x"):
+                for nn_1_ff_1_yy_1_xx_1_fused in T.thread_binding(T.int64(8), thread="vthread.x"):
+                    for nn_2_ff_2_yy_2_xx_2_fused in T.thread_binding(T.int64(14), thread="threadIdx.x"):
+                        for rc_0_ry_0_rx_0_fused in T.serial(T.int64(1), annotations={"software_pipeline_async_stages": [0], "software_pipeline_order": [0, 1, 2], "software_pipeline_stage": [0, 0, 3]}):
+                            for ax0_ax1_ax2_ax3_fused in range(T.int64(50176)):
+                                with T.block("pad_temp_shared"):
+                                    v0 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    v1 = T.axis.spatial(T.int64(512), ax0_ax1_ax2_ax3_fused // T.int64(98))
+                                    v2 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + ax0_ax1_ax2_ax3_fused % T.int64(98) // T.int64(7))
+                                    v3 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + ax0_ax1_ax2_ax3_fused % T.int64(7))
+                                    T.reads(p0[v0, v1, v2, v3])
+                                    T.writes(pad_temp_shared[v0, v1, v2, v3])
+                                    T.block_attr({"meta_schedule.cooperative_fetch": 1})
+                                    pad_temp_shared[v0, v1, v2, v3] = p0[v0, v1, v2, v3]
+                            for ax0_ax1_ax2_ax3_fused in range(T.int64(32768)):
+                                with T.block("p1_shared"):
+                                    v0 = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + ax0_ax1_ax2_ax3_fused // T.int64(512))
+                                    v1 = T.axis.spatial(T.int64(512), ax0_ax1_ax2_ax3_fused % T.int64(512))
+                                    v2 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    v3 = T.axis.spatial(T.int64(1), T.int64(0))
+                                    T.reads(p1[v0, v1, v2, v3])
+                                    T.writes(p1_shared[v0, v1, v2, v3])
+                                    T.block_attr({"meta_schedule.cooperative_fetch": 1})
+                                    p1_shared[v0, v1, v2, v3] = p1[v0, v1, v2, v3]
+                            for rc_1, ry_1, rx_1, nn_3, ff_3, yy_3, xx_3, rc_2, ry_2, rx_2, nn_4, ff_4, yy_4, xx_4 in T.grid(T.int64(512), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(8), T.int64(1), T.int64(7)):
+                                with T.block("conv2d_nchw"):
+                                    v_nn = T.axis.spatial(T.int64(1), nn_3 + nn_4)
+                                    v_ff = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + nn_1_ff_1_yy_1_xx_1_fused // T.int64(2) * T.int64(16) + nn_2_ff_2_yy_2_xx_2_fused // T.int64(7) * T.int64(8) + ff_3 * T.int64(8) + ff_4)
+                                    v_yy = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + nn_1_ff_1_yy_1_xx_1_fused % T.int64(2) * T.int64(7) + nn_2_ff_2_yy_2_xx_2_fused % T.int64(7) + yy_3 + yy_4)
+                                    v_xx = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + xx_3 * T.int64(7) + xx_4)
+                                    v_rc = T.axis.reduce(T.int64(512), rc_1 + rc_2)
+                                    v_ry = T.axis.reduce(T.int64(1), ry_1 + ry_2)
+                                    v_rx = T.axis.reduce(T.int64(1), rx_1 + rx_2)
+                                    T.reads(pad_temp_shared[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx], p1_shared[v_ff, v_rc, v_ry, v_rx])
+                                    T.writes(conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx])
+                                    T.block_attr({"meta_schedule.thread_extent_high_inclusive": 1024, "meta_schedule.thread_extent_low_inclusive": 32, "meta_schedule.tiling_structure": "SSSRRSRS"})
+                                    with T.init():
+                                        conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] = T.float32(0)
+                                    conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] = conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] + pad_temp_shared[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx] * p1_shared[v_ff, v_rc, v_ry, v_rx]
+                        for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(8), T.int64(1), T.int64(7)):
+                            with T.block("conv2d_nchw_local"):
+                                v0 = T.axis.spatial(T.int64(1), ax0)
+                                v1 = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(8) * T.int64(64) + nn_1_ff_1_yy_1_xx_1_fused // T.int64(2) * T.int64(16) + nn_2_ff_2_yy_2_xx_2_fused // T.int64(7) * T.int64(8) + ax1)
+                                v2 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(8) // T.int64(4) * T.int64(14) + nn_1_ff_1_yy_1_xx_1_fused % T.int64(2) * T.int64(7) + nn_2_ff_2_yy_2_xx_2_fused % T.int64(7) + ax2)
+                                v3 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(4) * T.int64(7) + ax3)
+                                T.reads(conv2d_nchw_local[v0, v1, v2, v3])
+                                T.writes(conv2d_nchw[v0, v1, v2, v3])
+                                conv2d_nchw[v0, v1, v2, v3] = conv2d_nchw_local[v0, v1, v2, v3]
+b0 = sch.get_block(name="pad_temp", func_name="main")
+b1 = sch.get_block(name="conv2d_nchw", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSSRRSRS")
+l3, l4, l5, l6, l7, l8, l9 = sch.get_loops(block=b1)
+v10, v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l3, n=5, max_innermost_factor=64, decision=[1, 1, 1, 1, 1])
+l15, l16, l17, l18, l19 = sch.split(loop=l3, factors=[v10, v11, v12, v13, v14], preserve_unit_iters=True)
+v20, v21, v22, v23, v24 = sch.sample_perfect_tile(loop=l4, n=5, max_innermost_factor=64, decision=[4, 4, 2, 1, 8])
+l25, l26, l27, l28, l29 = sch.split(loop=l4, factors=[v20, v21, v22, v23, v24], preserve_unit_iters=True)
+v30, v31, v32, v33, v34 = sch.sample_perfect_tile(loop=l5, n=5, max_innermost_factor=64, decision=[2, 2, 7, 1, 1])
+l35, l36, l37, l38, l39 = sch.split(loop=l5, factors=[v30, v31, v32, v33, v34], preserve_unit_iters=True)
+v40, v41, v42, v43, v44 = sch.sample_perfect_tile(loop=l6, n=5, max_innermost_factor=64, decision=[4, 1, 1, 1, 7])
+l45, l46, l47, l48, l49 = sch.split(loop=l6, factors=[v40, v41, v42, v43, v44], preserve_unit_iters=True)
+v50, v51, v52 = sch.sample_perfect_tile(loop=l7, n=3, max_innermost_factor=64, decision=[1, 512, 1])
+l53, l54, l55 = sch.split(loop=l7, factors=[v50, v51, v52], preserve_unit_iters=True)
+v56, v57, v58 = sch.sample_perfect_tile(loop=l8, n=3, max_innermost_factor=64, decision=[1, 1, 1])
+l59, l60, l61 = sch.split(loop=l8, factors=[v56, v57, v58], preserve_unit_iters=True)
+v62, v63, v64 = sch.sample_perfect_tile(loop=l9, n=3, max_innermost_factor=64, decision=[1, 1, 1])
+l65, l66, l67 = sch.split(loop=l9, factors=[v62, v63, v64], preserve_unit_iters=True)
+sch.reorder(l15, l25, l35, l45, l16, l26, l36, l46, l17, l27, l37, l47, l53, l59, l65, l54, l60, l66, l18, l28, l38, l48, l55, l61, l67, l19, l29, l39, l49)
+l68 = sch.fuse(l15, l25, l35, l45, preserve_unit_iters=True)
+sch.bind(loop=l68, thread_axis="blockIdx.x")
+l69 = sch.fuse(l16, l26, l36, l46, preserve_unit_iters=True)
+sch.bind(loop=l69, thread_axis="vthread.x")
+l70 = sch.fuse(l17, l27, l37, l47, preserve_unit_iters=True)
+sch.bind(loop=l70, thread_axis="threadIdx.x")
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.thread_extent_low_inclusive", ann_val=32)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.thread_extent_high_inclusive", ann_val=1024)
+b71 = sch.cache_write(block=b1, write_buffer_index=0, storage_scope="local")
+sch.reverse_compute_at(block=b71, loop=l70, preserve_unit_loops=True, index=-1)
+b72 = sch.cache_read(block=b1, read_buffer_index=0, storage_scope="shared", consumer_blocks=[b1])
+sch.compute_at(block=b72, loop=l65, preserve_unit_loops=True, index=-1)
+l73, l74, l75, l76, l77, l78, l79, l80, l81, l82 = sch.get_loops(block=b72)
+l83 = sch.fuse(l79, l80, l81, l82, preserve_unit_iters=True)
+v84 = sch.sample_categorical(candidates=[1, 2, 3, 4], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b72, ann_key="meta_schedule.cooperative_fetch", ann_val=v84)
+b85 = sch.cache_read(block=b1, read_buffer_index=1, storage_scope="shared", consumer_blocks=[b1])
+sch.compute_at(block=b85, loop=l65, preserve_unit_loops=True, index=-1)
+l86, l87, l88, l89, l90, l91, l92, l93, l94, l95 = sch.get_loops(block=b85)
+l96 = sch.fuse(l92, l93, l94, l95, preserve_unit_iters=True)
+v97 = sch.sample_categorical(candidates=[1, 2, 3, 4], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b85, ann_key="meta_schedule.cooperative_fetch", ann_val=v97)
+l98 = sch.fuse(l53, l59, l65, preserve_unit_iters=True)
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_stage", ann_val=[0, 0, 3])
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_order", ann_val=[0, 1, 2])
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_async_stages", ann_val=[0])
+sch.compute_inline(block=b0)
+v99 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v99)
+2024-03-21 15:41:28 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-03-21 15:41:28 [INFO] [evolutionary_search.cc:715] Picked top 0 candidate(s) from database
+2024-03-21 15:41:29 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f918be68)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f605bd38)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e26fd8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f523c048)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f52c5ee8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2f49fa348)]: 485 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f7ee9b78)]: 0 failure(s)
+2024-03-21 15:41:29 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f918be68)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f605bd38)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e26fd8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f523c048)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f52c5ee8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2f49fa348)]: 971 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f7ee9b78)]: 0 failure(s)
+2024-03-21 15:41:29 [INFO] [evolutionary_search.cc:723] Sampled 53 candidate(s)
+2024-03-21 15:41:31 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f918be68)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f605bd38)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e26fd8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f523c048)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f52c5ee8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2f49fa348)]: 117 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f7ee9b78)]: 0 failure(s)
+2024-03-21 15:41:32 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f918be68)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f605bd38)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e26fd8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f523c048)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f52c5ee8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2f49fa348)]: 78 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f7ee9b78)]: 0 failure(s)
+2024-03-21 15:41:33 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f918be68)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f605bd38)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e26fd8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f523c048)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f52c5ee8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2f49fa348)]: 96 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f7ee9b78)]: 0 failure(s)
+2024-03-21 15:41:35 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5ac2f918be68)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x5ac2f605bd38)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x5ac2f3e26fd8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x5ac2f523c048)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x5ac2f52c5ee8)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0x5ac2f49fa348)]: 76 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0x5ac2f7ee9b78)]: 0 failure(s)
+2024-03-21 15:41:35 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	0.9998  0.9977  0.9973  0.9967  0.9965  0.9965  0.9964  0.9963  0.9962  0.9956  0.9955  0.9953  0.9951  0.9944  0.9931  0.9925
+[17 : 32]:	0.9913  0.9907  0.9907  0.9904  0.9898  0.9896  0.9889  0.9889  0.9876  0.9847  0.9823  0.9804  0.9800  0.9798  0.9786  0.9786
+[33 : 48]:	0.9785  0.9784  0.9775  0.9744  0.9741  0.9729  0.9726  0.9712  0.9699  0.9696  0.9691  0.9677  0.9643  0.9642  0.9622  0.9620
+[49 : 64]:	0.9616  0.9613  0.9608  0.9605  0.9603  0.9598  0.9596  0.9573  0.9567  0.9562  0.9560  0.9560  0.9549  0.9545  0.9526  0.9524
+2024-03-21 15:41:35 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-03-21 15:41:35 [INFO] [evolutionary_search.cc:730] Sending 64 candidates(s) for measurement
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #1: GFLOPs: 1170.4356. Time: 175.5935 us. Best GFLOPs: 1170.4356
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #2: GFLOPs: 381.0953. Time: 539.2900 us. Best GFLOPs: 1170.4356
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #3: GFLOPs: 109.9994. Time: 1868.3828 us. Best GFLOPs: 1170.4356
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #4: GFLOPs: 3.0455. Time: 67482.9660 us. Best GFLOPs: 1170.4356
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #5: GFLOPs: 83.8807. Time: 2450.1573 us. Best GFLOPs: 1170.4356
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #6: GFLOPs: 902.8378. Time: 227.6388 us. Best GFLOPs: 1170.4356
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:121] [Task #207: fused_nn_conv2d_1] Trial #7: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/home/canesche/tvm-0.16.dev0/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  265: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >, tvm::runtime::TVMRetValue)
+  264: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  263: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  262: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  261: tvm::transform::Pass::operator()(tvm::IRModule) const
+  260: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  259: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  258: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  257: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  256: _ZN3tvm7runtime13PackedFuncObj
+  255: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerTVMBuiltin()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerTVMBuiltin()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*) const
+  254: tvm::tir::BuiltinLower::VisitBodyAndRealizeAlloca(tvm::tir::Stmt)
+  253: tvm::tir::BuiltinLower::GetMaxStack(tvm::tir::Stmt)
+  252: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  251: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  250: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  249: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  248: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  247: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  246: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  245: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  244: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  243: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  242: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  241: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  240: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  239: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  238: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  237: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  236: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  235: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  234: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  233: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  232: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  231: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  230: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  229: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  228: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  227: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  226: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  225: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  224: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  223: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  222: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  221: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  220: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  219: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  218: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  217: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  216: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  215: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  214: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  213: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  212: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  211: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  210: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  209: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  208: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  207: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  206: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  205: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  204: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  203: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  202: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  201: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  200: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  199: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  198: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  197: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  196: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  195: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  194: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  193: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  192: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  191: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  190: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  189: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  188: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  187: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  186: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  185: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  184: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  183: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  182: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  181: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  180: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  179: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  178: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  177: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  176: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  175: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  174: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  173: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  172: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  171: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  170: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  169: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  168: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  167: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  166: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  165: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  164: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  163: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  162: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  161: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  160: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  159: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  158: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  157: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  156: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  155: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  154: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  153: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  152: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  151: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  150: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  149: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  148: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  147: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  146: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  145: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  144: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  143: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  142: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  141: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  140: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  139: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  138: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  137: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  136: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  135: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  134: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  133: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  132: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  131: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  130: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  129: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  128: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  127: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  126: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  125: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  124: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  123: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  122: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  121: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  120: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  119: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  118: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  117: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  116: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  115: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  114: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  113: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  112: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runtime9
+  111: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::Stmt>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::Stmt>::value, void>::type> const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  110: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::ObjectPtr<tvm::runtime::Object>, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  109: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  108: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  107: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  106: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  105: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  104: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  103: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  102: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  101: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  100: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  99: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  98: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  97: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  96: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  95: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  94: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  93: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  92: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  91: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  90: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  89: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  88: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  87: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  86: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  85: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  84: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  83: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  82: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  81: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  80: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runtime9
+  79: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::Stmt>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::Stmt>::value, void>::type> const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  78: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::ObjectPtr<tvm::runtime::Object>, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  77: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  76: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  75: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  74: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  73: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  72: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  71: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  70: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  69: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  68: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  67: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  66: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  65: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  64: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  63: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  62: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  61: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  60: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  59: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  58: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  57: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  56: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  55: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  54: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  53: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  52: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  51: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  50: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  49: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  48: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  47: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  46: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  45: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runtime9
+  44: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::Stmt>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::Stmt>::value, void>::type> const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  43: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::ObjectPtr<tvm::runtime::Object>, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  42: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  41: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  40: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  39: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  38: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  37: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  36: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  35: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  34: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  33: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  32: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  31: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  30: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  27: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  26: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  25: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  24: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  23: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  22: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runtime9
+  21: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::Stmt>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::Stmt>::value, void>::type> const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  20: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::ObjectPtr<tvm::runtime::Object>, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  19: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  18: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  17: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  16: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  15: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  14: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  13: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  12: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  11: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  10: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  9: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runti
+  8: tvm::tir::BuiltinLower::VisitStmt_(tvm::tir::LetStmtNode const*)
+  7: tvm::tir::BuiltinLower::VisitStmt(tvm::tir::Stmt const&)
+  6: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  5: _ZZN3tvm3tir11StmtFunctorIFNS0_4StmtERKS2_EE10InitVTableEvENUlRKNS_7runtime9
+  4: tvm::tir::StmtExprMutator::VisitExpr(tvm::PrimExpr const&)
+  3: _ZZN3tvm3tir11ExprFunctorIFNS_8PrimExprERKS2_EE10InitVTableEvENUlRKNS_7ru
+  2: tvm::tir::BuiltinLower::VisitExpr_(tvm::tir::CallNode const*)
+  1: tvm::tir::BuiltinLower::MakeCallPacked(tvm::tir::CallNode const*, bool)
+  0: tvm::tir::APIType(tvm::runtime::DataType)
+  File "/home/canesche/tvm-0.16.dev0/src/tir/transforms/ir_utils.h", line 157
+InternalError: Check failed: t.lanes() == 1 (4 vs. 1) : Cannot pass vector type through packed API.
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), "float32"), p1: T.Buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), "float32"), conv2d_nchw: T.Buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        conv2d_nchw_local = T.alloc_buffer((T.int64(1), T.int64(256), T.int64(28), T.int64(28)), scope="local")
+        pad_temp_shared = T.alloc_buffer((T.int64(1), T.int64(512), T.int64(28), T.int64(28)), scope="shared")
+        p1_shared = T.alloc_buffer((T.int64(256), T.int64(512), T.int64(1), T.int64(1)), scope="shared")
+        for nn_0_ff_0_yy_0_xx_0_fused in T.thread_binding(T.int64(112), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 16, "pragma_unroll_explicit": 1}):
+            for nn_1_ff_1_yy_1_xx_1_fused in T.thread_binding(T.int64(1), thread="vthread.x"):
+                for nn_2_ff_2_yy_2_xx_2_fused in T.thread_binding(T.int64(32), thread="threadIdx.x"):
+                    for nn_3_init, ff_3_init, yy_3_init, xx_3_init, nn_4_init, ff_4_init, yy_4_init, xx_4_init in T.grid(T.int64(1), T.int64(1), T.int64(14), T.int64(1), T.int64(1), T.int64(1), T.int64(2), T.int64(2)):
+                        with T.block("conv2d_nchw_init"):
+                            v_nn = T.axis.spatial(T.int64(1), nn_3_init + nn_4_init)
+                            v_ff = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(14) * T.int64(32) + nn_2_ff_2_yy_2_xx_2_fused + ff_3_init + ff_4_init)
+                            v_yy = T.axis.spatial(T.int64(28), yy_3_init * T.int64(2) + yy_4_init)
+                            v_xx = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(14) * T.int64(2) + xx_3_init * T.int64(2) + xx_4_init)
+                            T.reads()
+                            T.writes(conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx])
+                            T.block_attr({"meta_schedule.thread_extent_high_inclusive": 1024, "meta_schedule.thread_extent_low_inclusive": 32, "meta_schedule.tiling_structure": "SSSRRSRS"})
+                            conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] = T.float32(0)
+                    for rc_0_ry_0_rx_0_fused in T.serial(T.int64(32), annotations={"software_pipeline_async_stages": [0], "software_pipeline_order": [0, 1, 2], "software_pipeline_stage": [0, 0, 3]}):
+                        for ax0_ax1_ax2_ax3_fused_0 in range(T.int64(7)):
+                            for ax0_ax1_ax2_ax3_fused_1 in T.thread_binding(T.int64(32), thread="threadIdx.x"):
+                                for ax0_ax1_ax2_ax3_fused_2 in T.vectorized(T.int64(4)):
+                                    with T.block("pad_temp_shared"):
+                                        v0 = T.axis.spatial(T.int64(1), T.int64(0))
+                                        v1 = T.axis.spatial(T.int64(512), rc_0_ry_0_rx_0_fused * T.int64(16) + (ax0_ax1_ax2_ax3_fused_0 * T.int64(128) + ax0_ax1_ax2_ax3_fused_1 * T.int64(4) + ax0_ax1_ax2_ax3_fused_2) // T.int64(56))
+                                        v2 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_fused_0 * T.int64(128) + ax0_ax1_ax2_ax3_fused_1 * T.int64(4) + ax0_ax1_ax2_ax3_fused_2) % T.int64(56) // T.int64(2))
+                                        v3 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(14) * T.int64(2) + (ax0_ax1_ax2_ax3_fused_0 * T.int64(128) + ax0_ax1_ax2_ax3_fused_1 * T.int64(4) + ax0_ax1_ax2_ax3_fused_2) % T.int64(2))
+                                        T.reads(p0[v0, v1, v2, v3])
+                                        T.writes(pad_temp_shared[v0, v1, v2, v3])
+                                        pad_temp_shared[v0, v1, v2, v3] = p0[v0, v1, v2, v3]
+                        for ax0_ax1_ax2_ax3_fused_0 in range(T.int64(4)):
+                            for ax0_ax1_ax2_ax3_fused_1 in T.thread_binding(T.int64(32), thread="threadIdx.x"):
+                                for ax0_ax1_ax2_ax3_fused_2 in T.vectorized(T.int64(4)):
+                                    with T.block("p1_shared"):
+                                        v0 = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(14) * T.int64(32) + (ax0_ax1_ax2_ax3_fused_0 * T.int64(128) + ax0_ax1_ax2_ax3_fused_1 * T.int64(4) + ax0_ax1_ax2_ax3_fused_2) // T.int64(16))
+                                        v1 = T.axis.spatial(T.int64(512), rc_0_ry_0_rx_0_fused * T.int64(16) + (ax0_ax1_ax2_ax3_fused_0 * T.int64(128) + ax0_ax1_ax2_ax3_fused_1 * T.int64(4) + ax0_ax1_ax2_ax3_fused_2) % T.int64(16))
+                                        v2 = T.axis.spatial(T.int64(1), T.int64(0))
+                                        v3 = T.axis.spatial(T.int64(1), T.int64(0))
+                                        T.reads(p1[v0, v1, v2, v3])
+                                        T.writes(p1_shared[v0, v1, v2, v3])
+                                        p1_shared[v0, v1, v2, v3] = p1[v0, v1, v2, v3]
+                        for rc_1, ry_1, rx_1, nn_3, ff_3, yy_3, xx_3, rc_2, ry_2, rx_2, nn_4, ff_4, yy_4, xx_4 in T.grid(T.int64(4), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(14), T.int64(1), T.int64(4), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(2), T.int64(2)):
+                            with T.block("conv2d_nchw_update"):
+                                v_nn = T.axis.spatial(T.int64(1), nn_3 + nn_4)
+                                v_ff = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(14) * T.int64(32) + nn_2_ff_2_yy_2_xx_2_fused + ff_3 + ff_4)
+                                v_yy = T.axis.spatial(T.int64(28), yy_3 * T.int64(2) + yy_4)
+                                v_xx = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(14) * T.int64(2) + xx_3 * T.int64(2) + xx_4)
+                                v_rc = T.axis.reduce(T.int64(512), rc_0_ry_0_rx_0_fused * T.int64(16) + rc_1 * T.int64(4) + rc_2)
+                                v_ry = T.axis.reduce(T.int64(1), ry_1 + ry_2)
+                                v_rx = T.axis.reduce(T.int64(1), rx_1 + rx_2)
+                                T.reads(conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx], pad_temp_shared[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx], p1_shared[v_ff, v_rc, v_ry, v_rx])
+                                T.writes(conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx])
+                                T.block_attr({"meta_schedule.thread_extent_high_inclusive": 1024, "meta_schedule.thread_extent_low_inclusive": 32, "meta_schedule.tiling_structure": "SSSRRSRS"})
+                                conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] = conv2d_nchw_local[v_nn, v_ff, v_yy, v_xx] + pad_temp_shared[v_nn, v_rc, v_yy + v_ry, v_xx + v_rx] * p1_shared[v_ff, v_rc, v_ry, v_rx]
+                    for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(1), T.int64(28), T.int64(2)):
+                        with T.block("conv2d_nchw_local"):
+                            v0 = T.axis.spatial(T.int64(1), ax0)
+                            v1 = T.axis.spatial(T.int64(256), nn_0_ff_0_yy_0_xx_0_fused // T.int64(14) * T.int64(32) + nn_2_ff_2_yy_2_xx_2_fused + ax1)
+                            v2 = T.axis.spatial(T.int64(28), ax2)
+                            v3 = T.axis.spatial(T.int64(28), nn_0_ff_0_yy_0_xx_0_fused % T.int64(14) * T.int64(2) + ax3)
+                            T.reads(conv2d_nchw_local[v0, v1, v2, v3])
+                            T.writes(conv2d_nchw[v0, v1, v2, v3])
+                            conv2d_nchw[v0, v1, v2, v3] = conv2d_nchw_local[v0, v1, v2, v3]
+b0 = sch.get_block(name="pad_temp", func_name="main")
+b1 = sch.get_block(name="conv2d_nchw", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSSRRSRS")
+l3, l4, l5, l6, l7, l8, l9 = sch.get_loops(block=b1)
+v10, v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l3, n=5, max_innermost_factor=64, decision=[1, 1, 1, 1, 1])
+l15, l16, l17, l18, l19 = sch.split(loop=l3, factors=[v10, v11, v12, v13, v14], preserve_unit_iters=True)
+v20, v21, v22, v23, v24 = sch.sample_perfect_tile(loop=l4, n=5, max_innermost_factor=64, decision=[8, 1, 32, 1, 1])
+l25, l26, l27, l28, l29 = sch.split(loop=l4, factors=[v20, v21, v22, v23, v24], preserve_unit_iters=True)
+v30, v31, v32, v33, v34 = sch.sample_perfect_tile(loop=l5, n=5, max_innermost_factor=64, decision=[1, 1, 1, 14, 2])
+l35, l36, l37, l38, l39 = sch.split(loop=l5, factors=[v30, v31, v32, v33, v34], preserve_unit_iters=True)
+v40, v41, v42, v43, v44 = sch.sample_perfect_tile(loop=l6, n=5, max_innermost_factor=64, decision=[14, 1, 1, 1, 2])
+l45, l46, l47, l48, l49 = sch.split(loop=l6, factors=[v40, v41, v42, v43, v44], preserve_unit_iters=True)
+v50, v51, v52 = sch.sample_perfect_tile(loop=l7, n=3, max_innermost_factor=64, decision=[32, 4, 4])
+l53, l54, l55 = sch.split(loop=l7, factors=[v50, v51, v52], preserve_unit_iters=True)
+v56, v57, v58 = sch.sample_perfect_tile(loop=l8, n=3, max_innermost_factor=64, decision=[1, 1, 1])
+l59, l60, l61 = sch.split(loop=l8, factors=[v56, v57, v58], preserve_unit_iters=True)
+v62, v63, v64 = sch.sample_perfect_tile(loop=l9, n=3, max_innermost_factor=64, decision=[1, 1, 1])
+l65, l66, l67 = sch.split(loop=l9, factors=[v62, v63, v64], preserve_unit_iters=True)
+sch.reorder(l15, l25, l35, l45, l16, l26, l36, l46, l17, l27, l37, l47, l53, l59, l65, l54, l60, l66, l18, l28, l38, l48, l55, l61, l67, l19, l29, l39, l49)
+l68 = sch.fuse(l15, l25, l35, l45, preserve_unit_iters=True)
+sch.bind(loop=l68, thread_axis="blockIdx.x")
+l69 = sch.fuse(l16, l26, l36, l46, preserve_unit_iters=True)
+sch.bind(loop=l69, thread_axis="vthread.x")
+l70 = sch.fuse(l17, l27, l37, l47, preserve_unit_iters=True)
+sch.bind(loop=l70, thread_axis="threadIdx.x")
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.thread_extent_low_inclusive", ann_val=32)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.thread_extent_high_inclusive", ann_val=1024)
+b71 = sch.cache_write(block=b1, write_buffer_index=0, storage_scope="local")
+sch.reverse_compute_at(block=b71, loop=l70, preserve_unit_loops=True, index=-1)
+b72 = sch.cache_read(block=b1, read_buffer_index=0, storage_scope="shared", consumer_blocks=[b1])
+sch.compute_at(block=b72, loop=l65, preserve_unit_loops=True, index=-1)
+l73, l74, l75, l76, l77, l78, l79, l80, l81, l82 = sch.get_loops(block=b72)
+l83 = sch.fuse(l79, l80, l81, l82, preserve_unit_iters=True)
+v84 = sch.sample_categorical(candidates=[1, 2, 3, 4], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b72, ann_key="meta_schedule.cooperative_fetch", ann_val=v84)
+b85 = sch.cache_read(block=b1, read_buffer_index=1, storage_scope="shared", consumer_blocks=[b1])
+sch.compute_at(block=b85, loop=l65, preserve_unit_loops=True, index=-1)
+l86, l87, l88, l89, l90, l91, l92, l93, l94, l95 = sch.get_loops(block=b85)
+l96 = sch.fuse(l92, l93, l94, l95, preserve_unit_iters=True)
+v97 = sch.sample_categorical(candidates=[1, 2, 3, 4], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b85, ann_key="meta_schedule.cooperative_fetch", ann_val=v97)
+l98 = sch.fuse(l53, l59, l65, preserve_unit_iters=True)
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_stage", ann_val=[0, 0, 3])
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_order", ann_val=[0, 1, 2])
+sch.annotate(block_or_loop=l98, ann_key="software_pipeline_async_stages", ann_val=[0])
+sch.compute_inline(block=b0)
+v99 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=1)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v99)
+sch.enter_postproc()
+sch.unannotate(block_or_loop=b72, ann_key="meta_schedule.cooperative_fetch")
+l100, l101, l102, l103, l104 = sch.get_loops(block=b72)
+l105, l106, l107 = sch.split(loop=l104, factors=[None, 32, 4], preserve_unit_iters=True)
+sch.vectorize(loop=l107)
+sch.bind(loop=l106, thread_axis="threadIdx.x")
+sch.unannotate(block_or_loop=b85, ann_key="meta_schedule.cooperative_fetch")
+l108, l109, l110, l111, l112 = sch.get_loops(block=b85)
+l113, l114, l115 = sch.split(loop=l112, factors=[None, 32, 4], preserve_unit_iters=True)
+sch.vectorize(loop=l115)
+sch.bind(loop=l114, thread_axis="threadIdx.x")
+b116 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b116, ann_key="meta_schedule.unroll_explicit")
+b117, b118, b119, b120 = sch.get_child_blocks(b116)
+l121, l122, l123, l124, l125, l126, l127 = sch.get_loops(block=b117)
+l128, l129, l130, l131, l132, l133, l134 = sch.get_loops(block=b118)
+l135, l136, l137, l138, l139, l140, l141, l142, l143, l144, l145, l146, l147, l148, l149, l150, l151, l152 = sch.get_loops(block=b119)
+sch.annotate(block_or_loop=l135, ann_key="pragma_auto_unroll_max_step", ann_val=16)
+sch.annotate(block_or_loop=l135, ann_key="pragma_unroll_explicit", ann_val=1)
+l153, l154, l155, l156, l157, l158, l159 = sch.get_loops(block=b120)
+b160 = sch.get_block(name="conv2d_nchw", func_name="main")
+l161, l162, l163, l164, l165, l166, l167, l168, l169, l170, l171, l172, l173, l174, l175, l176, l177, l178 = sch.get_loops(block=b160)
+b179 = sch.decompose_reduction(block=b160, loop=l164)
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #8: GFLOPs: 1.9749. Time: 104068.0947 us. Best GFLOPs: 1170.4356
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #9: GFLOPs: 1832.7141. Time: 112.1402 us. Best GFLOPs: 1832.7141
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #10: GFLOPs: 246.2349. Time: 834.6539 us. Best GFLOPs: 1832.7141
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #11: GFLOPs: 3893.1986. Time: 52.7897 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #12: GFLOPs: 3234.7764. Time: 63.5348 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #13: GFLOPs: 3212.7357. Time: 63.9707 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #14: GFLOPs: 1525.7733. Time: 134.6995 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #15: GFLOPs: 2957.3688. Time: 69.4945 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #16: GFLOPs: 39.4013. Time: 5216.0911 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #17: GFLOPs: 331.2599. Time: 620.4219 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #18: GFLOPs: 55.3163. Time: 3715.3755 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #19: GFLOPs: 557.9216. Time: 368.3688 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #20: GFLOPs: 321.1692. Time: 639.9147 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #21: GFLOPs: 423.6946. Time: 485.0685 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #22: GFLOPs: 1474.6710. Time: 139.3673 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #23: GFLOPs: 2189.0130. Time: 93.8875 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #24: GFLOPs: 3863.8301. Time: 53.1910 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #25: GFLOPs: 694.7069. Time: 295.8383 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #26: GFLOPs: 694.8569. Time: 295.7744 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #27: GFLOPs: 62.0947. Time: 3309.7992 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #28: GFLOPs: 1947.6740. Time: 105.5212 us. Best GFLOPs: 3893.1986
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #29: GFLOPs: 3970.4420. Time: 51.7627 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #30: GFLOPs: 3370.4644. Time: 60.9770 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #31: GFLOPs: 39.3908. Time: 5217.4847 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #32: GFLOPs: 3130.2908. Time: 65.6555 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #33: GFLOPs: 443.9081. Time: 462.9807 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #34: GFLOPs: 81.9828. Time: 2506.8775 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #35: GFLOPs: 2143.1830. Time: 95.8952 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #36: GFLOPs: 1164.8675. Time: 176.4329 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #37: GFLOPs: 740.3979. Time: 277.5817 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #38: GFLOPs: 2935.2035. Time: 70.0193 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #39: GFLOPs: 2822.3820. Time: 72.8182 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #40: GFLOPs: 56.1359. Time: 3661.1292 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #41: GFLOPs: 37.2742. Time: 5513.7549 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #42: GFLOPs: 45.0611. Time: 4560.9425 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #43: GFLOPs: 2421.5949. Time: 84.8701 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #44: GFLOPs: 54.1051. Time: 3798.5470 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #45: GFLOPs: 2815.7813. Time: 72.9889 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #46: GFLOPs: 1222.7520. Time: 168.0806 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #47: GFLOPs: 262.2269. Time: 783.7520 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #48: GFLOPs: 1249.6483. Time: 164.4630 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #49: GFLOPs: 2605.7607. Time: 78.8717 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #50: GFLOPs: 1633.1363. Time: 125.8443 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #51: GFLOPs: 93.5674. Time: 2196.5022 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #52: GFLOPs: 20.7495. Time: 9904.8725 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #53: GFLOPs: 122.2600. Time: 1681.0155 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #54: GFLOPs: 1497.6380. Time: 137.2300 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #55: GFLOPs: 1645.4622. Time: 124.9016 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #56: GFLOPs: 2690.7387. Time: 76.3808 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #57: GFLOPs: 54.9501. Time: 3740.1374 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #58: GFLOPs: 1074.9376. Time: 191.1933 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #59: GFLOPs: 26.7517. Time: 7682.5263 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #60: GFLOPs: 32.1973. Time: 6383.1682 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #61: GFLOPs: 528.0495. Time: 389.2077 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #62: GFLOPs: 3825.0119. Time: 53.7308 us. Best GFLOPs: 3970.4420
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #63: GFLOPs: 5708.8686. Time: 36.0003 us. Best GFLOPs: 5708.8686
+2024-03-21 15:50:57 [INFO] [task_scheduler.cc:131] [Task #207: fused_nn_conv2d_1] Trial #64: GFLOPs: 2207.9919. Time: 93.0805 us. Best GFLOPs: 5708.8686
