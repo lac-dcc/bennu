@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     for key in info:
         if np.mean(info[key]) < 100000:
-            print(f"{key}, {np.mean(info[key]):.8f}")
+            print(f"{key}, {np.mean(info[key]):.8f}, {np.std(info[key]):.8f}")
         else:
-            print(f"{key}, {1000}")
+            print(f"{key}, {1000}, {0}")
     
