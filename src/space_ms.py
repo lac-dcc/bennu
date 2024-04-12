@@ -1,0 +1,228 @@
+""" The class of Space used to optimize the Ansor parameters """
+
+import os
+import json
+import numpy as np
+from copy import deepcopy
+from typing import Callable, Tuple, Union, List, Any
+import tvm
+import time
+
+from tvm import meta_schedule as ms
+from tvm.target import Target
+from tvm.ir import IRModule
+from tvm.target import Target
+from tvm.tir import Schedule
+from tvm.tir.schedule import Trace
+from tvm.meta_schedule.database import Workload, TuningRecord
+from tvm.meta_schedule.utils import remove_build_dir
+
+
+class MeasureRunnerResult:
+    """Store the results of a measurement.
+
+    Parameters
+    ----------
+    measureResult: List[MeasureResult]
+        A List of MeasureResult.
+    """
+
+    def __init__(self, measure_res: ms.runner.RunnerResult):
+        self._costs = measure_res.run_secs
+
+    @property
+    def costs(self):
+        # support to Ansor and AutoTVM
+        return [v.value for v in self._costs]
+
+    @property
+    def run_secs(self):
+        return [v.value for v in self._costs]
+
+
+class Space:
+    """Space class
+
+    Parameters
+    ----------
+    data: json data
+        A json file template
+    workload: json data
+        A json file workload
+    target: Target data
+        Target device information
+    """
+
+    def __init__(self, data: json, workload: json, target: Target):
+        self.cfg = deepcopy(data)
+        self.workload = Workload.from_json(workload)
+        self.target = target
+        self.dev = self.get_device_type(target)
+        self.total_dims, self.dims = 0, []
+        self.config_space = {}
+        self.create_space()
+
+    def __repr__(self) -> str:
+        """Print the config space"""
+        out = ""
+        for key in self.config_space:
+            out += f"{key}: dims={self.config_space[key]}\n"
+        out += f"Total dimensions: {self.total_dims}\n"
+        return out
+
+    def __str__(self) -> str:
+        """Print the config space"""
+        out = ""
+        for key in self.config_space:
+            out += f"{key}: dims={self.config_space[key]}\n"
+        out += f"Total dimensions: {self.total_dims}\n"
+        return out
+
+    def get_value(self, key, pos):
+        """Return the space"""
+        return self.config_space[key][pos]
+
+    def add_space(self, space_list: list, element_list: list, limit=10000) -> list:
+        """Return a list without repeat and with limited value"""
+        new_list = element_list
+        for elem in space_list:
+            if elem not in new_list and elem <= limit:
+                new_list.append(elem)
+        return new_list
+
+    def knob2point(self, arr):
+        """Convert a array to point"""
+        value = 0
+        for i in range(len(arr) - 1):
+            value += arr[i] * self.dims[i]
+        value += arr[-1]
+        return value
+
+    def point2knob(self, point):
+        """Convert point form (single integer) to knob (vector)"""
+        knob = []
+        for dim in self.dims:
+            knob.append(point % dim)
+            point //= dim
+        return knob
+
+    def power_of_two(self, min: int, max: int) -> list:
+        """Return power of two array in interval"""
+        return [2**i for i in range(min, max)]
+
+    def template(self, values=[], create=True):
+        idx = -1
+        config = deepcopy(self.cfg)
+        # TODO: improve this array access, very confuse
+        constraints = self.cfg[0][1]
+        for cfg in config[0][0]:
+            opt = cfg[0]
+            if opt == "Annotate":
+                idx += 1
+                key = f"ann_{idx}"
+                size = cfg[1][1]
+                if create:
+                    self.config_space[key] = self.add_space(
+                        self.power_of_two(1, 8), [size]
+                    )
+                else:
+                    print(idx, values)
+                    cfg[1][1] = self.get_value(key, values[idx])
+        if create:
+            return None
+        return config
+
+    def create_space(self):
+        """Create the space using Meta's space"""
+        self.template(create=True)
+        print(self.config_space)
+        self.dims = []
+        for key in self.config_space:
+            self.dims.append(len(self.config_space[key]))
+        self.total_dims = 1
+        if len(self.dims) > 0:
+            for dim in self.dims:
+                self.total_dims *= dim
+
+    def get_device_type(self, target: Target) -> str:
+        """Get the device type string from a target.
+
+        Parameters
+        ----------
+        target : Target
+            The target to get the device type from.
+
+        Returns
+        -------
+        device_type : str
+            The device type string.
+        """
+        if target.kind.name == "llvm":
+            return "cpu"
+        elif target.kind.name == "cuda":
+            return "cuda"
+        else:
+            raise RuntimeError(
+                f"Unsupported target kind for device type: {target.kind.name}"
+            )
+
+    def run(
+        self,
+        json_file_list,
+        final_log,
+        timeout=10,
+        number=2,
+        repeat=3,
+        min_repeat_ms=0,
+        cpu_cache=False,
+    ):
+        """Execute a log file and save"""
+
+        builder = ms.builder.LocalBuilder(timeout_sec=timeout)
+        runner = ms.runner.LocalRunner(
+            evaluator_config=ms.runner.EvaluatorConfig(
+                number=number,
+                repeat=repeat,
+                min_repeat_ms=min_repeat_ms,
+                enable_cpu_cache_flush=cpu_cache,
+            ),
+        )
+
+        records = []
+        for cfg in json_file_list:
+            records.append(
+                TuningRecord.from_json(json.loads(json.dumps(cfg)), self.workload)
+            )
+
+        mods = []
+        for record in records:
+            sch = Schedule(self.workload.mod)
+            record.trace.apply_to_schedule(sch, remove_postproc=False)
+            mods.append(sch.mod)
+
+        builder_res = builder.build(
+            [ms.builder.BuilderInput(mod, self.target) for mod in mods]
+        )
+
+        inputs, results = [], []
+        for i, record in enumerate(records):
+
+            inp = ms.runner.RunnerInput(
+                builder_res[i].artifact_path,
+                device_type=self.dev,
+                args_info=ms.arg_info.TensorInfo.from_prim_func(mods[i]["main"]),
+            )
+
+            # run
+            runner_future = runner.run([inp])
+            runner_res = runner_future[0].result()
+
+            inputs.append(inp)
+            results.append(MeasureRunnerResult(runner_res))
+
+            # TODO: How to save the solution in json file
+
+            # clean up
+            remove_build_dir(builder_res[i].artifact_path)
+
+        return inputs, results

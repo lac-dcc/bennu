@@ -67,6 +67,43 @@ def get_time(log):
     return best_time, time_total, best_cfg
 
 
+def read_ms_file(path_tuning_file, path_workload_file):
+    """Colect the info from meta logfile
+
+    Parameters
+    ----------
+    log: str
+        The input log path with the meta parameter
+
+    Returns
+    -------
+    ret: dict[layer, Union[time, dict]]
+        Returns the best time, total time, and data
+    """
+    import json
+
+    workload_list = []
+    with open(path_workload_file, "r", encoding="utf-8") as log_file:
+        for line in log_file.readlines():
+            data = json.loads(line)
+            workload_list.append(data)
+
+    info = dict()
+    with open(path_tuning_file, "r", encoding="utf-8") as log_file:
+        for line in log_file.readlines():
+            data = json.loads(line)
+            layer = data[0]
+            params = data[1]
+            template = params[0]
+            time = params[1]
+            tensors = params[2]
+            config = template[0]
+            constraints = template[1]
+            if layer not in info.keys() or np.mean(info[layer][0]) > np.mean(time):
+                info[layer] = [time, data, workload_list[layer]]
+    return info
+
+
 def clean_file(filename):
     if os.path.isfile(filename):
         os.remove(filename)

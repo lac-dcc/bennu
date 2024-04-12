@@ -7,6 +7,7 @@ from tvm.driver.tvmc.autotuner import autoscheduler_get_tuning_tasks
 
 # meta schedule
 from tvm import meta_schedule as ms
+from tvm.target import Target
 from tvm.relay.frontend import from_onnx
 from tvm.meta_schedule.runner.config import EvaluatorConfig
 
@@ -16,6 +17,7 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from src.utils import *
 from src.DropletSearch import Droplet
 from src.GridSearch import GridSearch
+from src.DPMeta import DropletMeta
 
 num_threads = os.cpu_count()
 os.environ["TVM_NUM_THREADS"] = str(num_threads)
@@ -83,6 +85,36 @@ def generate_meta_template(bench, logfile, target, trials):
     end = time.time()
     print(f"Tuning Time (min): {(end-start)/60:.2f}")
     print(profiler.table())
+
+
+def build_meta_template(bench, logfile, target_name, trials):
+    # if target == "llvm":
+    #    target += " -num-cores 8"  # TODO: Get this value automatically
+    # elif target == "cuda":
+    #    target += " -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
+    mod, params = from_onnx(onnx.load(bench))
+
+    target = tvm.target.Target(target_name)
+
+    ms_tuning_file = logfile + "/database_tuning_record.json"
+    ms_workload_file = logfile + "/database_workload.json"
+
+    # print(ms_tuning_file)
+
+    cfg = read_ms_file(ms_tuning_file, ms_workload_file)
+
+    for layer in cfg:
+        ms_time, ms_cfg, ms_workload = cfg[layer]
+
+        print(layer, ms_time)
+
+        log = f"layer_{layer}.log"
+        clean_file(log)
+
+        m = DropletMeta(ms_cfg[1], ms_workload, target, log)
+        m.tune(trials)
+
+        break
 
 
 def build_template(bench, logfile, index, target, trials, top=1000, method="droplet"):
@@ -165,7 +197,7 @@ def run(logfile, bench, target, dev):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        "python print_record_info.py -m ansor -a x86 -l results/model.json -i 3"
+        "python models_onnx.py -m ansor -a x86 -l results/model.json -b models/resnet18.onnx"
     )
     parser.add_argument(
         "-m", "--method", type=str, required=True, help="Options: ansor, droplet, grid"
@@ -206,8 +238,10 @@ if __name__ == "__main__":
 
     if method == "ansor":
         generate_ansor_template(bench, logfile, target_name, trials)
-    elif method in ["droplet", "grid"]:
+    elif method == "dpansor":
         build_template(bench, logfile, index, target, trials, top, method)
+    elif method == "dpmeta":
+        build_meta_template(bench, logfile, target_name, trials)
     elif method == "meta":
         generate_meta_template(bench, logfile, target_name, trials)
     elif method == "run":
