@@ -1,6 +1,7 @@
 """ The class of Space used to optimize the Ansor parameters """
 
 import os
+import sys
 import json
 import numpy as np
 from copy import deepcopy
@@ -10,12 +11,14 @@ import time
 
 from tvm import meta_schedule as ms
 from tvm.target import Target
-from tvm.ir import IRModule
-from tvm.target import Target
 from tvm.tir import Schedule
-from tvm.tir.schedule import Trace
 from tvm.meta_schedule.database import Workload, TuningRecord
 from tvm.meta_schedule.utils import remove_build_dir
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
+from src.utils import *
 
 
 class MeasureRunnerResult:
@@ -55,6 +58,7 @@ class Space:
 
     def __init__(self, data: json, workload: json, target: Target):
         self.cfg = deepcopy(data)
+        self._id = data[0]
         self.workload = Workload.from_json(workload)
         self.target = target
         self.dev = self.get_device_type(target)
@@ -112,9 +116,9 @@ class Space:
 
     def template(self, values=[], create=True):
         idx = -1
-        config = deepcopy(self.cfg)
+        config = deepcopy(self.cfg[1])
         # TODO: improve this array access, very confuse
-        constraints = self.cfg[0][1]
+        constraints = config[0][1]
         for cfg in config[0][0]:
             opt = cfg[0]
             if opt == "Annotate":
@@ -165,6 +169,16 @@ class Space:
             raise RuntimeError(
                 f"Unsupported target kind for device type: {target.kind.name}"
             )
+
+    def save_log(
+        self, path: str, record: json, results: ms.runner.RunnerResult
+    ) -> None:
+        """Save the log file"""
+        new_json = [self._id, record.as_json()]
+        # update time
+        # TODO: create a function that does it
+        new_json[1][1] = results.run_secs
+        write_file([new_json], path, "a")
 
     def run(
         self,
@@ -220,7 +234,8 @@ class Space:
             inputs.append(inp)
             results.append(MeasureRunnerResult(runner_res))
 
-            # TODO: How to save the solution in json file
+            # save the solution in json file
+            self.save_log(final_log, record, MeasureRunnerResult(runner_res))
 
             # clean up
             remove_build_dir(builder_res[i].artifact_path)

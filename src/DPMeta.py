@@ -33,9 +33,10 @@ class DropletMeta:
     def __init__(self, json_file, workload_file, target, log, pvalue=0.05) -> None:
         self.space = Space(json_file, workload_file, target)
         self.final_log = write_file([json_file], log)
-        self.log, self.pvalue = write_file([json_file]), pvalue
+        print("new file", json_file)
+        self.pvalue = pvalue
         self.next = [(0, [0] * len(self.space.dims))]
-        best_avg, _, _ = get_time(self.log)
+        best_avg = get_ms_time(log)
         self.best_choice = [0, [0] * len(self.space.dims), best_avg]
         self.count, self.execution, self.found_best_pos = 1, 1, True
         self.visited, self.batch = set([0]), max(os.cpu_count(), 16)
