@@ -112,26 +112,65 @@ class Space:
 
     def power_of_two(self, min: int, max: int) -> list:
         """Return power of two array in interval"""
-        return [2**i for i in range(min, max)]
+        return [2**i for i in range(min, max + 1)]
+
+    def get_index(self, array: list, value: int):
+        for i in range(len(array)):
+            if array[i][0] == value:
+                return i
+        return -1
 
     def template(self, values=[], create=True):
         idx = -1
         config = deepcopy(self.cfg[1])
         # TODO: improve this array access, very confuse
         constraints = config[0][1]
+        if values != []:
+            print(values)
+        counter = -1
         for cfg in config[0][0]:
+            counter += 1
+            print(counter, cfg)
             opt = cfg[0]
             if opt == "Annotate":
+                ann_key = cfg[2]
+                # TODO: which interval is interesting here
+                if ann_key == ["meta_schedule.parallel"]:
+                    interval = self.power_of_two(4, 9)
+                elif ann_key == ["meta_schedule.vectorize"]:
+                    interval = self.power_of_two(4, 9)
+                elif ann_key == ["pragma_auto_unroll_max_step"]:
+                    interval = self.power_of_two(6, 11)
+                else:
+                    continue
                 idx += 1
                 key = f"ann_{idx}"
-                size = cfg[1][1]
+                ann_value = cfg[1][1]
                 if create:
-                    self.config_space[key] = self.add_space(
-                        self.power_of_two(1, 8), [size]
-                    )
+                    self.config_space[key] = self.add_space(interval, [ann_value])
                 else:
-                    print(idx, values)
                     cfg[1][1] = self.get_value(key, values[idx])
+            elif opt == "SampleCategorical":
+                # TODO: study this opt
+                pass
+            elif opt == "SamplePerfectTile":
+                tile = config[0][1]
+                tile_idx = self.get_index(tile, counter)
+                tile_val = tile[tile_idx][1]
+                interval = self.power_of_two(1, 6)
+                for i in range(len(tile_val)):
+                    key = f"sp_{counter}_{i}"
+                    sp = tile_val[i]
+                    if create:
+                        self.config_space[key] = self.add_space(interval, [sp])
+                    else:
+                        print(tile_val[i])
+                        tile_val[i] = self.get_value(key, values[idx])
+                        print(tile_val)
+            elif opt == "Split":
+                # print(cfg)
+                pass
+        print(self.config_space)
         if create:
             return None
         return config
@@ -228,8 +267,8 @@ class Space:
             )
 
             # run
-            runner_future = runner.run([inp])
-            runner_res = runner_future[0].result()
+            (runner_future,) = runner.run([inp])
+            runner_res = runner_future.result()
 
             inputs.append(inp)
             results.append(MeasureRunnerResult(runner_res))

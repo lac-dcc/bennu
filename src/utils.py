@@ -36,7 +36,6 @@ def write_file(json_list: list, log="/tmp/file.json", mode="w") -> str:
     ret: str
         log path file
     """
-    print(log)
     with open(log, mode, encoding="utf-8") as outfile:
         for j in json_list:
             outfile.write(json.dumps(j) + "\n")
@@ -103,6 +102,19 @@ def read_ms_file(path_tuning_file, path_workload_file):
             if layer not in info.keys() or np.mean(info[layer][0]) > np.mean(time):
                 info[layer] = [time, data, workload_list[layer]]
     return info
+
+
+def get_data_ms(log):
+    best_time, trials = [9999], 0
+    with open(log, "r", encoding="utf-8") as log_file:
+        for line in log_file.readlines():
+            trials += 1
+            data = json.loads(line)
+            params = data[1]
+            time = params[1]
+            if np.mean(best_time) > np.mean(time):
+                best_time = time
+    return best_time, trials
 
 
 def get_ms_time(log):
