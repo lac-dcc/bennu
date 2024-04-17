@@ -135,7 +135,7 @@ class DropletMeta:
         # stop, because all neighborhoods are invalid.
         if count_valids == 0:
             self.next = []
-            LOGGER.warning(
-                f"Warning: early termination due to an all-invalid neighborhood \
-                after iterations"
-            )
+            # LOGGER.warning(
+            #    f"Warning: early termination due to an all-invalid neighborhood \
+            #    after iterations"
+            # )

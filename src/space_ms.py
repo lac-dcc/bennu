@@ -168,9 +168,6 @@ class Space:
                         print(tile_val[i])
                         tile_val[i] = self.get_value(key, values[idx])
                         print(tile_val)
-            elif opt == "Split":
-                # print(cfg)
-                pass
         # print(self.config_space)
         if create:
             return None
@@ -258,7 +255,7 @@ class Space:
         mods = []
         for record in records:
             sch = Schedule(self.workload.mod)
-            record.trace.apply_to_schedule(sch, remove_postproc=True)
+            record.trace.apply_to_schedule(sch, remove_postproc=False)
             mods.append(sch.mod)
 
         builder_res = builder.build(
@@ -267,6 +264,7 @@ class Space:
 
         inputs, results = [], []
         for i, record in enumerate(records):
+            # print("test")
             try:
                 inp = ms.runner.RunnerInput(
                     builder_res[i].artifact_path,
