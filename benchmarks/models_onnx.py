@@ -109,27 +109,26 @@ def build_meta_template(bench, logfile, target_name, trials):
     for layer in cfg:
         ms_time, ms_cfg, ms_workload = cfg[layer]
 
-        if layer == 1:
-            log = f"layer_{layer}.log"
-            clean_file(log)
+        log = f"layer_{layer}.log"
+        clean_file(log)
 
-            m = DropletMeta(ms_cfg, ms_workload, target, log)
-            start = time.time()
-            m.tune(trials)
-            end = time.time() - start
+        m = DropletMeta(ms_cfg, ms_workload, target, log)
+        start = time.time()
+        m.tune(trials)
+        end = time.time() - start
 
-            dp_time, dp_trials = get_data_ms(log)
+        dp_time, dp_trials = get_data_ms(log)
 
-            mean_ms_time = np.mean(ms_time)
-            std_ms_time = np.std(ms_time)
-            mean_time = np.mean(dp_time)
-            std_time = np.std(dp_time)
+        mean_ms_time = np.mean(ms_time)
+        std_ms_time = np.std(ms_time)
+        mean_time = np.mean(dp_time)
+        std_time = np.std(dp_time)
 
-            speedup = mean_ms_time / mean_time
+        speedup = mean_ms_time / mean_time
 
-            print(
-                f"{layer}, {mean_time:.8f}, {std_time:.8f}, {dp_trials}, {end / 60:0.2f}, {mean_ms_time:.8f}, {std_ms_time:.8f}, {speedup:.2f}"
-            )
+        print(
+            f"{layer}, {mean_time:.8f}, {std_time:.8f}, {dp_trials}, {end / 60:0.2f}, {mean_ms_time:.8f}, {std_ms_time:.8f}, {speedup:.2f}"
+        )
 
 
 def build_template(bench, logfile, index, target, trials, top=1000, method="droplet"):
