@@ -255,7 +255,8 @@ class Space:
         mods = []
         for record in records:
             sch = Schedule(self.workload.mod)
-            record.trace.apply_to_schedule(sch, remove_postproc=False)
+            record.trace.apply_to_schedule(sch, remove_postproc=True)
+            # print(record.as_json())
             mods.append(sch.mod)
 
         builder_res = builder.build(
