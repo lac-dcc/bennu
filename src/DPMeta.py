@@ -33,7 +33,6 @@ class DropletMeta:
     def __init__(self, json_file, workload_file, target, log, pvalue=0.05) -> None:
         self.space = Space(json_file, workload_file, target)
         self.final_log = write_file([json_file], log)
-        print("new file", json_file)
         self.pvalue = pvalue
         self.next = [(0, [0] * len(self.space.dims))]
         best_avg = get_ms_time(log)
@@ -72,8 +71,6 @@ class DropletMeta:
         while self.has_next():
             ins, res = self.next_batch(self.batch)
             self.update(ins, res)
-
-        print(self.best_choice)
 
     def num_to_bin(self, value, factor=1):
         bin_format = str(0) * (len(self.dims) - len(bin(value)[2:])) + bin(value)[2:]

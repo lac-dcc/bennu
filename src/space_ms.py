@@ -125,12 +125,12 @@ class Space:
         config = deepcopy(self.cfg[1])
         # TODO: improve this array access, very confuse
         constraints = config[0][1]
-        if values != []:
-            print(values)
+        # if values != []:
+        #    print(values)
         counter = -1
         for cfg in config[0][0]:
             counter += 1
-            print(counter, cfg)
+            # print(counter, cfg)
             opt = cfg[0]
             if opt == "Annotate":
                 ann_key = cfg[2]
@@ -154,6 +154,7 @@ class Space:
                 # TODO: study this opt
                 pass
             elif opt == "SamplePerfectTile":
+                continue
                 tile = config[0][1]
                 tile_idx = self.get_index(tile, counter)
                 tile_val = tile[tile_idx][1]
@@ -170,7 +171,7 @@ class Space:
             elif opt == "Split":
                 # print(cfg)
                 pass
-        print(self.config_space)
+        # print(self.config_space)
         if create:
             return None
         return config
@@ -178,7 +179,7 @@ class Space:
     def create_space(self):
         """Create the space using Meta's space"""
         self.template(create=True)
-        print(self.config_space)
+        # print(self.config_space)
         self.dims = []
         for key in self.config_space:
             self.dims.append(len(self.config_space[key]))
