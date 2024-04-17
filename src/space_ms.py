@@ -65,6 +65,7 @@ class Space:
         self.total_dims, self.dims = 0, []
         self.config_space = {}
         self.create_space()
+        #print(len(data[1][0][1]))
 
     def __repr__(self) -> str:
         """Print the config space"""
@@ -255,7 +256,7 @@ class Space:
         mods = []
         for record in records:
             sch = Schedule(self.workload.mod)
-            record.trace.apply_to_schedule(sch, remove_postproc=True)
+            record.trace.apply_to_schedule(sch, remove_postproc=False)
             # print(record.as_json())
             mods.append(sch.mod)
 
