@@ -211,12 +211,18 @@ class Space:
             )
 
     def save_log(
-        self, path: str, record: json, results: ms.runner.RunnerResult
+        self,
+        path: str,
+        record: ms.database.TuningRecord,
+        results: ms.runner.RunnerResult,
     ) -> None:
         """Save the log file"""
-        new_json = [self._id, record.as_json()]
+        try:
+            new_json = [self._id, record.as_json()]
+        except:
+            # TODO: Need to fix on 'TransformLayout' opt brings bug in Record's as_json function
+            return
         # update time
-        # TODO: create a function that does it
         new_json[1][1] = results.run_secs
         write_file([new_json], path, "a")
 
@@ -244,6 +250,7 @@ class Space:
 
         records = []
         for cfg in json_file_list:
+            # print(cfg)
             records.append(
                 TuningRecord.from_json(json.loads(json.dumps(cfg)), self.workload)
             )
@@ -251,7 +258,7 @@ class Space:
         mods = []
         for record in records:
             sch = Schedule(self.workload.mod)
-            record.trace.apply_to_schedule(sch, remove_postproc=False)
+            record.trace.apply_to_schedule(sch, remove_postproc=True)
             mods.append(sch.mod)
 
         builder_res = builder.build(
@@ -260,12 +267,16 @@ class Space:
 
         inputs, results = [], []
         for i, record in enumerate(records):
-
-            inp = ms.runner.RunnerInput(
-                builder_res[i].artifact_path,
-                device_type=self.dev,
-                args_info=ms.arg_info.TensorInfo.from_prim_func(mods[i]["main"]),
-            )
+            try:
+                inp = ms.runner.RunnerInput(
+                    builder_res[i].artifact_path,
+                    device_type=self.dev,
+                    args_info=ms.arg_info.TensorInfo.from_prim_func(mods[i]["main"]),
+                )
+            except:
+                # TODO: Study why this happen for some case
+                # print(i, record.as_json())
+                continue
 
             # run
             (runner_future,) = runner.run([inp])
