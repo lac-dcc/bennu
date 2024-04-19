@@ -254,17 +254,22 @@ class Space:
         records = []
         for cfg in json_file_list:
             # print(cfg)
-            records.append(
-                TuningRecord.from_json(json.loads(json.dumps(cfg)), self.workload)
-            )
+            try:
+                records.append(
+                    TuningRecord.from_json(json.loads(json.dumps(cfg)), self.workload)
+                )
+            except:
+                # TODO: Verify layer 22 of squeezenet has issue:
+                # InternalError: Check failed: old_outputs.size() == new_outputs.size() (13 vs. 12)
+                continue
 
         mods = []
         for record in records:
             sch = Schedule(self.workload.mod)
             # In some layers this is a heavy impact in time cost, so
             # I applied this only 25% of the samples.
-            remove_prostproc = True if rd.random() > 0.75 else False
-            record.trace.apply_to_schedule(sch, remove_postproc=remove_prostproc)
+            remove_postproc = True if rd.random() > 0.75 else False
+            record.trace.apply_to_schedule(sch, remove_postproc=remove_postproc)
             # print(record.as_json())
             mods.append(sch.mod)
 
