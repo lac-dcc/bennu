@@ -46,11 +46,8 @@ def generate_ansor_template(bench, logfile, target, trials):
     print("time search:", end - start)
 
 
-def generate_meta_template(bench, logfile, target, trials):
-    if target == "llvm":
-        target += " -num-cores 8"  # TODO: Get this value automatically
-    elif target == "cuda":
-        target += " -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
+def generate_meta_template(bench, logfile, target_name, trials):
+    target = tvm.target.Target(target_name)
     mod, params = from_onnx(onnx.load(bench))
 
     start = time.time()
@@ -88,18 +85,12 @@ def generate_meta_template(bench, logfile, target, trials):
 
 
 def build_meta_template(bench, logfile, target_name, trials):
-    # if target == "llvm":
-    #    target += " -num-cores 8"  # TODO: Get this value automatically
-    # elif target == "cuda":
-    #    target += " -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
     mod, params = from_onnx(onnx.load(bench))
 
     target = tvm.target.Target(target_name)
 
     ms_tuning_file = logfile + "/database_tuning_record.json"
     ms_workload_file = logfile + "/database_workload.json"
-
-    # print(ms_tuning_file)
 
     cfg = read_ms_file(ms_tuning_file, ms_workload_file)
 
@@ -108,6 +99,9 @@ def build_meta_template(bench, logfile, target_name, trials):
     )
     for layer in cfg:
         ms_time, ms_cfg, ms_workload = cfg[layer]
+
+        # if layer != 1:
+        #    continue
 
         log = f"layer_{layer}.log"
         clean_file(log)
