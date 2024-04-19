@@ -65,7 +65,6 @@ class Space:
         self.total_dims, self.dims = 0, []
         self.config_space = {}
         self.create_space()
-        #print(len(data[1][0][1]))
 
     def __repr__(self) -> str:
         """Print the config space"""
@@ -137,11 +136,11 @@ class Space:
                 ann_key = cfg[2]
                 # TODO: which interval is interesting here
                 if ann_key == ["meta_schedule.parallel"]:
-                    interval = self.power_of_two(4, 9)
+                    interval = self.power_of_two(5, 9)
                 elif ann_key == ["meta_schedule.vectorize"]:
-                    interval = self.power_of_two(4, 9)
+                    interval = self.power_of_two(4, 8)
                 elif ann_key == ["pragma_auto_unroll_max_step"]:
-                    interval = self.power_of_two(6, 11)
+                    interval = self.power_of_two(7, 11)
                 else:
                     continue
                 idx += 1
@@ -155,23 +154,28 @@ class Space:
                 # TODO: study this opt
                 pass
             elif opt == "SamplePerfectTile":
-                continue
+                # print(counter, config)
                 tile = config[0][1]
                 tile_idx = self.get_index(tile, counter)
                 tile_val = tile[tile_idx][1]
                 interval = self.power_of_two(1, 6)
                 for i in range(len(tile_val)):
-                    key = f"sp_{counter}_{i}"
+                    # don't optimize tile with size 1
+                    if tile_val[i] == 1:
+                        continue
+                    idx += 1
+                    key = f"sp_{counter}_{idx}"
                     sp = tile_val[i]
                     if create:
                         self.config_space[key] = self.add_space(interval, [sp])
                     else:
-                        print(tile_val[i])
-                        tile_val[i] = self.get_value(key, values[idx])
-                        print(tile_val)
+                        config[0][1][tile_idx][1][i] = self.get_value(key, values[idx])
         # print(self.config_space)
         if create:
             return None
+
+        # print(config)
+        # rint("\n")
         return config
 
     def create_space(self):

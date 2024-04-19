@@ -38,7 +38,7 @@ class DropletMeta:
         best_avg = get_ms_time(log)
         self.best_choice = [0, [0] * len(self.space.dims), best_avg]
         self.count, self.execution, self.found_best_pos = 1, 1, True
-        self.visited, self.batch = set([0]), max(os.cpu_count(), 16)
+        self.visited, self.batch = set([0]), max(os.cpu_count(), 32)
         self.total_execution = 1
         if len(self.space.dims) > 0:
             self.total_execution = max(self.space.dims)
@@ -69,6 +69,7 @@ class DropletMeta:
         self.trials = n_trial
         self.speculation()
         while self.has_next():
+            # print(self.next)
             ins, res = self.next_batch(self.batch)
             self.update(ins, res)
 
@@ -81,7 +82,9 @@ class DropletMeta:
         for i in range(1, 2 ** len(self.space.dims) - 1):
             if len(search_space) > 2 * self.batch:
                 break
-            search_space += [self.num_to_bin(i, factor)] + [self.num_to_bin(i, -factor)]
+            search_space += [
+                self.num_to_bin(i, factor)
+            ]  # + [self.num_to_bin(i, -factor)]
         return search_space
 
     def next_pos(self, new_positions):
@@ -110,8 +113,8 @@ class DropletMeta:
     def speculation(self):
         # Gradient descending direction prediction and search space filling
         while len(self.next) < self.batch and self.execution < self.total_execution:
-            self.execution += self.step
             self.next += self.next_pos(self.search_space(self.execution))
+            self.execution += self.step
 
     def update(self, inputs, results):
         self.found_best_pos, count_valids = False, 0
