@@ -8,6 +8,7 @@ from copy import deepcopy
 from typing import Callable, Tuple, Union, List, Any
 import tvm
 import time
+import random as rd
 
 from tvm import meta_schedule as ms
 from tvm.target import Target
@@ -260,7 +261,10 @@ class Space:
         mods = []
         for record in records:
             sch = Schedule(self.workload.mod)
-            record.trace.apply_to_schedule(sch, remove_postproc=False)
+            # In some layers this is a heavy impact in time cost, so
+            # I applied this only 25% of the samples.
+            remove_prostproc = True if rd.random() > 0.75 else False
+            record.trace.apply_to_schedule(sch, remove_postproc=remove_prostproc)
             # print(record.as_json())
             mods.append(sch.mod)
 
