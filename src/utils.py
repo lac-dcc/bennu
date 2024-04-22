@@ -67,7 +67,7 @@ def get_time(log):
     return best_time, time_total, best_cfg
 
 
-def read_ms_file(path_tuning_file, path_workload_file):
+def read_ms_file(path_tuning_file, path_workload_file, n_trials=100000):
     """Colect the info from meta logfile
 
     Parameters
@@ -89,6 +89,7 @@ def read_ms_file(path_tuning_file, path_workload_file):
             workload_list.append(data)
 
     info = dict()
+    count = dict()
     with open(path_tuning_file, "r", encoding="utf-8") as log_file:
         for line in log_file.readlines():
             data = json.loads(line)
@@ -99,8 +100,15 @@ def read_ms_file(path_tuning_file, path_workload_file):
             tensors = params[2]
             config = template[0]
             constraints = template[1]
+            if layer not in count.keys():
+                count[layer] = 1
+            elif count[layer] < n_trials:
+                count[layer] += 1
+            else:
+                continue
+
             if layer not in info.keys() or np.mean(info[layer][0]) > np.mean(time):
-                info[layer] = [time, data, workload_list[layer]]
+                info[layer] = [time, data, workload_list[layer], count[layer]]
     return info
 
 
