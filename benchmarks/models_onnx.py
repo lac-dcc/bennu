@@ -84,7 +84,7 @@ def generate_meta_template(bench, logfile, target_name, trials):
     print(profiler.table())
 
 
-def build_meta_template(bench, logfile, target_name, trials):
+def build_meta_template(bench, logfile, target_name, top, trials):
     mod, params = from_onnx(onnx.load(bench))
 
     target = tvm.target.Target(target_name)
@@ -92,16 +92,18 @@ def build_meta_template(bench, logfile, target_name, trials):
     ms_tuning_file = logfile + "/database_tuning_record.json"
     ms_workload_file = logfile + "/database_workload.json"
 
-    cfg = read_ms_file(ms_tuning_file, ms_workload_file)
+    cfg_10k = read_ms_file(ms_tuning_file, ms_workload_file)
+    cfg_top = read_ms_file(ms_tuning_file, ms_workload_file, top)
 
     print(
-        "Layer, Droplet time(s), Droplet std(s), Droplet trials, Droplet Tuning(min), Meta time(s), Meta std(s), speedup"
+        "Layer, Droplet time(s), Droplet std(s), Droplet trials, Droplet Tuning(min), Meta-{top} time(s), Meta-{top} std(s), trials-{top}, Meta 10k time(s), Meta 10k std(s), trials-10k, speedup-{top}, speedup-10k"
     )
-    for layer in cfg:
-        ms_time, ms_cfg, ms_workload = cfg[layer]
+    for layer in cfg_top:
+        ms_time, ms_cfg, ms_workload, ms_trials = cfg_top[layer]
+        ms_10k_time, _, _, ms_10k_trials = cfg_10k[layer]
 
         # if layer != 1:
-        #    continue
+        #   continue
 
         log = f"layer_{layer}.log"
         clean_file(log)
@@ -115,13 +117,16 @@ def build_meta_template(bench, logfile, target_name, trials):
 
         mean_ms_time = np.mean(ms_time)
         std_ms_time = np.std(ms_time)
+        mean_ms_10k_time = np.mean(ms_10k_time)
+        std_ms_10k_time = np.std(ms_10k_time)
         mean_time = np.mean(dp_time)
         std_time = np.std(dp_time)
 
         speedup = mean_ms_time / mean_time
+        speedup_10k = mean_ms_10k_time / mean_time
 
         print(
-            f"{layer}, {mean_time:.8f}, {std_time:.8f}, {dp_trials}, {end / 60:0.2f}, {mean_ms_time:.8f}, {std_ms_time:.8f}, {speedup:.2f}"
+            f"{layer}, {mean_time:.8f}, {std_time:.8f}, {dp_trials}, {end / 60:0.2f}, {mean_ms_time:.8f}, {std_ms_time:.8f}, {ms_trials}, {mean_ms_10k_time:.8f}, {std_ms_10k_time:.8f}, {ms_10k_trials}, {speedup:.2f}, {speedup_10k:.2f}"
         )
 
 
@@ -249,7 +254,7 @@ if __name__ == "__main__":
     elif method == "dpansor":
         build_template(bench, logfile, index, target, trials, top, method)
     elif method == "dpmeta":
-        build_meta_template(bench, logfile, target_name, trials)
+        build_meta_template(bench, logfile, target_name, top, trials)
     elif method == "meta":
         generate_meta_template(bench, logfile, target_name, trials)
     elif method == "run":
