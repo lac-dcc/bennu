@@ -45,6 +45,7 @@ for ((i = 0; i < ${#BENCH[@]}; i++)); do
     echo "BENCH: "${BENCH[i]} 
     DIR=results/ms/meta_$ARCH"_"$NAME"_"${BENCH[i]}_10k
     for ((j = 0; j < ${#TOP[@]}; j++)); do
+        echo "TOP: "${TOP[j]}
         python3 benchmarks/models_onnx.py -m dpmeta -a $ARCH -t $trials -k ${TOP[j]} -l $DIR -b models/${BENCH[i]}.onnx 
     done
 done
