@@ -2,7 +2,7 @@
 
 NAME="test" # change this
 ARCH="x86"
-trials=10000
+trials=100
 
 BENCH=(
     alexnet
@@ -27,11 +27,24 @@ BENCH=(
     densenet201
 )
 
+TOP=(
+    1
+    10
+    25
+    50
+    100
+    200
+    300
+    1000
+)
+
 mkdir -p results
 mkdir -p results/ms
 
 for ((i = 0; i < ${#BENCH[@]}; i++)); do
     echo "BENCH: "${BENCH[i]} 
     DIR=results/ms/meta_$ARCH"_"$NAME"_"${BENCH[i]}_10k
-    python3 benchmarks/models_onnx.py -m dpmeta -a $ARCH -t $trials -l $DIR -b models/${BENCH[i]}.onnx 
+    for ((j = 0; j < ${#TOP[@]}; j++)); do
+        python3 benchmarks/models_onnx.py -m dpmeta -a $ARCH -t $trials -k ${TOP[j]} -l $DIR -b models/${BENCH[i]}.onnx 
+    done
 done
