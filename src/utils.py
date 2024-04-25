@@ -19,6 +19,27 @@ def create_file(json_list: list, log="/tmp/file.json") -> str:
     return log
 
 
+def get_time_spent(log: str, log_tuning: str) -> float:
+    count = 0
+    with open(log, "r", encoding="utf-8") as outfile:
+        for out in outfile.readlines():
+            count += 1
+    each_sample = 0.02574384916
+    try:
+        with open(log, "r", encoding="utf-8") as outfile:
+            for out in outfile.readlines():
+                out = out.strip()
+                if "Tuning Time (min):" in out:
+                    each_sample = float(out.split("(min):")[-1]) / count
+                    break
+    except:
+        print(
+            "warning: output.txt not found. Simulating that each sample spent 0.025 min (worst case)."
+        )
+        return
+    return each_sample
+
+
 def write_file(json_list: list, log="/tmp/file.json", mode="w") -> str:
     """Write the log file
 

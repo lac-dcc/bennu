@@ -86,24 +86,27 @@ def generate_meta_template(bench, logfile, target_name, trials):
 
 def build_meta_template(bench, logfile, target_name, top, trials):
     mod, params = from_onnx(onnx.load(bench))
-
     target = tvm.target.Target(target_name)
 
     ms_tuning_file = logfile + "/database_tuning_record.json"
     ms_workload_file = logfile + "/database_workload.json"
+    output_file = logfile + "/output.txt"
+
+    # calculate how many time spent each sample in MS
+    each_sample_time = get_time_spent(output_file, ms_tuning_file)
 
     cfg_10k = read_ms_file(ms_tuning_file, ms_workload_file)
     cfg_top = read_ms_file(ms_tuning_file, ms_workload_file, top)
 
     print(
-        "Layer, Droplet time(s), Droplet std(s), Droplet trials, Droplet Tuning(min), Meta-{top} time(s), Meta-{top} std(s), trials-{top}, Meta 10k time(s), Meta 10k std(s), trials-10k, speedup-{top}, speedup-10k"
+        f"Layer, DPMeta time(s), DPMeta std(s), DPMeta trials, DPMeta Tuning(min), DPMeta+Meta tuning(min), Meta-{top} time(s), Meta-{top} std(s), trials-{top}, Meta 10k time(s), Meta 10k std(s), trials-10k, speedup-{top}, speedup-10k"
     )
     for layer in cfg_top:
         ms_time, ms_cfg, ms_workload, ms_trials = cfg_top[layer]
         ms_10k_time, _, _, ms_10k_trials = cfg_10k[layer]
 
-        # if layer != 1:
-        #   continue
+        if layer != 1:
+            continue
 
         log = f"layer_{layer}.log"
         clean_file(log)
@@ -112,6 +115,8 @@ def build_meta_template(bench, logfile, target_name, top, trials):
         start = time.time()
         m.tune(trials)
         end = time.time() - start
+
+        ms_time_tuning = end / 60.0
 
         dp_time, dp_trials = get_data_ms(log)
 
@@ -122,11 +127,14 @@ def build_meta_template(bench, logfile, target_name, top, trials):
         mean_time = np.mean(dp_time)
         std_time = np.std(dp_time)
 
+        print(each_sample_time)
+        total_time_ms = min(top, ms_10k_trials) * each_sample_time + ms_time_tuning
+
         speedup = mean_ms_time / mean_time
         speedup_10k = mean_ms_10k_time / mean_time
 
         print(
-            f"{layer}, {mean_time:.8f}, {std_time:.8f}, {dp_trials}, {end / 60:0.2f}, {mean_ms_time:.8f}, {std_ms_time:.8f}, {ms_trials}, {mean_ms_10k_time:.8f}, {std_ms_10k_time:.8f}, {ms_10k_trials}, {speedup:.2f}, {speedup_10k:.2f}"
+            f"{layer}, {mean_time:.8f}, {std_time:.8f}, {dp_trials}, {ms_time_tuning:.2f}, {total_time_ms:.2f}, {mean_ms_time:.8f}, {std_ms_time:.8f}, {ms_trials}, {mean_ms_10k_time:.8f}, {std_ms_10k_time:.8f}, {ms_10k_trials}, {speedup:.2f}, {speedup_10k:.2f}"
         )
 
 
