@@ -22,28 +22,6 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from src.utils import *
 
 
-class MeasureRunnerResult:
-    """Store the results of a measurement.
-
-    Parameters
-    ----------
-    measureResult: List[MeasureResult]
-        A List of MeasureResult.
-    """
-
-    def __init__(self, measure_res: ms.runner.RunnerResult):
-        self._costs = measure_res.run_secs
-
-    @property
-    def costs(self):
-        # support to Ansor and AutoTVM
-        return [v.value for v in self._costs]
-
-    @property
-    def run_secs(self):
-        return [v.value for v in self._costs]
-
-
 class Space:
     """Space class
 
@@ -95,13 +73,12 @@ class Space:
                 new_list.append(elem)
         return new_list
 
-    def knob2point(self, arr):
+    def knob2point(self, knob):
         """Convert a array to point"""
-        value = 0
-        for i in range(len(arr) - 1):
-            value += arr[i] * self.dims[i]
-        value += arr[-1]
-        return value
+        point = 0
+        for j, k in enumerate(knob):
+            point += int(np.prod(self.dims[:j])) * k
+        return point
 
     def point2knob(self, point):
         """Convert point form (single integer) to knob (vector)"""
@@ -226,7 +203,7 @@ class Space:
             # TODO: Need to fix on 'TransformLayout' opt brings bug in Record's as_json function
             return
         # update time
-        new_json[1][1] = results.run_secs
+        new_json[1][1] = results
         write_file([new_json], path, "a")
 
     def run(
@@ -251,8 +228,9 @@ class Space:
             ),
         )
 
+        results = np.full(len(json_file_list), [10000], dtype=list)
         records = []
-        for cfg in json_file_list:
+        for i, cfg in enumerate(json_file_list):
             # print(cfg)
             try:
                 records.append(
@@ -277,7 +255,6 @@ class Space:
             [ms.builder.BuilderInput(mod, self.target) for mod in mods]
         )
 
-        inputs, results = [], []
         for i, record in enumerate(records):
             # print("test")
             try:
@@ -294,14 +271,12 @@ class Space:
             # run
             (runner_future,) = runner.run([inp])
             runner_res = runner_future.result()
-
-            inputs.append(inp)
-            results.append(MeasureRunnerResult(runner_res))
+            results[i] = [v.value for v in runner_res.run_secs]
 
             # save the solution in json file
-            self.save_log(final_log, record, MeasureRunnerResult(runner_res))
+            self.save_log(final_log, record, results[i])
 
             # clean up
             remove_build_dir(builder_res[i].artifact_path)
 
-        return inputs, results
+        return results
