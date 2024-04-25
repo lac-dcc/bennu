@@ -271,7 +271,10 @@ class Space:
             # run
             (runner_future,) = runner.run([inp])
             runner_res = runner_future.result()
-            results[i] = [v.value for v in runner_res.run_secs]
+            try:
+                results[i] = [v.value for v in runner_res.run_secs]
+            except:
+                results[i] = [10000]
 
             # save the solution in json file
             self.save_log(final_log, record, results[i])

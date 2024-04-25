@@ -127,7 +127,6 @@ def build_meta_template(bench, logfile, target_name, top, trials):
         mean_time = np.mean(dp_time)
         std_time = np.std(dp_time)
 
-        print(each_sample_time)
         total_time_ms = min(top, ms_10k_trials) * each_sample_time + ms_time_tuning
 
         speedup = mean_ms_time / mean_time
