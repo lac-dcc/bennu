@@ -58,18 +58,10 @@ class DropletMeta:
     def has_next(self):
         return len(self.next) > 0 and self.found_best_pos
 
-    def tune(
-        self,
-        n_trial=100,
-        measure_option=None,
-        early_stopping=None,
-        callbacks=(),
-        si_prefix="G",
-    ):
+    def tune(self, n_trial=100):
         self.trials = n_trial
         self.speculation()
         while self.has_next():
-            # print(self.next)
             res = self.next_batch(self.batch)
             self.update(res)
 

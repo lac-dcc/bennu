@@ -102,12 +102,7 @@ class Space:
         idx = -1
         config = deepcopy(self.cfg[1])
         # TODO: improve this array access, very confuse
-        constraints = config[0][1]
-        # if values != []:
-        #    print(values)
-        counter = -1
-        for cfg in config[0][0]:
-            counter += 1
+        for counter, cfg in enumerate(config[0][0]):
             # print(counter, cfg)
             opt = cfg[0]
             if opt == "Annotate":
@@ -148,7 +143,9 @@ class Space:
                         self.config_space[key] = self.add_space(interval, [sp])
                     else:
                         config[0][1][tile_idx][1][i] = self.get_value(key, values[idx])
-        # print(self.config_space)
+            elif opt == "TransformLayout":
+                # Sol: removing transformLayout, until the bug is not resolved.
+                del config[0][0][counter]
         if create:
             return None
 
@@ -201,6 +198,7 @@ class Space:
             new_json = [self._id, record.as_json()]
         except:
             # TODO: Need to fix on 'TransformLayout' opt brings bug in Record's as_json function
+            print(record)
             return
         # update time
         new_json[1][1] = results

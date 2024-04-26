@@ -121,9 +121,10 @@ def read_ms_file(path_tuning_file, path_workload_file, n_trials=100000):
             tensors = params[2]
             config = template[0]
             constraints = template[1]
+
             if layer not in count.keys():
                 count[layer] = 1
-            elif count[layer] < n_trials:
+            elif count[layer] < n_trials or int(np.mean(info[layer][0])) == 1e10:
                 count[layer] += 1
             else:
                 continue

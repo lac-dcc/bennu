@@ -105,7 +105,7 @@ def build_meta_template(bench, logfile, target_name, top, trials):
         ms_time, ms_cfg, ms_workload, ms_trials = cfg_top[layer]
         ms_10k_time, _, _, ms_10k_trials = cfg_10k[layer]
 
-        #if layer != 1:
+        # if layer != 11:
         #    continue
 
         log = f"layer_{layer}.log"
