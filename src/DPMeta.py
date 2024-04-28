@@ -38,14 +38,15 @@ class DropletMeta:
         best_avg = get_ms_time(log)
         self.best_choice = [0, [0] * len(self.space.dims), best_avg]
         self.count, self.execution, self.found_best_pos = 1, 1, True
-        self.visited, self.batch = set([0]), max(os.cpu_count(), 16)
         self.total_execution = 1
         if len(self.space.dims) > 0:
             self.total_execution = max(self.space.dims)
         self.dims, self.step = self.space.dims, 1
+        self.visited, self.batch = set([0]), max(os.cpu_count(), len(self.dims))
 
     def next_batch(self, batch_size):
         i, json_file_list = 0, []
+        # print("size next", len(self.next))
         while i < len(self.next):
             if batch_size > 0 and self.count >= self.trials:
                 break
@@ -72,11 +73,10 @@ class DropletMeta:
     def search_space(self, factor=1):
         search_space = []
         for i in range(0, len(self.space.dims)):
-            if len(search_space) > self.batch:
+            if len(search_space) > self.batch - len(self.next):
                 break
             space = self.num_to_bin(2**i, factor)
             idx = self.space.knob2point(space)
-            # print(i, space, idx)
             if idx not in self.visited:
                 search_space.append(space)
         return search_space
@@ -85,8 +85,6 @@ class DropletMeta:
         "returns the neighbors of the best solution"
         next_set = []
         for p in new_positions:
-            if len(next_set) > self.batch:
-                break
             new_p = [
                 (x + y) % self.dims[i] if (x + y > 0) else 0
                 for i, (x, y) in enumerate(zip(p, self.best_choice[1]))
@@ -107,29 +105,26 @@ class DropletMeta:
     def speculation(self):
         # Gradient descending direction prediction and search space filling
         while len(self.next) < self.batch and self.execution < self.total_execution:
-            # print(i, len(self.next), self.best_choice)
             self.next += self.next_pos(self.search_space(self.execution))
             self.execution += self.step
 
     def update(self, results):
         self.found_best_pos, count_valids = False, 0
         for i, res in enumerate(results):
-            # print(i, res, self.next[i])
+            # print(f"{i}, {np.mean(res):.8f}, {self.next[i]}")
             if np.mean(self.best_choice[2]) > np.mean(res):
                 self.best_choice = (self.next[i][0], self.next[i][1], res)
                 self.found_best_pos = True
             if np.mean(res) != 10000:
                 count_valids += 1
 
-        # print("best", self.best_choice)
+        # print(f"best = {np.mean(self.best_choice[2]):.8f}, ({self.best_choice[0]}, {self.best_choice[1]}) ")
         self.next = []
 
         # stop, because all neighborhoods are invalid.
         if count_valids == 0:
-            # LOGGER.warning(
-            #    f"Warning: early termination due to an all-invalid neighborhood \
-            #    after iterations"
-            # )
+            self.speculation()
+            self.found_best_pos = True
             return
 
         if self.found_best_pos:

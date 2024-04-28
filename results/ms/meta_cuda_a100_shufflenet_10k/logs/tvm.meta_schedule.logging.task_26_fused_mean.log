@@ -1,0 +1,2211 @@
+2024-04-28 19:50:55 [INFO] [task_scheduler.cc:160] Initializing Task #26: "fused_mean"
+2024-04-28 19:50:55 [INFO] [task_scheduler.cc:35] 
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red = T.alloc_buffer((T.int64(1), T.int64(1024)))
+        for ax0, ax1, k2, k3 in T.grid(T.int64(1), T.int64(1024), T.int64(7), T.int64(7)):
+            with T.block("p0_red"):
+                v_ax0, v_ax1, v_k2, v_k3 = T.axis.remap("SSRR", [ax0, ax1, k2, k3])
+                T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                T.writes(p0_red[v_ax0, v_ax1])
+                with T.init():
+                    p0_red[v_ax0, v_ax1] = T.float32(0)
+                p0_red[v_ax0, v_ax1] = p0_red[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+        for ax0, ax1 in T.grid(T.int64(1), T.int64(1024)):
+            with T.block("T_divide"):
+                v_ax0, v_ax1 = T.axis.remap("SS", [ax0, ax1])
+                T.reads(p0_red[v_ax0, v_ax1])
+                T.writes(T_divide[v_ax0, v_ax1])
+                T_divide[v_ax0, v_ax1] = p0_red[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+2024-04-28 19:50:55 [INFO] [task_scheduler.cc:164] Total 2 design space(s) generated
+2024-04-28 19:50:55 [INFO] [task_scheduler.cc:170] Design space #0:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 1024})
+            p0_red = T.alloc_buffer((T.int64(1), T.int64(1024)))
+            for ax0_ax1_fused_0 in T.thread_binding(T.int64(1), thread="blockIdx.x"):
+                for ax0_ax1_fused_1 in T.thread_binding(T.int64(1024), thread="threadIdx.x"):
+                    for k2, k3 in T.grid(T.int64(7), T.int64(7)):
+                        with T.block("p0_red"):
+                            v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                            v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_fused_0 * T.int64(1024) + ax0_ax1_fused_1)
+                            v_k2, v_k3 = T.axis.remap("RR", [k2, k3])
+                            T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                            T.writes(p0_red[v_ax0, v_ax1])
+                            with T.init():
+                                p0_red[v_ax0, v_ax1] = T.float32(0)
+                            p0_red[v_ax0, v_ax1] = p0_red[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax0_ax1_fused_0 in T.thread_binding(T.int64(32), thread="blockIdx.x"):
+                for ax0_ax1_fused_1 in T.thread_binding(T.int64(32), thread="threadIdx.x"):
+                    with T.block("T_divide"):
+                        v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_fused_0 * T.int64(32) + ax0_ax1_fused_1)
+                        T.reads(p0_red[v_ax0, v_ax1])
+                        T.writes(T_divide[v_ax0, v_ax1])
+                        T_divide[v_ax0, v_ax1] = p0_red[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+v3 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=4)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v3)
+l4, l5 = sch.get_loops(block=b1)
+l6 = sch.fuse(l4, l5, preserve_unit_iters=True)
+v7 = sch.sample_categorical(candidates=[32, 64, 128, 256, 512, 1024], probs=[0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666], decision=0)
+l8, l9 = sch.split(loop=l6, factors=[None, v7], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="blockIdx.x")
+sch.bind(loop=l9, thread_axis="threadIdx.x")
+l10, l11, l12, l13 = sch.get_loops(block=b0)
+l14 = sch.fuse(l10, l11, preserve_unit_iters=True)
+v15 = sch.sample_categorical(candidates=[32, 64, 128, 256, 512, 1024], probs=[0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666], decision=5)
+l16, l17 = sch.split(loop=l14, factors=[None, v15], preserve_unit_iters=True)
+sch.bind(loop=l16, thread_axis="blockIdx.x")
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+2024-04-28 19:50:55 [INFO] [task_scheduler.cc:170] Design space #1:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.unroll_explicit": 512})
+            p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+            for ax0_ax1_0_fused in T.thread_binding(T.int64(4), thread="blockIdx.x"):
+                for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(256), T.int64(1)):
+                    for ax2_ax3_fused_1 in T.thread_binding(T.int64(256), thread="threadIdx.x"):
+                        with T.block("p0_red"):
+                            v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                            v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(256) + ax1)
+                            v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(256) + ax2_ax3_fused_1) // T.int64(7))
+                            v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(256) + ax2_ax3_fused_1) % T.int64(7))
+                            T.where(ax2_ax3_fused_0 * T.int64(256) + ax2_ax3_fused_1 < T.int64(49))
+                            T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                            T.writes(p0_red_shared[v_ax0, v_ax1])
+                            with T.init():
+                                p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                            p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+                for ax1_1 in T.thread_binding(T.int64(256), thread="threadIdx.x"):
+                    with T.block("T_divide"):
+                        v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(256) + ax1_1)
+                        T.reads(p0_red_shared[v_ax0, v_ax1])
+                        T.writes(T_divide[v_ax0, v_ax1])
+                        T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=6)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+2024-04-28 20:17:12 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-04-28 20:17:12 [INFO] [evolutionary_search.cc:715] Picked top 0 candidate(s) from database
+2024-04-28 20:17:13 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 20:17:13 [INFO] [evolutionary_search.cc:723] Sampled 512 candidate(s)
+2024-04-28 20:17:13 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 20:17:14 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 20:17:14 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 20:17:14 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 20:17:14 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	0.9991  0.9988  0.9979  0.9941  0.9862  0.9842  0.9803  0.9792  0.9719  0.9644  0.9554  0.9548  0.9547  0.9504  0.9383  0.9363
+[17 : 32]:	0.9341  0.9330  0.9220  0.9141  0.9100  0.9055  0.8944  0.8941  0.8919  0.8898  0.8840  0.8772  0.8683  0.8651  0.8628  0.8546
+[33 : 48]:	0.8494  0.8435  0.8391  0.8335  0.8245  0.8236  0.8211  0.8114  0.8089  0.8076  0.8034  0.8019  0.8012  0.7839  0.7833  0.7811
+[49 : 64]:	0.7722  0.7705  0.7691  0.7570  0.7556  0.7527  0.7438  0.7423  0.7393  0.7388  0.7310  0.7307  0.7293  0.7231  0.7230  0.7170
+2024-04-28 20:17:14 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-04-28 20:17:14 [INFO] [evolutionary_search.cc:730] Sending 64 candidates(s) for measurement
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #1: Error in running:
+LocalRunner: An exception occurred
+Subprocess terminated
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red = T.alloc_buffer((T.int64(1), T.int64(1024)))
+        for ax0_ax1_fused_0 in T.thread_binding(T.int64(8), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 64, "pragma_unroll_explicit": 1}):
+            for ax0_ax1_fused_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                with T.block("p0_red_init"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_fused_0 * T.int64(128) + ax0_ax1_fused_1)
+                    T.reads()
+                    T.writes(p0_red[v_ax0, v_ax1])
+                    p0_red[v_ax0, v_ax1] = T.float32(0)
+                for k2, k3 in T.grid(T.int64(7), T.int64(7)):
+                    with T.block("p0_red_update"):
+                        v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_fused_0 * T.int64(128) + ax0_ax1_fused_1)
+                        v_k2, v_k3 = T.axis.remap("RR", [k2, k3])
+                        T.reads(p0_red[v_ax0, v_ax1], p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red[v_ax0, v_ax1])
+                        p0_red[v_ax0, v_ax1] = p0_red[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+        for ax0_ax1_fused_0 in T.thread_binding(T.int64(8), thread="blockIdx.x"):
+            for ax0_ax1_fused_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_fused_0 * T.int64(128) + ax0_ax1_fused_1)
+                    T.reads(p0_red[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+v3 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=2)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v3)
+l4, l5 = sch.get_loops(block=b1)
+l6 = sch.fuse(l4, l5, preserve_unit_iters=True)
+v7 = sch.sample_categorical(candidates=[32, 64, 128, 256, 512, 1024], probs=[0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666], decision=2)
+l8, l9 = sch.split(loop=l6, factors=[None, v7], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="blockIdx.x")
+sch.bind(loop=l9, thread_axis="threadIdx.x")
+l10, l11, l12, l13 = sch.get_loops(block=b0)
+l14 = sch.fuse(l10, l11, preserve_unit_iters=True)
+v15 = sch.sample_categorical(candidates=[32, 64, 128, 256, 512, 1024], probs=[0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666], decision=2)
+l16, l17 = sch.split(loop=l14, factors=[None, v15], preserve_unit_iters=True)
+sch.bind(loop=l16, thread_axis="blockIdx.x")
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+sch.enter_postproc()
+b18 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b18, ann_key="meta_schedule.unroll_explicit")
+b19, b20 = sch.get_child_blocks(b18)
+l21, l22, l23, l24 = sch.get_loops(block=b19)
+sch.annotate(block_or_loop=l21, ann_key="pragma_auto_unroll_max_step", ann_val=64)
+sch.annotate(block_or_loop=l21, ann_key="pragma_unroll_explicit", ann_val=1)
+l25, l26 = sch.get_loops(block=b20)
+b27 = sch.get_block(name="p0_red", func_name="main")
+l28, l29, l30, l31 = sch.get_loops(block=b27)
+b32 = sch.decompose_reduction(block=b27, loop=l30)
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #2: GFLOPs: 6.1060. Time: 8.3852 us. Best GFLOPs: 6.1060
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #3: GFLOPs: 7.6191. Time: 6.7200 us. Best GFLOPs: 7.6191
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #4: GFLOPs: 8.3674. Time: 6.1190 us. Best GFLOPs: 8.3674
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #5: GFLOPs: 1.4051. Time: 36.4394 us. Best GFLOPs: 8.3674
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #6: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(32), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(32), T.int64(2)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(32), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(32) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(32) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(32) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(32) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(32), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(32) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=3)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #7: GFLOPs: 16.1015. Time: 3.1798 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #8: GFLOPs: 4.4838. Time: 11.4189 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #9: GFLOPs: 6.1402. Time: 8.3385 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #10: GFLOPs: 8.3051. Time: 6.1649 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #11: GFLOPs: 8.9758. Time: 5.7042 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #12: GFLOPs: 4.5110. Time: 11.3499 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #13: GFLOPs: 2.9289. Time: 17.4811 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #14: GFLOPs: 7.6177. Time: 6.7212 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #15: GFLOPs: 8.3142. Time: 6.1582 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #16: GFLOPs: 6.1561. Time: 8.3170 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #17: GFLOPs: 8.9755. Time: 5.7044 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #18: GFLOPs: 2.9290. Time: 17.4804 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #19: GFLOPs: 2.8233. Time: 18.1351 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #20: GFLOPs: 2.9307. Time: 17.4705 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #21: GFLOPs: 8.2412. Time: 6.2127 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #22: GFLOPs: 8.9736. Time: 5.7056 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #23: GFLOPs: 2.9299. Time: 17.4748 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #24: GFLOPs: 8.9385. Time: 5.7280 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #25: GFLOPs: 8.9760. Time: 5.7041 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #26: GFLOPs: 6.1522. Time: 8.3222 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #27: GFLOPs: 4.5345. Time: 11.2913 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #28: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(128), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 1024, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(8), T.int64(7)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(8), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(8) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(8) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(8) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(8) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(8), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(8) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=1)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=4)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=1024)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #29: GFLOPs: 7.6198. Time: 6.7193 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #30: GFLOPs: 4.5083. Time: 11.3568 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #31: GFLOPs: 7.6204. Time: 6.7188 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #32: GFLOPs: 13.0802. Time: 3.9143 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #33: GFLOPs: 7.6176. Time: 6.7213 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #34: GFLOPs: 8.2653. Time: 6.1946 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #35: GFLOPs: 8.9530. Time: 5.7187 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #36: GFLOPs: 7.5435. Time: 6.7873 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #37: GFLOPs: 1.4062. Time: 36.4093 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #38: GFLOPs: 8.9766. Time: 5.7037 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #39: GFLOPs: 8.3218. Time: 6.1525 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #40: GFLOPs: 8.2930. Time: 6.1739 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #41: GFLOPs: 4.5324. Time: 11.2964 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #42: GFLOPs: 6.1517. Time: 8.3229 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #43: GFLOPs: 7.6190. Time: 6.7200 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #44: GFLOPs: 8.9758. Time: 5.7042 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #45: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(16), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 1024, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(64), T.int64(1)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(64), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(64) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(64) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(64) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(64) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(64), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(64) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=4)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=4)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=1024)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #46: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(32), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 1024, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(32), T.int64(2)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(32), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(32) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(32) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(32) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(32) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(32), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(32) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=3)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=4)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=1024)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #47: GFLOPs: 4.5340. Time: 11.2925 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #48: GFLOPs: 4.5098. Time: 11.3530 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #49: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(64), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 1024, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(16), T.int64(4)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(16), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(16) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(16) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(16) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(16) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(16), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(16) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=2)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=4)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=1024)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #50: GFLOPs: 4.5109. Time: 11.3503 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #51: GFLOPs: 9.3791. Time: 5.4590 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #52: GFLOPs: 7.6155. Time: 6.7231 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #53: GFLOPs: 7.5429. Time: 6.7878 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #54: GFLOPs: 8.8346. Time: 5.7954 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #55: GFLOPs: 6.1045. Time: 8.3872 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #56: GFLOPs: 8.9419. Time: 5.7259 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #57: GFLOPs: 6.1552. Time: 8.3181 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #58: GFLOPs: 8.3724. Time: 6.1153 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #59: GFLOPs: 7.6193. Time: 6.7198 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #60: GFLOPs: 7.6193. Time: 6.7197 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #61: GFLOPs: 6.1060. Time: 8.3851 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #62: GFLOPs: 8.9745. Time: 5.7050 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #63: GFLOPs: 6.1520. Time: 8.3225 us. Best GFLOPs: 16.1015
+2024-04-28 20:21:06 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #64: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(8), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(128), T.int64(1)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(128) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(128) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(128) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(128) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(128) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=5)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 21:56:58 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-04-28 21:56:58 [INFO] [evolutionary_search.cc:715] Picked top 57 candidate(s) from database
+2024-04-28 21:56:59 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 21:56:59 [INFO] [evolutionary_search.cc:723] Sampled 455 candidate(s)
+2024-04-28 21:56:59 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 21:57:00 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 21:57:01 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 21:57:01 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 21:57:02 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	1.0586  1.0137  1.0063  0.9935  0.8384  0.8345  0.8318  0.8277  0.8256  0.8114  0.7966  0.5632  0.5607  0.5607  0.5457  0.5415
+[17 : 32]:	0.5414  0.5410  0.5341  0.5332  0.5293  0.5289  0.5210  0.5206  0.5190  0.5132  0.5131  0.5116  0.5115  0.5087  0.5069  0.5065
+[33 : 48]:	0.5062  0.5009  0.5008  0.4981  0.4977  0.4961  0.4959  0.4936  0.4934  0.4932  0.4923  0.4907  0.4897  0.4886  0.4883  0.4882
+[49 : 64]:	0.4869  0.4840  0.4816  0.4803  0.4785  0.4768  0.4742  0.4716  0.4705  0.4702  0.4699  0.4685  0.4663  0.4645  0.4622  0.4607
+2024-04-28 21:57:02 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-04-28 21:57:02 [INFO] [evolutionary_search.cc:730] Sending 63 candidates(s) for measurement
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #65: GFLOPs: 11.3343. Time: 4.5172 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #66: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(256), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 64, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(4), T.int64(13)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(4), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(4) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(4), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(4) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=0)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=2)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=64)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #67: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(256), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(4), T.int64(13)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(4), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(4) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(4), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(4) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=0)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #68: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(256), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 1024, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(4), T.int64(13)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(4), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(4) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(4) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(4), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(4) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=0)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=4)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=1024)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #69: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(64), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(16), T.int64(4)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(16), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(16) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(16) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(16) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(16) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(16), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(16) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=2)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #70: GFLOPs: 9.9430. Time: 5.1494 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #71: GFLOPs: 13.3537. Time: 3.8342 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #72: GFLOPs: 13.3539. Time: 3.8341 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #73: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(128), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(8), T.int64(7)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(8), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(8) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(8) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(8) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(8) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(8), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(8) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=1)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #74: GFLOPs: 13.4387. Time: 3.8099 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #75: GFLOPs: 13.3372. Time: 3.8389 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #76: GFLOPs: 9.1469. Time: 5.5975 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #77: GFLOPs: 9.1453. Time: 5.5985 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #78: GFLOPs: 8.9223. Time: 5.7384 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #79: GFLOPs: 9.1462. Time: 5.5979 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #80: GFLOPs: 9.1464. Time: 5.5978 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #81: GFLOPs: 9.1460. Time: 5.5981 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #82: GFLOPs: 9.5251. Time: 5.3753 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #83: GFLOPs: 9.9106. Time: 5.1662 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #84: GFLOPs: 9.1182. Time: 5.6152 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #85: GFLOPs: 9.1452. Time: 5.5986 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #86: GFLOPs: 9.1437. Time: 5.5995 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #87: GFLOPs: 9.1235. Time: 5.6119 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #88: GFLOPs: 9.1153. Time: 5.6169 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #89: GFLOPs: 9.1471. Time: 5.5974 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #90: GFLOPs: 8.6953. Time: 5.8882 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #91: GFLOPs: 8.6917. Time: 5.8907 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #92: GFLOPs: 8.6941. Time: 5.8890 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #93: GFLOPs: 8.6920. Time: 5.8905 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #94: GFLOPs: 8.6937. Time: 5.8893 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #95: GFLOPs: 9.1467. Time: 5.5976 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #96: GFLOPs: 9.1467. Time: 5.5976 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #97: GFLOPs: 7.8113. Time: 6.5546 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #98: GFLOPs: 7.8104. Time: 6.5554 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #99: GFLOPs: 7.8055. Time: 6.5595 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #100: GFLOPs: 7.7824. Time: 6.5789 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #101: GFLOPs: 7.7986. Time: 6.5652 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #102: GFLOPs: 8.6936. Time: 5.8894 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #103: GFLOPs: 8.6918. Time: 5.8906 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #104: GFLOPs: 7.8089. Time: 6.5566 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #105: GFLOPs: 7.8052. Time: 6.5597 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #106: GFLOPs: 8.6908. Time: 5.8913 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #107: GFLOPs: 8.6929. Time: 5.8898 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #108: GFLOPs: 7.7742. Time: 6.5859 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #109: GFLOPs: 8.6892. Time: 5.8924 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #110: GFLOPs: 8.6938. Time: 5.8892 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #111: GFLOPs: 7.8121. Time: 6.5540 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #112: GFLOPs: 7.8053. Time: 6.5597 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #113: GFLOPs: 8.6924. Time: 5.8902 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #114: GFLOPs: 8.6591. Time: 5.9128 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #115: GFLOPs: 7.8109. Time: 6.5549 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #116: GFLOPs: 8.6649. Time: 5.9089 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #117: GFLOPs: 7.7903. Time: 6.5723 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #118: GFLOPs: 8.6927. Time: 5.8900 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #119: GFLOPs: 7.8107. Time: 6.5551 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #120: GFLOPs: 8.3749. Time: 6.1135 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #121: GFLOPs: 8.6925. Time: 5.8901 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #122: GFLOPs: 7.7509. Time: 6.6057 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #123: GFLOPs: 8.3698. Time: 6.1172 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #124: GFLOPs: 8.6801. Time: 5.8986 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #125: GFLOPs: 8.3490. Time: 6.1324 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #126: GFLOPs: 0.2854. Time: 179.3840 us. Best GFLOPs: 16.1015
+2024-04-28 21:58:00 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #127: GFLOPs: 0.6523. Time: 78.4954 us. Best GFLOPs: 16.1015
+2024-04-28 23:34:03 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-04-28 23:34:03 [INFO] [evolutionary_search.cc:715] Picked top 102 candidate(s) from database
+2024-04-28 23:34:03 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 23:34:03 [INFO] [evolutionary_search.cc:723] Sampled 410 candidate(s)
+2024-04-28 23:34:04 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 23:34:05 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 23:34:05 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 23:34:06 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x4d110e8)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteCooperativeFetch(0x4cc5368)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteUnboundBlock(0x4cc53c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteParallelVectorizeUnroll(0x4b1fb58)]: 0 failure(s)
+Postproc #4 [meta_schedule.RewriteReductionBlock(0x4a9f958)]: 0 failure(s)
+Postproc #5 [meta_schedule.VerifyGPUCode(0xc680dc8)]: 0 failure(s)
+Postproc #6 [meta_schedule.RewriteTensorize(0xc72b398)]: 0 failure(s)
+2024-04-28 23:34:06 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	0.5740  0.5740  0.5630  0.5629  0.5584  0.5067  0.5022  0.4741  0.4701  0.4696  0.4676  0.4414  0.4136  0.4111  0.4110  0.4108
+[17 : 32]:	0.4021  0.4000  0.3993  0.3993  0.3992  0.3992  0.3991  0.3991  0.3989  0.3988  0.3986  0.3917  0.3911  0.3882  0.3837  0.3837
+[33 : 48]:	0.3401  0.3400  0.3399  0.3381  0.3371  0.3371  0.3370  0.3368  0.3368  0.3368  0.3367  0.3365  0.3290  0.3261  0.3245  0.3216
+[49 : 64]:	0.3010  0.3009  0.3007  0.2994  0.2900  0.2872  0.2869  0.2868  0.2759  0.2583  0.2583  0.2582  0.2556  0.2555  0.2554  0.2552
+2024-04-28 23:34:06 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-04-28 23:34:06 [INFO] [evolutionary_search.cc:730] Sending 61 candidates(s) for measurement
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #128: GFLOPs: 8.6884. Time: 5.8929 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #129: GFLOPs: 9.0256. Time: 5.6727 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #130: GFLOPs: 8.9760. Time: 5.7041 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #131: GFLOPs: 8.9947. Time: 5.6922 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #132: GFLOPs: 8.9183. Time: 5.7410 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #133: GFLOPs: 8.2871. Time: 6.1782 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #134: GFLOPs: 8.2957. Time: 6.1719 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #135: GFLOPs: 7.5806. Time: 6.7541 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #136: GFLOPs: 7.5832. Time: 6.7517 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #137: GFLOPs: 7.5772. Time: 6.7571 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #138: GFLOPs: 7.5911. Time: 6.7447 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #139: GFLOPs: 2.8308. Time: 18.0871 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #140: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(16), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(64), T.int64(1)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(64), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(64) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(64) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(64) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(64) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(64), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(64) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=4)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=3)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #141: GFLOPs: 6.2342. Time: 8.2128 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #142: GFLOPs: 6.2513. Time: 8.1902 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #143: GFLOPs: 6.1804. Time: 8.2843 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #144: GFLOPs: 6.2510. Time: 8.1907 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #145: GFLOPs: 6.2441. Time: 8.1998 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #146: GFLOPs: 6.2414. Time: 8.2033 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #147: GFLOPs: 6.2393. Time: 8.2061 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #148: GFLOPs: 6.2433. Time: 8.2008 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #149: GFLOPs: 6.2414. Time: 8.2033 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #150: GFLOPs: 6.2934. Time: 8.1355 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #151: GFLOPs: 6.2929. Time: 8.1362 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #152: GFLOPs: 6.1821. Time: 8.2819 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #153: GFLOPs: 6.2497. Time: 8.1924 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #154: GFLOPs: 6.1846. Time: 8.2786 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #155: GFLOPs: 2.8300. Time: 18.0919 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #156: GFLOPs: 6.2438. Time: 8.2001 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #157: GFLOPs: 6.2376. Time: 8.2083 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #158: GFLOPs: 6.2094. Time: 8.2456 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #159: GFLOPs: 6.2102. Time: 8.2445 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #160: GFLOPs: 4.5622. Time: 11.2226 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #161: GFLOPs: 4.5727. Time: 11.1969 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #162: GFLOPs: 4.5661. Time: 11.2131 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #163: GFLOPs: 4.5452. Time: 11.2646 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #164: GFLOPs: 4.5663. Time: 11.2127 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #165: GFLOPs: 4.5772. Time: 11.1858 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #166: GFLOPs: 4.5640. Time: 11.2182 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #167: GFLOPs: 4.5444. Time: 11.2666 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #168: GFLOPs: 4.5466. Time: 11.2610 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #169: GFLOPs: 4.5722. Time: 11.1982 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #170: GFLOPs: 4.5615. Time: 11.2244 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #171: GFLOPs: 4.5447. Time: 11.2658 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #172: GFLOPs: 4.5980. Time: 11.1352 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #173: GFLOPs: 4.5980. Time: 11.1352 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #174: GFLOPs: 4.5471. Time: 11.2600 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #175: GFLOPs: 4.5474. Time: 11.2592 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #176: GFLOPs: 2.9635. Time: 17.2769 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #177: GFLOPs: 2.9532. Time: 17.3370 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #178: GFLOPs: 2.9460. Time: 17.3795 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #179: GFLOPs: 1.4001. Time: 36.5699 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #180: GFLOPs: 2.9546. Time: 17.3292 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:121] [Task #26: fused_mean] Trial #181: Error in building:
+LocalBuilder: An exception occurred
+Traceback (most recent call last):
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/exec/popen_worker.py", line 87, in main
+    result = fn(*args, **kwargs)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 165, in <lambda>
+    lambda x: _worker_func(*x),
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 231, in _worker_func
+    rt_mod: Module = f_build(mod, target, _deserialize_params(params))
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+  File "Objects/call.c", line 200, in PyVectorcall_Call
+  File "Python/ceval.c", line 4963, in call_function
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/meta_schedule/builder/local_builder.py", line 261, in default_build
+    return tvm_build(mod, target=target)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/driver/build_module.py", line 281, in build
+    rt_mod_host = _driver_ffi.tir_to_runtime(annotated_mods, target_host)
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/_ctypes/packed_func.py", line 239, in __call__
+    raise_last_ffi_error()
+  File "/mnt/home/gverma/ceph/opt/tvm/python/tvm/_ffi/base.py", line 481, in raise_last_ffi_error
+    raise py_err
+tvm.error.InternalError: Traceback (most recent call last):
+  44: tvm::runtime::PackedFuncObj::Extractor<tvm::runtime::PackedFuncSubObj<tvm::runtime::TypedPackedFunc<tvm::runtime::Module (tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)>::AssignTypedLambda<tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}>(tvm::__mk_TVM22::{lambda(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target)#1}, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >)::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}> >::Call(tvm::runtime::PackedFuncObj const*, std::allocator<char>, tvm::runtime::TVMArgs const&)
+  43: tvm::TIRToRuntime(tvm::runtime::Map<tvm::Target, tvm::IRModule, void, void> const&, tvm::Target const&)
+  42: tvm::SplitMixedModule(tvm::IRModule, tvm::Target const&, tvm::Target const&)
+  41: tvm::ApplyPasses(tvm::IRModule, tvm::transform::Sequential)
+  40: tvm::transform::Pass::operator()(tvm::IRModule) const
+  39: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  38: tvm::transform::SequentialNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  37: tvm::transform::Pass::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  36: tvm::tir::transform::PrimFuncPassNode::operator()(tvm::IRModule, tvm::transform::PassContext const&) const
+  35: _ZN3tvm7runtime13PackedFun
+  34: tvm::runtime::TypedPackedFunc<tvm::tir::PrimFunc (tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)>::AssignTypedLambda<tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1}>(tvm::tir::transform::LowerThreadAllreduce()::{lambda(tvm::tir::PrimFunc, tvm::IRModule, tvm::transform::PassContext)#1})::{lambda(tvm::runtime::TVMArgs const&, tvm::runtime::TVMRetValue*)#1}::operator()(tvm::runtime::TVMArgs const, tvm::runtime::TVMRetValue) const
+  33: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  32: _ZZN3tvm3tir11StmtFunctorI
+  31: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  30: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  29: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  28: _ZZN3tvm3tir11StmtFunctorI
+  27: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  26: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  25: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  24: _ZZN3tvm3tir11StmtFunctorI
+  23: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  22: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  21: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  20: _ZZN3tvm3tir11StmtFunctorI
+  19: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AllocateNode const*)
+  18: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  17: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  16: _ZZN3tvm3tir11StmtFunctorI
+  15: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  14: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  13: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  12: _ZZN3tvm3tir11StmtFunctorIFNS
+  11: tvm::runtime::Array<tvm::tir::Stmt, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type> tvm::tir::StmtMutator::Internal::MutateArray<tvm::tir::Stmt, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>(tvm::tir::StmtMutator*, std::enable_if<std::is_base_of<tvm::runtime::ObjectRef, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}>::value, void>::type const&, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  10: tvm::runtime::ObjectPtr<tvm::runtime::Object> tvm::runtime::Array<tvm::tir::Stmt, void>::MapHelper<tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1}, tvm::tir::Stmt>(tvm::runtime::Object, tvm::tir::StmtMutator::Internal::Mutate(tvm::tir::StmtMutator*, tvm::runtime::Array<tvm::tir::Stmt, void> const&)::{lambda(tvm::tir::Stmt const&)#1})
+  9: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  8: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  7: _ZZN3tvm3tir11StmtFunctorI
+  6: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::AttrStmtNode const*)
+  5: tvm::tir::StmtMutator::VisitStmt(tvm::tir::Stmt const&)
+  4: tvm::tir::StmtFunctor<tvm::tir::Stmt (tvm::tir::Stmt const&)>::VisitStmt(tvm::tir::Stmt const&)
+  3: _ZZN3tvm3tir11StmtFunctorIFNS
+  2: tvm::tir::ThreadAllreduceBuilder::VisitStmt_(tvm::tir::EvaluateNode const*)
+  1: tvm::tir::ThreadAllreduceBuilder::MakeAllreduce(tvm::tir::CallNode const*)
+  0: _ZN3tvm7runtime6deta
+  File "/mnt/home/gverma/ceph/opt/tvm/src/tir/transforms/lower_thread_allreduce.cc", line 383
+InternalError: Check failed: (!load_remap_.count(buffers[i]->data.get())) is false: 
+
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1024), T.int64(7), T.int64(7)), "float32"), T_divide: T.Buffer((T.int64(1), T.int64(1024)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        p0_red_shared = T.alloc_buffer((T.int64(1), T.int64(1024)), scope="shared")
+        for ax0_ax1_0_fused in T.thread_binding(T.int64(8), thread="blockIdx.x", annotations={"pragma_auto_unroll_max_step": 1024, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2_ax3_fused_0 in T.grid(T.int64(1), T.int64(128), T.int64(1)):
+                for ax2_ax3_fused_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                    with T.block("p0_red"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(128) + ax1)
+                        v_k2 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(128) + ax2_ax3_fused_1) // T.int64(7))
+                        v_k3 = T.axis.reduce(T.int64(7), (ax2_ax3_fused_0 * T.int64(128) + ax2_ax3_fused_1) % T.int64(7))
+                        T.where(ax2_ax3_fused_0 * T.int64(128) + ax2_ax3_fused_1 < T.int64(49))
+                        T.reads(p0[v_ax0, v_ax1, v_k2, v_k3])
+                        T.writes(p0_red_shared[v_ax0, v_ax1])
+                        with T.init():
+                            p0_red_shared[v_ax0, v_ax1] = T.float32(0)
+                        p0_red_shared[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] + p0[v_ax0, v_ax1, v_k2, v_k3]
+            for ax1_1 in T.thread_binding(T.int64(128), thread="threadIdx.x"):
+                with T.block("T_divide"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(1024), ax0_ax1_0_fused * T.int64(128) + ax1_1)
+                    T.reads(p0_red_shared[v_ax0, v_ax1])
+                    T.writes(T_divide[v_ax0, v_ax1])
+                    T_divide[v_ax0, v_ax1] = p0_red_shared[v_ax0, v_ax1] * T.float32(0.020408163265306121)
+b0 = sch.get_block(name="p0_red", func_name="main")
+b1 = sch.get_block(name="T_divide", func_name="main")
+b2 = sch.get_block(name="root", func_name="main")
+b3, = sch.get_consumers(block=b0)
+l4, l5 = sch.get_loops(block=b3)
+v6 = sch.sample_categorical(candidates=[4, 8, 16, 32, 64, 128, 256, 512], probs=[0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125, 0.125], decision=5)
+l7, l8 = sch.split(loop=l5, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l8, thread_axis="threadIdx.x")
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+sch.set_scope(block=b0, buffer_index=0, storage_scope="shared")
+l9, l10, l11, l12, l13, l14 = sch.get_loops(block=b0)
+l15 = sch.fuse(l13, l14, preserve_unit_iters=True)
+l16, l17 = sch.split(loop=l15, factors=[None, v6], preserve_unit_iters=True)
+sch.bind(loop=l17, thread_axis="threadIdx.x")
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512, 1024], probs=[0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001, 0.20000000000000001], decision=4)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+l19, l20, l21 = sch.get_loops(block=b1)
+l22 = sch.fuse(l19, l20, preserve_unit_iters=True)
+sch.bind(loop=l22, thread_axis="blockIdx.x")
+sch.enter_postproc()
+b23 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b23, ann_key="meta_schedule.unroll_explicit")
+b24, b25 = sch.get_child_blocks(b23)
+l26, l27, l28, l29, l30 = sch.get_loops(block=b24)
+sch.annotate(block_or_loop=l26, ann_key="pragma_auto_unroll_max_step", ann_val=1024)
+sch.annotate(block_or_loop=l26, ann_key="pragma_unroll_explicit", ann_val=1)
+l31, l32 = sch.get_loops(block=b25)
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #182: GFLOPs: 2.9645. Time: 17.2709 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #183: GFLOPs: 2.9536. Time: 17.3347 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #184: GFLOPs: 2.9548. Time: 17.3276 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #185: GFLOPs: 2.9226. Time: 17.5188 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #186: GFLOPs: 2.9640. Time: 17.2739 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #187: GFLOPs: 2.9532. Time: 17.3371 us. Best GFLOPs: 16.1015
+2024-04-28 23:35:05 [INFO] [task_scheduler.cc:131] [Task #26: fused_mean] Trial #188: GFLOPs: 2.9234. Time: 17.5141 us. Best GFLOPs: 16.1015

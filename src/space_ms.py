@@ -43,6 +43,7 @@ class Space:
         self.dev = self.get_device_type(target)
         self.total_dims, self.dims = 0, []
         self.config_space = {}
+        self.start = []
         self.create_space()
 
     def __repr__(self) -> str:
@@ -134,8 +135,8 @@ class Space:
                 interval = self.power_of_two(1, 6)
                 for i in range(len(tile_val)):
                     # don't optimize tile with size 1
-                    if tile_val[i] == 1:
-                        continue
+                    # if tile_val[i] == 1:
+                    #    continue
                     idx += 1
                     key = f"sp_{counter}_{idx}"
                     sp = tile_val[i]
@@ -144,7 +145,7 @@ class Space:
                     else:
                         config[0][1][tile_idx][1][i] = self.get_value(key, values[idx])
             elif opt == "TransformLayout":
-                # Sol: removing transformLayout, until the bug is not resolved.
+                # Sol: removing transformLayout, until the bug is not resolved with Record.
                 del config[0][0][counter]
         if create:
             return None
@@ -198,7 +199,7 @@ class Space:
             new_json = [self._id, record.as_json()]
         except:
             # TODO: Need to fix on 'TransformLayout' opt brings bug in Record's as_json function
-            print(record)
+            # print(record)
             return
         # update time
         new_json[1][1] = results
