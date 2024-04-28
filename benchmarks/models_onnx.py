@@ -135,7 +135,7 @@ def build_meta_template(bench, logfile, target_name, top, trials):
         speedup_10k = mean_ms_10k_time / mean_time
 
         print(
-            f"{layer}, {mean_time:.8f}, {std_time:.8f}, {dp_trials}, {ms_time_tuning:.2f}, {total_time_ms:.2f}, {mean_ms_time:.8f}, {std_ms_time:.8f}, {ms_trials}, {mean_ms_10k_time:.8f}, {std_ms_10k_time:.8f}, {ms_10k_trials}, {speedup:.2f}, {speedup_10k:.2f}"
+            f"{layer}, {mean_time:.10f}, {std_time:.10f}, {dp_trials}, {ms_time_tuning:.2f}, {total_time_ms:.2f}, {mean_ms_time:.10f}, {std_ms_time:.10f}, {ms_trials}, {mean_ms_10k_time:.10f}, {std_ms_10k_time:.10f}, {ms_10k_trials}, {speedup:.2f}, {speedup_10k:.2f}"
         )
 
 
