@@ -46,7 +46,6 @@ class DropletMeta:
 
     def next_batch(self, batch_size):
         i, json_file_list = 0, []
-        # print("size next", len(self.next))
         while i < len(self.next):
             if batch_size > 0 and self.count >= self.trials:
                 break
@@ -72,10 +71,10 @@ class DropletMeta:
 
     def search_space(self, factor=1):
         search_space = []
-        for i in range(0, len(self.space.dims)):
+        for i in range(1, 2 ** len(self.space.dims) - 1):
             if len(search_space) > self.batch - len(self.next):
                 break
-            space = self.num_to_bin(2**i, factor)
+            space = self.num_to_bin(i, factor)
             idx = self.space.knob2point(space)
             if idx not in self.visited:
                 search_space.append(space)
