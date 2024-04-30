@@ -1,0 +1,1336 @@
+2024-04-29 02:09:24 [INFO] [task_scheduler.cc:160] Initializing Task #10: "fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3"
+2024-04-29 02:09:24 [INFO] [task_scheduler.cc:35] 
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        T_add = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for i0, i1, i2, i3, i4 in T.grid(T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)):
+            with T.block("PaddedInput"):
+                v_i0, v_i1, v_i2, v_i3, v_i4 = T.axis.remap("SSSSS", [i0, i1, i2, i3, i4])
+                T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+        for b, oco, oh, ow, oci, kh, kw in T.grid(T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4), T.int64(5), T.int64(5)):
+            with T.block("DepthwiseConv2d"):
+                v_b, v_oco, v_oh, v_ow, v_oci, v_kh, v_kw = T.axis.remap("SSSSSRR", [b, oco, oh, ow, oci, kh, kw])
+                T.reads(PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                with T.init():
+                    DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+        for ax0, ax1, ax2, ax3, ax4 in T.grid(T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)):
+            with T.block("T_add"):
+                v_ax0, v_ax1, v_ax2, v_ax3, v_ax4 = T.axis.remap("SSSSS", [ax0, ax1, ax2, ax3, ax4])
+                T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                T.writes(T_add[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                T_add[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4]
+        for ax0, ax1, ax2, ax3, ax4 in T.grid(T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)):
+            with T.block("T_relu"):
+                v_ax0, v_ax1, v_ax2, v_ax3, v_ax4 = T.axis.remap("SSSSS", [ax0, ax1, ax2, ax3, ax4])
+                T.reads(T_add[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(T_add[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], T.float32(0))
+2024-04-29 02:09:25 [INFO] [task_scheduler.cc:164] Total 3 design space(s) generated
+2024-04-29 02:09:25 [INFO] [task_scheduler.cc:170] Design space #0:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 64, "meta_schedule.vectorize": 64})
+            PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+            DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+            for b_0, oco_0, oh_0, ow_0, oci_0, b_1, oco_1 in T.grid(T.int64(1), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(3)):
+                for ax0, ax1, ax2, ax3, ax4 in T.grid(T.int64(1), T.int64(3), T.int64(59), T.int64(59), T.int64(4)):
+                    with T.block("PaddedInput"):
+                        v_i0 = T.axis.spatial(T.int64(1), ax0)
+                        v_i1 = T.axis.spatial(T.int64(18), oco_0 * T.int64(9) + oco_1 * T.int64(3) + ax1)
+                        v_i2 = T.axis.spatial(T.int64(60), ax2)
+                        v_i3 = T.axis.spatial(T.int64(60), ax3)
+                        v_i4 = T.axis.spatial(T.int64(4), ax4)
+                        T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                        T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                        PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+                for oh_1, ow_1, oci_1, kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3, oci_3 in T.grid(T.int64(14), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(14), T.int64(4), T.int64(5), T.int64(5), T.int64(1), T.int64(3), T.int64(2), T.int64(1), T.int64(1)):
+                    with T.block("DepthwiseConv2d"):
+                        v_b = T.axis.spatial(T.int64(1), b_0 + b_1 + b_2 + b_3)
+                        v_oco = T.axis.spatial(T.int64(18), oco_0 * T.int64(9) + oco_1 * T.int64(3) + oco_2 * T.int64(3) + oco_3)
+                        v_oh = T.axis.spatial(T.int64(28), oh_0 * T.int64(28) + oh_1 * T.int64(2) + oh_2 * T.int64(2) + oh_3)
+                        v_ow = T.axis.spatial(T.int64(28), ow_0 * T.int64(28) + ow_1 * T.int64(14) + ow_2 + ow_3)
+                        v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(4) + oci_2 + oci_3)
+                        v_kh = T.axis.reduce(T.int64(5), kh_0 * T.int64(5) + kh_1)
+                        v_kw = T.axis.reduce(T.int64(5), kw_0 * T.int64(5) + kw_1)
+                        T.reads(PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        with T.init():
+                            DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+            for ax0, ax1, ax2, ax3, ax4 in T.grid(T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)):
+                with T.block("T_relu"):
+                    v_ax0, v_ax1, v_ax2, v_ax3, v_ax4 = T.axis.remap("SSSSS", [ax0, ax1, ax2, ax3, ax4])
+                    T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                    T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                    T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[2, 3, 1, 3])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[1, 14, 1, 2])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[1, 2, 14, 1])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 1, 4, 1])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[1, 5])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[1, 5])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v59 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=2)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v59)
+l60 = sch.sample_compute_location(block=b0, decision=6)
+sch.compute_at(block=b0, loop=l60, preserve_unit_loops=True, index=-1)
+2024-04-29 02:09:25 [INFO] [task_scheduler.cc:170] Design space #1:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 512, "meta_schedule.vectorize": 64})
+            DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+            for b_0, oco_0, oh_0, ow_0, oci_0, b_1, oco_1, oh_1, ow_1, oci_1 in T.grid(T.int64(1), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(3), T.int64(14), T.int64(2), T.int64(1)):
+                for kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3, oci_3 in T.grid(T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(14), T.int64(4), T.int64(5), T.int64(5), T.int64(1), T.int64(3), T.int64(2), T.int64(1), T.int64(1)):
+                    with T.block("DepthwiseConv2d"):
+                        v_b = T.axis.spatial(T.int64(1), b_0 + b_1 + b_2 + b_3)
+                        v_oco = T.axis.spatial(T.int64(18), oco_0 * T.int64(9) + oco_1 * T.int64(3) + oco_2 * T.int64(3) + oco_3)
+                        v_oh = T.axis.spatial(T.int64(28), oh_0 * T.int64(28) + oh_1 * T.int64(2) + oh_2 * T.int64(2) + oh_3)
+                        v_ow = T.axis.spatial(T.int64(28), ow_0 * T.int64(28) + ow_1 * T.int64(14) + ow_2 + ow_3)
+                        v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(4) + oci_2 + oci_3)
+                        v_kh = T.axis.reduce(T.int64(5), kh_0 * T.int64(5) + kh_1)
+                        v_kw = T.axis.reduce(T.int64(5), kw_0 * T.int64(5) + kw_1)
+                        T.reads(p0[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh - T.int64(2), v_ow * T.int64(2) + v_kw - T.int64(2), v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        with T.init():
+                            DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + T.if_then_else(T.int64(2) <= v_oh * T.int64(2) + v_kh and v_oh * T.int64(2) + v_kh < T.int64(58) and T.int64(2) <= v_ow * T.int64(2) + v_kw and v_ow * T.int64(2) + v_kw < T.int64(58), p0[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh - T.int64(2), v_ow * T.int64(2) + v_kw - T.int64(2), v_oci % T.int64(4)], T.float32(0)) * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+                for ax0, ax1, ax2, ax3, ax4 in T.grid(T.int64(1), T.int64(3), T.int64(2), T.int64(14), T.int64(4)):
+                    with T.block("T_relu"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(18), oco_0 * T.int64(9) + oco_1 * T.int64(3) + ax1)
+                        v_ax2 = T.axis.spatial(T.int64(28), oh_1 * T.int64(2) + ax2)
+                        v_ax3 = T.axis.spatial(T.int64(28), ow_1 * T.int64(14) + ax3)
+                        v_ax4 = T.axis.spatial(T.int64(4), ax4)
+                        T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                        T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                        T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[2, 3, 1, 3])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[1, 14, 1, 2])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[1, 2, 14, 1])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 1, 4, 1])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[1, 5])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[1, 5])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+b59, = sch.get_consumers(block=b1)
+sch.reverse_compute_at(block=b59, loop=l48, preserve_unit_loops=True, index=-1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v60 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v60)
+l61 = sch.sample_compute_location(block=b0, decision=-2)
+sch.compute_at(block=b0, loop=l61, preserve_unit_loops=True, index=-1)
+2024-04-29 02:09:25 [INFO] [task_scheduler.cc:170] Design space #2:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 0, "meta_schedule.vectorize": 64})
+            DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+            for b_0, oco_0, oh_0, ow_0, oci_0 in T.grid(T.int64(1), T.int64(2), T.int64(1), T.int64(1), T.int64(1)):
+                for b_1, oco_1, oh_1, ow_1, oci_1, kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3, oci_3 in T.grid(T.int64(1), T.int64(3), T.int64(14), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(14), T.int64(4), T.int64(5), T.int64(5), T.int64(1), T.int64(3), T.int64(2), T.int64(1), T.int64(1)):
+                    with T.block("DepthwiseConv2d"):
+                        v_b = T.axis.spatial(T.int64(1), b_0 + b_1 + b_2 + b_3)
+                        v_oco = T.axis.spatial(T.int64(18), oco_0 * T.int64(9) + oco_1 * T.int64(3) + oco_2 * T.int64(3) + oco_3)
+                        v_oh = T.axis.spatial(T.int64(28), oh_0 * T.int64(28) + oh_1 * T.int64(2) + oh_2 * T.int64(2) + oh_3)
+                        v_ow = T.axis.spatial(T.int64(28), ow_0 * T.int64(28) + ow_1 * T.int64(14) + ow_2 + ow_3)
+                        v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(4) + oci_2 + oci_3)
+                        v_kh = T.axis.reduce(T.int64(5), kh_0 * T.int64(5) + kh_1)
+                        v_kw = T.axis.reduce(T.int64(5), kw_0 * T.int64(5) + kw_1)
+                        T.reads(p0[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh - T.int64(2), v_ow * T.int64(2) + v_kw - T.int64(2), v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        with T.init():
+                            DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + T.if_then_else(T.int64(2) <= v_oh * T.int64(2) + v_kh and v_oh * T.int64(2) + v_kh < T.int64(58) and T.int64(2) <= v_ow * T.int64(2) + v_kw and v_ow * T.int64(2) + v_kw < T.int64(58), p0[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh - T.int64(2), v_ow * T.int64(2) + v_kw - T.int64(2), v_oci % T.int64(4)], T.float32(0)) * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+                for ax0, ax1, ax2, ax3, ax4 in T.grid(T.int64(1), T.int64(9), T.int64(28), T.int64(28), T.int64(4)):
+                    with T.block("T_relu"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(18), oco_0 * T.int64(9) + ax1)
+                        v_ax2, v_ax3, v_ax4 = T.axis.remap("SSS", [ax2, ax3, ax4])
+                        T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                        T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                        T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[2, 3, 1, 3])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[1, 14, 1, 2])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[1, 2, 14, 1])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 1, 4, 1])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[1, 5])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[1, 5])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+b59, = sch.get_consumers(block=b1)
+sch.reverse_compute_at(block=b59, loop=l47, preserve_unit_loops=True, index=-1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v60 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v60)
+l61 = sch.sample_compute_location(block=b0, decision=-2)
+sch.compute_at(block=b0, loop=l61, preserve_unit_loops=True, index=-1)
+2024-04-29 02:26:30 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-04-29 02:26:30 [INFO] [evolutionary_search.cc:715] Picked top 0 candidate(s) from database
+2024-04-29 02:26:37 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 02:26:37 [INFO] [evolutionary_search.cc:723] Sampled 512 candidate(s)
+2024-04-29 02:26:44 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 02:26:51 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 02:26:58 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 02:27:05 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 02:27:06 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	0.9994  0.9986  0.9985  0.9984  0.9978  0.9972  0.9970  0.9970  0.9964  0.9956  0.9946  0.9944  0.9942  0.9941  0.9939  0.9935
+[17 : 32]:	0.9932  0.9921  0.9914  0.9906  0.9900  0.9896  0.9894  0.9889  0.9885  0.9882  0.9878  0.9875  0.9874  0.9870  0.9867  0.9866
+[33 : 48]:	0.9859  0.9858  0.9856  0.9850  0.9834  0.9831  0.9819  0.9819  0.9817  0.9814  0.9808  0.9803  0.9796  0.9794  0.9782  0.9780
+[49 : 64]:	0.9779  0.9769  0.9755  0.9755  0.9754  0.9751  0.9748  0.9724  0.9711  0.9702  0.9700  0.9700  0.9697  0.9695  0.9695  0.9691
+2024-04-29 02:27:06 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-04-29 02:27:06 [INFO] [evolutionary_search.cc:730] Sending 64 candidates(s) for measurement
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #1: GFLOPs: 34.4473. Time: 85.2113 us. Best GFLOPs: 34.4473
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #2: GFLOPs: 51.0324. Time: 57.5183 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #3: GFLOPs: 40.1409. Time: 73.1249 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #4: GFLOPs: 8.0954. Time: 362.5896 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #5: GFLOPs: 22.7489. Time: 129.0301 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #6: GFLOPs: 43.4344. Time: 67.5799 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #7: GFLOPs: 30.9867. Time: 94.7276 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #8: GFLOPs: 13.0854. Time: 224.3181 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #9: GFLOPs: 23.1985. Time: 126.5294 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #10: GFLOPs: 27.6477. Time: 106.1679 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #11: GFLOPs: 15.3838. Time: 190.8048 us. Best GFLOPs: 51.0324
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #12: GFLOPs: 53.6810. Time: 54.6804 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:121] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #13: Error in building:
+LocalBuilder: Timeout, killed after 30.0 seconds
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused in T.parallel(T.int64(168), annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for b_2_init, oco_2_init, oh_2_init, ow_2_init, oci_2_init, b_3_init, oco_3_init, oh_3_init, ow_3_init, oci_3_init in T.grid(T.int64(1), T.int64(1), T.int64(4), T.int64(1), T.int64(1), T.int64(1), T.int64(6), T.int64(1), T.int64(14), T.int64(1)):
+                with T.block("DepthwiseConv2d_init"):
+                    v_b = T.axis.spatial(T.int64(1), b_2_init + b_3_init)
+                    v_oco = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(24) // T.int64(8) * T.int64(6) + oco_2_init * T.int64(6) + oco_3_init)
+                    v_oh = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused // T.int64(24) * T.int64(4) + oh_2_init + oh_3_init)
+                    v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(8) // T.int64(4) * T.int64(14) + ow_2_init * T.int64(14) + ow_3_init)
+                    v_oci = T.axis.spatial(T.int64(4), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(4) + oci_2_init + oci_3_init)
+                    T.reads()
+                    T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                    T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                    DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+            for kh_0 in range(T.int64(5)):
+                for ax0, ax1, ax2, ax3, ax4 in T.grid(T.int64(1), T.int64(6), T.int64(7), T.int64(31), T.int64(1)):
+                    with T.block("PaddedInput"):
+                        v_i0 = T.axis.spatial(T.int64(1), ax0)
+                        v_i1 = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(24) // T.int64(8) * T.int64(6) + ax1)
+                        v_i2 = T.axis.spatial(T.int64(60), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(168) // T.int64(24) * T.int64(8) + kh_0 + ax2)
+                        v_i3 = T.axis.spatial(T.int64(60), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(8) // T.int64(4) * T.int64(28) + ax3)
+                        v_i4 = T.axis.spatial(T.int64(4), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(4) + ax4)
+                        T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                        T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                        PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+                for kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3, oci_3 in T.grid(T.int64(5), T.int64(1), T.int64(1), T.int64(4), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(6), T.int64(1), T.int64(14), T.int64(1)):
+                    with T.block("DepthwiseConv2d_update"):
+                        v_b = T.axis.spatial(T.int64(1), b_2 + b_3)
+                        v_oco = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(24) // T.int64(8) * T.int64(6) + oco_2 * T.int64(6) + oco_3)
+                        v_oh = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused // T.int64(24) * T.int64(4) + oh_2 + oh_3)
+                        v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(8) // T.int64(4) * T.int64(14) + ow_2 * T.int64(14) + ow_3)
+                        v_oci = T.axis.spatial(T.int64(4), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused_fused % T.int64(4) + oci_2 + oci_3)
+                        v_kh = T.axis.reduce(T.int64(5), kh_0 + kh_1)
+                        v_kw = T.axis.reduce(T.int64(5), kw_0 + kw_1)
+                        T.reads(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci], PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+        for ax0_ax1_ax2_ax3_ax4_fused_0 in T.parallel(T.int64(882)):
+            for ax0_ax1_ax2_ax3_ax4_fused_1 in T.vectorized(T.int64(64)):
+                with T.block("T_relu"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(18), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) // T.int64(3136))
+                    v_ax2 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(3136) // T.int64(112))
+                    v_ax3 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(112) // T.int64(4))
+                    v_ax4 = T.axis.spatial(T.int64(4), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(4))
+                    T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                    T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                    T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[1, 3, 1, 6])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[7, 1, 4, 1])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[1, 2, 1, 14])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 4, 1, 1])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[5, 1])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[5, 1])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v59 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v59)
+l60 = sch.sample_compute_location(block=b0, decision=10)
+sch.compute_at(block=b0, loop=l60, preserve_unit_loops=True, index=-1)
+sch.enter_postproc()
+b61 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.parallel")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.vectorize")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.unroll_explicit")
+b62, b63, b64 = sch.get_child_blocks(b61)
+l65, l66, l67, l68, l69, l70, l71, l72, l73, l74, l75, l76, l77, l78, l79, l80 = sch.get_loops(block=b62)
+l81 = sch.fuse(l65, l66, l67, l68, l69, l70, l71, l72, l73, l74, preserve_unit_iters=True)
+sch.parallel(loop=l81)
+l82, l83, l84, l85, l86, l87, l88, l89, l90, l91, l92, l93, l94, l95, l96 = sch.get_loops(block=b63)
+l97 = sch.fuse(l82, preserve_unit_iters=True)
+sch.parallel(loop=l97)
+sch.annotate(block_or_loop=l97, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l97, ann_key="pragma_unroll_explicit", ann_val=1)
+l98, l99, l100, l101, l102 = sch.get_loops(block=b64)
+l103 = sch.fuse(l98, l99, l100, l101, l102, preserve_unit_iters=True)
+l104, l105 = sch.split(loop=l103, factors=[None, 64], preserve_unit_iters=True)
+sch.parallel(loop=l104)
+sch.vectorize(loop=l105)
+b106 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+l107, l108, l109, l110, l111, l112, l113, l114, l115, l116, l117, l118, l119, l120, l121 = sch.get_loops(block=b106)
+b122 = sch.decompose_reduction(block=b106, loop=l108)
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #14: GFLOPs: 32.5146. Time: 90.2762 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #15: GFLOPs: 12.3139. Time: 238.3726 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #16: GFLOPs: 5.0844. Time: 577.3091 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #17: GFLOPs: 18.5194. Time: 158.4987 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #18: GFLOPs: 48.5535. Time: 60.4549 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #19: GFLOPs: 9.2537. Time: 317.2014 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #20: GFLOPs: 48.1618. Time: 60.9465 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:121] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #21: Error in building:
+LocalBuilder: Timeout, killed after 30.0 seconds
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for b_0_oco_0_oh_0_ow_0_fused_fused in T.parallel(T.int64(2), annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(18), T.int64(59), T.int64(31)):
+                for ax4_fused in T.vectorized(T.int64(4)):
+                    with T.block("PaddedInput"):
+                        v_i0, v_i1 = T.axis.remap("SS", [ax0, ax1])
+                        v_i2 = T.axis.spatial(T.int64(60), ax2)
+                        v_i3 = T.axis.spatial(T.int64(60), b_0_oco_0_oh_0_ow_0_fused_fused * T.int64(28) + ax3)
+                        v_i4 = T.axis.spatial(T.int64(4), ax4_fused)
+                        T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                        T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                        PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+            for oci_0, b_1, oco_1, oh_1, ow_1, oci_1 in T.grid(T.int64(1), T.int64(1), T.int64(1), T.int64(4), T.int64(1), T.int64(2)):
+                for b_2_init, oco_2_init, oh_2_init, ow_2_init, oci_2_init, b_3_init, oco_3_init, oh_3_init, ow_3_init, oci_3_init in T.grid(T.int64(1), T.int64(3), T.int64(1), T.int64(7), T.int64(2), T.int64(1), T.int64(6), T.int64(7), T.int64(2), T.int64(1)):
+                    with T.block("DepthwiseConv2d_init"):
+                        v_b = T.axis.spatial(T.int64(1), b_1 + b_2_init + b_3_init)
+                        v_oco = T.axis.spatial(T.int64(18), oco_1 * T.int64(18) + oco_2_init * T.int64(6) + oco_3_init)
+                        v_oh = T.axis.spatial(T.int64(28), oh_1 * T.int64(7) + oh_2_init * T.int64(7) + oh_3_init)
+                        v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_fused_fused * T.int64(14) + ow_1 * T.int64(14) + ow_2_init * T.int64(2) + ow_3_init)
+                        v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(2) + oci_2_init + oci_3_init)
+                        T.reads()
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                for kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3, oci_3 in T.grid(T.int64(5), T.int64(5), T.int64(1), T.int64(3), T.int64(1), T.int64(7), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(6), T.int64(7), T.int64(2), T.int64(1)):
+                    with T.block("DepthwiseConv2d_update"):
+                        v_b = T.axis.spatial(T.int64(1), b_1 + b_2 + b_3)
+                        v_oco = T.axis.spatial(T.int64(18), oco_1 * T.int64(18) + oco_2 * T.int64(6) + oco_3)
+                        v_oh = T.axis.spatial(T.int64(28), oh_1 * T.int64(7) + oh_2 * T.int64(7) + oh_3)
+                        v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_fused_fused * T.int64(14) + ow_1 * T.int64(14) + ow_2 * T.int64(2) + ow_3)
+                        v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(2) + oci_2 + oci_3)
+                        v_kh = T.axis.reduce(T.int64(5), kh_0 + kh_1)
+                        v_kw = T.axis.reduce(T.int64(5), kw_0 + kw_1)
+                        T.reads(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci], PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+        for ax0_ax1_ax2_ax3_ax4_fused_0 in T.parallel(T.int64(882)):
+            for ax0_ax1_ax2_ax3_ax4_fused_1 in T.vectorized(T.int64(64)):
+                with T.block("T_relu"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(18), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) // T.int64(3136))
+                    v_ax2 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(3136) // T.int64(112))
+                    v_ax3 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(112) // T.int64(4))
+                    v_ax4 = T.axis.spatial(T.int64(4), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(4))
+                    T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                    T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                    T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[1, 1, 3, 6])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[1, 4, 1, 7])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[2, 1, 7, 2])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 2, 2, 1])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[5, 1])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[5, 1])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v59 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v59)
+l60 = sch.sample_compute_location(block=b0, decision=3)
+sch.compute_at(block=b0, loop=l60, preserve_unit_loops=True, index=-1)
+sch.enter_postproc()
+b61 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.parallel")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.vectorize")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.unroll_explicit")
+b62, b63, b64 = sch.get_child_blocks(b61)
+l65, l66, l67, l68, l69, l70, l71, l72, l73 = sch.get_loops(block=b62)
+l74 = sch.fuse(l65, l66, l67, l68, preserve_unit_iters=True)
+sch.parallel(loop=l74)
+l75 = sch.fuse(l73, preserve_unit_iters=True)
+sch.vectorize(loop=l75)
+l76, l77, l78, l79, l80, l81, l82, l83, l84, l85, l86, l87, l88, l89, l90, l91, l92, l93, l94, l95, l96 = sch.get_loops(block=b63)
+l97 = sch.fuse(l76, preserve_unit_iters=True)
+sch.parallel(loop=l97)
+sch.annotate(block_or_loop=l97, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l97, ann_key="pragma_unroll_explicit", ann_val=1)
+l98, l99, l100, l101, l102 = sch.get_loops(block=b64)
+l103 = sch.fuse(l98, l99, l100, l101, l102, preserve_unit_iters=True)
+l104, l105 = sch.split(loop=l103, factors=[None, 64], preserve_unit_iters=True)
+sch.parallel(loop=l104)
+sch.vectorize(loop=l105)
+b106 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+l107, l108, l109, l110, l111, l112, l113, l114, l115, l116, l117, l118, l119, l120, l121, l122, l123, l124, l125, l126, l127 = sch.get_loops(block=b106)
+b128 = sch.decompose_reduction(block=b106, loop=l114)
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #22: GFLOPs: 26.7665. Time: 109.6630 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #23: GFLOPs: 19.5694. Time: 149.9942 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #24: GFLOPs: 8.3174. Time: 352.9117 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #25: GFLOPs: 5.5775. Time: 526.2760 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #26: GFLOPs: 21.8990. Time: 134.0377 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #27: GFLOPs: 35.8577. Time: 81.8596 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #28: GFLOPs: 10.3990. Time: 282.2672 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #29: GFLOPs: 27.0795. Time: 108.3957 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #30: GFLOPs: 10.8044. Time: 271.6767 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #31: GFLOPs: 2.0832. Time: 1409.0490 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #32: GFLOPs: 1.5015. Time: 1954.9717 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #33: GFLOPs: 24.1080. Time: 121.7559 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #34: GFLOPs: 6.3928. Time: 459.1572 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #35: GFLOPs: 1.0546. Time: 2783.4204 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #36: GFLOPs: 9.3890. Time: 312.6314 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #37: GFLOPs: 3.7626. Time: 780.1226 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #38: GFLOPs: 0.4064. Time: 7222.3164 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #39: GFLOPs: 8.4866. Time: 345.8760 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #40: GFLOPs: 9.8371. Time: 298.3907 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #41: GFLOPs: 0.4135. Time: 7098.9904 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #42: GFLOPs: 25.8173. Time: 113.6951 us. Best GFLOPs: 53.6810
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #43: GFLOPs: 63.9671. Time: 45.8876 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #44: GFLOPs: 2.1410. Time: 1370.9795 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #45: GFLOPs: 9.1087. Time: 322.2509 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #46: GFLOPs: 2.2756. Time: 1289.8784 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:24 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #47: GFLOPs: 25.9364. Time: 113.1730 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:121] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #48: Error in building:
+LocalBuilder: Timeout, killed after 30.0 seconds
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for b_0_oco_0_oh_0_ow_0_fused_fused in T.parallel(T.int64(2), annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(18), T.int64(59), T.int64(31)):
+                for ax4_fused in T.vectorized(T.int64(4)):
+                    with T.block("PaddedInput"):
+                        v_i0, v_i1 = T.axis.remap("SS", [ax0, ax1])
+                        v_i2 = T.axis.spatial(T.int64(60), ax2)
+                        v_i3 = T.axis.spatial(T.int64(60), b_0_oco_0_oh_0_ow_0_fused_fused * T.int64(28) + ax3)
+                        v_i4 = T.axis.spatial(T.int64(4), ax4_fused)
+                        T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                        T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                        PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+            for oci_0, b_1, oco_1, oh_1, ow_1, oci_1 in T.grid(T.int64(1), T.int64(1), T.int64(1), T.int64(28), T.int64(1), T.int64(2)):
+                for b_2_init, oco_2_init, oh_2_init, ow_2_init, oci_2_init, b_3_init, oco_3_init, oh_3_init, ow_3_init, oci_3_init in T.grid(T.int64(1), T.int64(18), T.int64(1), T.int64(7), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(2), T.int64(1)):
+                    with T.block("DepthwiseConv2d_init"):
+                        v_b = T.axis.spatial(T.int64(1), b_1 + b_2_init + b_3_init)
+                        v_oco = T.axis.spatial(T.int64(18), oco_1 * T.int64(18) + oco_2_init + oco_3_init)
+                        v_oh = T.axis.spatial(T.int64(28), oh_1 + oh_2_init + oh_3_init)
+                        v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_fused_fused * T.int64(14) + ow_1 * T.int64(14) + ow_2_init * T.int64(2) + ow_3_init)
+                        v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(2) + oci_2_init + oci_3_init)
+                        T.reads()
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                for kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3, oci_3 in T.grid(T.int64(5), T.int64(5), T.int64(1), T.int64(18), T.int64(1), T.int64(7), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(2), T.int64(1)):
+                    with T.block("DepthwiseConv2d_update"):
+                        v_b = T.axis.spatial(T.int64(1), b_1 + b_2 + b_3)
+                        v_oco = T.axis.spatial(T.int64(18), oco_1 * T.int64(18) + oco_2 + oco_3)
+                        v_oh = T.axis.spatial(T.int64(28), oh_1 + oh_2 + oh_3)
+                        v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_fused_fused * T.int64(14) + ow_1 * T.int64(14) + ow_2 * T.int64(2) + ow_3)
+                        v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(2) + oci_2 + oci_3)
+                        v_kh = T.axis.reduce(T.int64(5), kh_0 + kh_1)
+                        v_kw = T.axis.reduce(T.int64(5), kw_0 + kw_1)
+                        T.reads(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci], PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+        for ax0_ax1_ax2_ax3_ax4_fused_0 in T.parallel(T.int64(882)):
+            for ax0_ax1_ax2_ax3_ax4_fused_1 in T.vectorized(T.int64(64)):
+                with T.block("T_relu"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(18), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) // T.int64(3136))
+                    v_ax2 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(3136) // T.int64(112))
+                    v_ax3 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(112) // T.int64(4))
+                    v_ax4 = T.axis.spatial(T.int64(4), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(4))
+                    T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                    T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                    T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[1, 1, 18, 1])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[1, 28, 1, 1])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[2, 1, 7, 2])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 2, 2, 1])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[5, 1])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[5, 1])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v59 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v59)
+l60 = sch.sample_compute_location(block=b0, decision=3)
+sch.compute_at(block=b0, loop=l60, preserve_unit_loops=True, index=-1)
+sch.enter_postproc()
+b61 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.parallel")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.vectorize")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.unroll_explicit")
+b62, b63, b64 = sch.get_child_blocks(b61)
+l65, l66, l67, l68, l69, l70, l71, l72, l73 = sch.get_loops(block=b62)
+l74 = sch.fuse(l65, l66, l67, l68, preserve_unit_iters=True)
+sch.parallel(loop=l74)
+l75 = sch.fuse(l73, preserve_unit_iters=True)
+sch.vectorize(loop=l75)
+l76, l77, l78, l79, l80, l81, l82, l83, l84, l85, l86, l87, l88, l89, l90, l91, l92, l93, l94, l95, l96 = sch.get_loops(block=b63)
+l97 = sch.fuse(l76, preserve_unit_iters=True)
+sch.parallel(loop=l97)
+sch.annotate(block_or_loop=l97, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l97, ann_key="pragma_unroll_explicit", ann_val=1)
+l98, l99, l100, l101, l102 = sch.get_loops(block=b64)
+l103 = sch.fuse(l98, l99, l100, l101, l102, preserve_unit_iters=True)
+l104, l105 = sch.split(loop=l103, factors=[None, 64], preserve_unit_iters=True)
+sch.parallel(loop=l104)
+sch.vectorize(loop=l105)
+b106 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+l107, l108, l109, l110, l111, l112, l113, l114, l115, l116, l117, l118, l119, l120, l121, l122, l123, l124, l125, l126, l127 = sch.get_loops(block=b106)
+b128 = sch.decompose_reduction(block=b106, loop=l114)
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:121] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #49: Error in building:
+LocalBuilder: Timeout, killed after 30.0 seconds
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for b_0_oco_0_oh_0_ow_0_oci_0_fused in T.parallel(T.int64(16), annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for b_1, oco_1, oh_1, ow_1, oci_1 in T.grid(T.int64(1), T.int64(9), T.int64(1), T.int64(7), T.int64(2)):
+                for b_2_init, oco_2_init, oh_2_init, ow_2_init, oci_2_init, b_3_init, oco_3_init, oh_3_init, ow_3_init, oci_3_init in T.grid(T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(2), T.int64(1), T.int64(1), T.int64(7), T.int64(2), T.int64(1)):
+                    with T.block("DepthwiseConv2d_init"):
+                        v_b = T.axis.spatial(T.int64(1), b_1 + b_2_init + b_3_init)
+                        v_oco = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_fused // T.int64(8) * T.int64(9) + oco_1 + oco_2_init + oco_3_init)
+                        v_oh = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused % T.int64(8) // T.int64(2) * T.int64(7) + oh_1 * T.int64(7) + oh_2_init * T.int64(7) + oh_3_init)
+                        v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused % T.int64(2) * T.int64(14) + ow_1 * T.int64(2) + ow_2_init * T.int64(2) + ow_3_init)
+                        v_oci = T.axis.spatial(T.int64(4), oci_1 * T.int64(2) + oci_2_init + oci_3_init)
+                        T.reads()
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                for kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3, oci_3 in T.grid(T.int64(5), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(2), T.int64(1), T.int64(5), T.int64(1), T.int64(1), T.int64(7), T.int64(2), T.int64(1)):
+                    with T.block("DepthwiseConv2d_update"):
+                        v_b = T.axis.spatial(T.int64(1), b_1 + b_2 + b_3)
+                        v_oco = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_fused // T.int64(8) * T.int64(9) + oco_1 + oco_2 + oco_3)
+                        v_oh = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused % T.int64(8) // T.int64(2) * T.int64(7) + oh_1 * T.int64(7) + oh_2 * T.int64(7) + oh_3)
+                        v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused % T.int64(2) * T.int64(14) + ow_1 * T.int64(2) + ow_2 * T.int64(2) + ow_3)
+                        v_oci = T.axis.spatial(T.int64(4), oci_1 * T.int64(2) + oci_2 + oci_3)
+                        v_kh = T.axis.reduce(T.int64(5), kh_0 + kh_1)
+                        v_kw = T.axis.reduce(T.int64(5), kw_0 * T.int64(5) + kw_1)
+                        T.reads(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci], p0[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh - T.int64(2), v_ow * T.int64(2) + v_kw - T.int64(2), v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + T.if_then_else(T.int64(2) <= v_oh * T.int64(2) + v_kh and v_oh * T.int64(2) + v_kh < T.int64(58) and T.int64(2) <= v_ow * T.int64(2) + v_kw and v_ow * T.int64(2) + v_kw < T.int64(58), p0[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh - T.int64(2), v_ow * T.int64(2) + v_kw - T.int64(2), v_oci % T.int64(4)], T.float32(0)) * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+            for ax0, ax1, ax2 in T.grid(T.int64(1), T.int64(9), T.int64(7)):
+                for ax3_ax4_fused in T.vectorized(T.int64(56)):
+                    with T.block("T_relu"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_fused // T.int64(8) * T.int64(9) + ax1)
+                        v_ax2 = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused % T.int64(8) // T.int64(2) * T.int64(7) + ax2)
+                        v_ax3 = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused % T.int64(2) * T.int64(14) + ax3_ax4_fused // T.int64(4))
+                        v_ax4 = T.axis.spatial(T.int64(4), ax3_ax4_fused % T.int64(4))
+                        T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                        T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                        T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[2, 9, 1, 1])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[4, 1, 1, 7])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[2, 7, 1, 2])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 2, 2, 1])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[5, 1])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[1, 5])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+b59, = sch.get_consumers(block=b1)
+sch.reverse_compute_at(block=b59, loop=l47, preserve_unit_loops=True, index=-1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v60 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v60)
+l61 = sch.sample_compute_location(block=b0, decision=-2)
+sch.compute_at(block=b0, loop=l61, preserve_unit_loops=True, index=-1)
+sch.enter_postproc()
+b62 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.parallel")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.vectorize")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.unroll_explicit")
+b63, b64 = sch.get_child_blocks(b62)
+l65, l66, l67, l68, l69, l70, l71, l72, l73, l74, l75, l76, l77, l78, l79, l80, l81, l82, l83, l84, l85, l86, l87, l88 = sch.get_loops(block=b63)
+l89 = sch.fuse(l65, l66, l67, l68, l69, preserve_unit_iters=True)
+sch.parallel(loop=l89)
+sch.annotate(block_or_loop=l89, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l89, ann_key="pragma_unroll_explicit", ann_val=1)
+l90, l91, l92, l93, l94, l95 = sch.get_loops(block=b64)
+l96 = sch.fuse(l94, l95, preserve_unit_iters=True)
+sch.vectorize(loop=l96)
+b97 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+l98, l99, l100, l101, l102, l103, l104, l105, l106, l107, l108, l109, l110, l111, l112, l113, l114, l115, l116, l117 = sch.get_loops(block=b97)
+b118 = sch.decompose_reduction(block=b97, loop=l104)
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #50: GFLOPs: 21.3565. Time: 137.4430 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #51: GFLOPs: 3.2969. Time: 890.3253 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #52: GFLOPs: 17.2798. Time: 169.8689 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #53: GFLOPs: 4.6510. Time: 631.1156 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #54: GFLOPs: 17.3479. Time: 169.2015 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #55: GFLOPs: 19.5994. Time: 149.7644 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #56: GFLOPs: 4.4908. Time: 653.6208 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:121] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #57: Error in building:
+LocalBuilder: Timeout, killed after 30.0 seconds
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for i0_i1_i2_fused in T.parallel(T.int64(1080)):
+            for i3 in range(T.int64(60)):
+                for i4_fused in T.vectorized(T.int64(4)):
+                    with T.block("PaddedInput"):
+                        v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                        v_i1 = T.axis.spatial(T.int64(18), i0_i1_i2_fused // T.int64(60))
+                        v_i2 = T.axis.spatial(T.int64(60), i0_i1_i2_fused % T.int64(60))
+                        v_i3, v_i4 = T.axis.remap("SS", [i3, i4_fused])
+                        T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                        T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                        PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+        for b_0 in T.serial(T.int64(1), annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for oco_0, oh_0, ow_0, oci_0 in T.grid(T.int64(1), T.int64(1), T.int64(1), T.int64(1)):
+                for b_1, oco_1, oh_1, ow_1, oci_1 in T.grid(T.int64(1), T.int64(6), T.int64(2), T.int64(14), T.int64(2)):
+                    for b_2_init, oco_2_init, oh_2_init, ow_2_init, oci_2_init, b_3_init, oco_3_init, oh_3_init, ow_3_init in T.grid(T.int64(1), T.int64(1), T.int64(7), T.int64(1), T.int64(1), T.int64(1), T.int64(3), T.int64(2), T.int64(2)):
+                        for oci_3_fused_init in T.vectorized(T.int64(2)):
+                            with T.block("DepthwiseConv2d_init"):
+                                v_b = T.axis.spatial(T.int64(1), b_0 + b_1 + b_2_init + b_3_init)
+                                v_oco = T.axis.spatial(T.int64(18), oco_0 * T.int64(18) + oco_1 * T.int64(3) + oco_2_init * T.int64(3) + oco_3_init)
+                                v_oh = T.axis.spatial(T.int64(28), oh_0 * T.int64(28) + oh_1 * T.int64(14) + oh_2_init * T.int64(2) + oh_3_init)
+                                v_ow = T.axis.spatial(T.int64(28), ow_0 * T.int64(28) + ow_1 * T.int64(2) + ow_2_init * T.int64(2) + ow_3_init)
+                                v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(2) + oci_2_init * T.int64(2) + oci_3_fused_init)
+                                T.reads()
+                                T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                                T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                                DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                    for kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3 in T.grid(T.int64(5), T.int64(1), T.int64(1), T.int64(1), T.int64(7), T.int64(1), T.int64(1), T.int64(1), T.int64(5), T.int64(1), T.int64(3), T.int64(2), T.int64(2)):
+                        for oci_3_fused in T.vectorized(T.int64(2)):
+                            with T.block("DepthwiseConv2d_update"):
+                                v_b = T.axis.spatial(T.int64(1), b_0 + b_1 + b_2 + b_3)
+                                v_oco = T.axis.spatial(T.int64(18), oco_0 * T.int64(18) + oco_1 * T.int64(3) + oco_2 * T.int64(3) + oco_3)
+                                v_oh = T.axis.spatial(T.int64(28), oh_0 * T.int64(28) + oh_1 * T.int64(14) + oh_2 * T.int64(2) + oh_3)
+                                v_ow = T.axis.spatial(T.int64(28), ow_0 * T.int64(28) + ow_1 * T.int64(2) + ow_2 * T.int64(2) + ow_3)
+                                v_oci = T.axis.spatial(T.int64(4), oci_0 * T.int64(4) + oci_1 * T.int64(2) + oci_2 * T.int64(2) + oci_3_fused)
+                                v_kh = T.axis.reduce(T.int64(5), kh_0 + kh_1)
+                                v_kw = T.axis.reduce(T.int64(5), kw_0 * T.int64(5) + kw_1)
+                                T.reads(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci], PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                                T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                                T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                                DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+                for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(18), T.int64(28), T.int64(28)):
+                    for ax4_fused in T.vectorized(T.int64(4)):
+                        with T.block("T_relu"):
+                            v_ax0, v_ax1, v_ax2, v_ax3, v_ax4 = T.axis.remap("SSSSS", [ax0, ax1, ax2, ax3, ax4_fused])
+                            T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                            T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                            T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[1, 6, 1, 3])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[1, 2, 7, 2])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[1, 14, 1, 2])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 2, 1, 2])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[5, 1])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[1, 5])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+b59, = sch.get_consumers(block=b1)
+sch.reverse_compute_at(block=b59, loop=l47, preserve_unit_loops=True, index=-1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v60 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v60)
+l61 = sch.sample_compute_location(block=b0, decision=-1)
+sch.compute_at(block=b0, loop=l61, preserve_unit_loops=True, index=-1)
+sch.enter_postproc()
+b62 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.parallel")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.vectorize")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.unroll_explicit")
+b63, b64, b65 = sch.get_child_blocks(b62)
+l66, l67, l68, l69, l70 = sch.get_loops(block=b63)
+l71 = sch.fuse(l66, l67, l68, preserve_unit_iters=True)
+sch.parallel(loop=l71)
+l72 = sch.fuse(l70, preserve_unit_iters=True)
+sch.vectorize(loop=l72)
+l73, l74, l75, l76, l77, l78, l79, l80, l81, l82, l83, l84, l85, l86, l87, l88, l89, l90, l91, l92, l93, l94, l95, l96 = sch.get_loops(block=b64)
+l97 = sch.fuse(l96, preserve_unit_iters=True)
+sch.vectorize(loop=l97)
+sch.annotate(block_or_loop=l73, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l73, ann_key="pragma_unroll_explicit", ann_val=1)
+l98, l99, l100, l101, l102, l103, l104, l105, l106, l107 = sch.get_loops(block=b65)
+l108 = sch.fuse(l107, preserve_unit_iters=True)
+sch.vectorize(loop=l108)
+b109 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+l110, l111, l112, l113, l114, l115, l116, l117, l118, l119, l120, l121, l122, l123, l124, l125, l126, l127, l128, l129, l130, l131, l132, l133 = sch.get_loops(block=b109)
+b134 = sch.decompose_reduction(block=b109, loop=l120)
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #58: GFLOPs: 24.9578. Time: 117.6102 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #59: GFLOPs: 18.9595. Time: 154.8195 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:121] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #60: Error in building:
+LocalBuilder: Timeout, killed after 30.0 seconds
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for i0_i1_i2_fused in T.parallel(T.int64(1080)):
+            for i3 in range(T.int64(60)):
+                for i4_fused in T.vectorized(T.int64(4)):
+                    with T.block("PaddedInput"):
+                        v_i0 = T.axis.spatial(T.int64(1), T.int64(0))
+                        v_i1 = T.axis.spatial(T.int64(18), i0_i1_i2_fused // T.int64(60))
+                        v_i2 = T.axis.spatial(T.int64(60), i0_i1_i2_fused % T.int64(60))
+                        v_i3, v_i4 = T.axis.remap("SS", [i3, i4_fused])
+                        T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                        T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                        PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+        for b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused in T.parallel(T.int64(18), annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for b_2_init, oco_2_init, oh_2_init, ow_2_init, oci_2_init, b_3_init, oco_3_init, oh_3_init, ow_3_init in T.grid(T.int64(1), T.int64(1), T.int64(2), T.int64(7), T.int64(1), T.int64(1), T.int64(1), T.int64(14), T.int64(4)):
+                for oci_3_fused_init in T.vectorized(T.int64(4)):
+                    with T.block("DepthwiseConv2d_init"):
+                        v_b = T.axis.spatial(T.int64(1), b_2_init + b_3_init)
+                        v_oco = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused + oco_2_init + oco_3_init)
+                        v_oh = T.axis.spatial(T.int64(28), oh_2_init * T.int64(14) + oh_3_init)
+                        v_ow = T.axis.spatial(T.int64(28), ow_2_init * T.int64(4) + ow_3_init)
+                        v_oci = T.axis.spatial(T.int64(4), oci_2_init * T.int64(4) + oci_3_fused_init)
+                        T.reads()
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+            for kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3 in T.grid(T.int64(5), T.int64(5), T.int64(1), T.int64(1), T.int64(2), T.int64(7), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(14), T.int64(4)):
+                for oci_3_fused in T.vectorized(T.int64(4)):
+                    with T.block("DepthwiseConv2d_update"):
+                        v_b = T.axis.spatial(T.int64(1), b_2 + b_3)
+                        v_oco = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_ow_1_oci_1_fused + oco_2 + oco_3)
+                        v_oh = T.axis.spatial(T.int64(28), oh_2 * T.int64(14) + oh_3)
+                        v_ow = T.axis.spatial(T.int64(28), ow_2 * T.int64(4) + ow_3)
+                        v_oci = T.axis.spatial(T.int64(4), oci_2 * T.int64(4) + oci_3_fused)
+                        v_kh = T.axis.reduce(T.int64(5), kh_0 + kh_1)
+                        v_kw = T.axis.reduce(T.int64(5), kw_0 + kw_1)
+                        T.reads(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci], PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                        T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+        for ax0_ax1_ax2_ax3_ax4_fused_0 in T.parallel(T.int64(882)):
+            for ax0_ax1_ax2_ax3_ax4_fused_1 in T.vectorized(T.int64(64)):
+                with T.block("T_relu"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(18), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) // T.int64(3136))
+                    v_ax2 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(3136) // T.int64(112))
+                    v_ax3 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(112) // T.int64(4))
+                    v_ax4 = T.axis.spatial(T.int64(4), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(4))
+                    T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                    T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                    T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[6, 3, 1, 1])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[1, 1, 2, 14])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[1, 1, 7, 4])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 1, 1, 4])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[5, 1])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[5, 1])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v59 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v59)
+l60 = sch.sample_compute_location(block=b0, decision=-1)
+sch.compute_at(block=b0, loop=l60, preserve_unit_loops=True, index=-1)
+sch.enter_postproc()
+b61 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.parallel")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.vectorize")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.unroll_explicit")
+b62, b63, b64 = sch.get_child_blocks(b61)
+l65, l66, l67, l68, l69 = sch.get_loops(block=b62)
+l70 = sch.fuse(l65, l66, l67, preserve_unit_iters=True)
+sch.parallel(loop=l70)
+l71 = sch.fuse(l69, preserve_unit_iters=True)
+sch.vectorize(loop=l71)
+l72, l73, l74, l75, l76, l77, l78, l79, l80, l81, l82, l83, l84, l85, l86, l87, l88, l89, l90, l91, l92, l93, l94, l95 = sch.get_loops(block=b63)
+l96 = sch.fuse(l72, l73, l74, l75, l76, l77, l78, l79, l80, l81, preserve_unit_iters=True)
+sch.parallel(loop=l96)
+l97 = sch.fuse(l95, preserve_unit_iters=True)
+sch.vectorize(loop=l97)
+sch.annotate(block_or_loop=l96, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l96, ann_key="pragma_unroll_explicit", ann_val=1)
+l98, l99, l100, l101, l102 = sch.get_loops(block=b64)
+l103 = sch.fuse(l98, l99, l100, l101, l102, preserve_unit_iters=True)
+l104, l105 = sch.split(loop=l103, factors=[None, 64], preserve_unit_iters=True)
+sch.parallel(loop=l104)
+sch.vectorize(loop=l105)
+b106 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+l107, l108, l109, l110, l111, l112, l113, l114, l115, l116, l117, l118, l119, l120, l121 = sch.get_loops(block=b106)
+b122 = sch.decompose_reduction(block=b106, loop=l108)
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:121] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #61: Error in building:
+LocalBuilder: Timeout, killed after 30.0 seconds
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for b_0_oco_0_oh_0_ow_0_oci_0_fused_fused in T.parallel(T.int64(4), annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for b_1, oco_1, oh_1, ow_1, oci_1 in T.grid(T.int64(1), T.int64(2), T.int64(14), T.int64(1), T.int64(1)):
+                for b_2_init, oco_2_init, oh_2_init, ow_2_init, oci_2_init, b_3_init, oco_3_init, oh_3_init, ow_3_init in T.grid(T.int64(1), T.int64(1), T.int64(1), T.int64(14), T.int64(2), T.int64(1), T.int64(9), T.int64(1), T.int64(1)):
+                    for oci_3_fused_init in T.vectorized(T.int64(2)):
+                        with T.block("DepthwiseConv2d_init"):
+                            v_b = T.axis.spatial(T.int64(1), b_1 + b_2_init + b_3_init)
+                            v_oco = T.axis.spatial(T.int64(18), oco_1 * T.int64(9) + oco_2_init * T.int64(9) + oco_3_init)
+                            v_oh = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused_fused // T.int64(2) * T.int64(14) + oh_1 + oh_2_init + oh_3_init)
+                            v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused_fused % T.int64(2) * T.int64(14) + ow_1 * T.int64(14) + ow_2_init + ow_3_init)
+                            v_oci = T.axis.spatial(T.int64(4), oci_1 * T.int64(4) + oci_2_init * T.int64(2) + oci_3_fused_init)
+                            T.reads()
+                            T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                            T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                            DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                for kh_0 in range(T.int64(5)):
+                    for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(9), T.int64(1), T.int64(31)):
+                        for ax4_fused in T.vectorized(T.int64(4)):
+                            with T.block("PaddedInput"):
+                                v_i0 = T.axis.spatial(T.int64(1), ax0)
+                                v_i1 = T.axis.spatial(T.int64(18), oco_1 * T.int64(9) + ax1)
+                                v_i2 = T.axis.spatial(T.int64(60), b_0_oco_0_oh_0_ow_0_oci_0_fused_fused // T.int64(2) * T.int64(28) + oh_1 * T.int64(2) + kh_0 + ax2)
+                                v_i3 = T.axis.spatial(T.int64(60), b_0_oco_0_oh_0_ow_0_oci_0_fused_fused % T.int64(2) * T.int64(28) + ax3)
+                                v_i4 = T.axis.spatial(T.int64(4), ax4_fused)
+                                T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                                T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                                PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+                    for kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3 in T.grid(T.int64(5), T.int64(1), T.int64(1), T.int64(1), T.int64(14), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(9), T.int64(1), T.int64(1)):
+                        for oci_3_fused in T.vectorized(T.int64(2)):
+                            with T.block("DepthwiseConv2d_update"):
+                                v_b = T.axis.spatial(T.int64(1), b_1 + b_2 + b_3)
+                                v_oco = T.axis.spatial(T.int64(18), oco_1 * T.int64(9) + oco_2 * T.int64(9) + oco_3)
+                                v_oh = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused_fused // T.int64(2) * T.int64(14) + oh_1 + oh_2 + oh_3)
+                                v_ow = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused_fused % T.int64(2) * T.int64(14) + ow_1 * T.int64(14) + ow_2 + ow_3)
+                                v_oci = T.axis.spatial(T.int64(4), oci_1 * T.int64(4) + oci_2 * T.int64(2) + oci_3_fused)
+                                v_kh = T.axis.reduce(T.int64(5), kh_0 + kh_1)
+                                v_kw = T.axis.reduce(T.int64(5), kw_0 + kw_1)
+                                T.reads(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci], PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                                T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                                T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                                DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+            for ax0, ax1, ax2 in T.grid(T.int64(1), T.int64(18), T.int64(14)):
+                for ax3_ax4_fused in T.vectorized(T.int64(56)):
+                    with T.block("T_relu"):
+                        v_ax0, v_ax1 = T.axis.remap("SS", [ax0, ax1])
+                        v_ax2 = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused_fused // T.int64(2) * T.int64(14) + ax2)
+                        v_ax3 = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_fused_fused % T.int64(2) * T.int64(14) + ax3_ax4_fused // T.int64(4))
+                        v_ax4 = T.axis.spatial(T.int64(4), ax3_ax4_fused % T.int64(4))
+                        T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                        T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                        T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[1, 2, 1, 9])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[2, 14, 1, 1])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[2, 1, 14, 1])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 1, 2, 2])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[5, 1])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[5, 1])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+b59, = sch.get_consumers(block=b1)
+sch.reverse_compute_at(block=b59, loop=l47, preserve_unit_loops=True, index=-1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v60 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v60)
+l61 = sch.sample_compute_location(block=b0, decision=10)
+sch.compute_at(block=b0, loop=l61, preserve_unit_loops=True, index=-1)
+sch.enter_postproc()
+b62 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.parallel")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.vectorize")
+sch.unannotate(block_or_loop=b62, ann_key="meta_schedule.unroll_explicit")
+b63, b64, b65 = sch.get_child_blocks(b62)
+l66, l67, l68, l69, l70, l71, l72, l73, l74, l75, l76, l77, l78, l79, l80, l81 = sch.get_loops(block=b63)
+l82 = sch.fuse(l66, l67, l68, l69, l70, preserve_unit_iters=True)
+sch.parallel(loop=l82)
+l83 = sch.fuse(l81, preserve_unit_iters=True)
+sch.vectorize(loop=l83)
+l84, l85, l86, l87, l88, l89, l90, l91, l92, l93, l94, l95, l96, l97, l98, l99, l100, l101, l102, l103 = sch.get_loops(block=b64)
+l104 = sch.fuse(l84, preserve_unit_iters=True)
+sch.parallel(loop=l104)
+l105 = sch.fuse(l103, preserve_unit_iters=True)
+sch.vectorize(loop=l105)
+sch.annotate(block_or_loop=l104, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l104, ann_key="pragma_unroll_explicit", ann_val=1)
+l106, l107, l108, l109, l110, l111 = sch.get_loops(block=b65)
+l112 = sch.fuse(l110, l111, preserve_unit_iters=True)
+sch.vectorize(loop=l112)
+b113 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+l114, l115, l116, l117, l118, l119, l120, l121, l122, l123, l124, l125, l126, l127, l128, l129, l130, l131, l132, l133 = sch.get_loops(block=b113)
+b134 = sch.decompose_reduction(block=b113, loop=l120)
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #62: GFLOPs: 44.7893. Time: 65.5356 us. Best GFLOPs: 63.9671
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:121] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #63: Error in building:
+LocalBuilder: Timeout, killed after 30.0 seconds
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(18), T.int64(56), T.int64(56), T.int64(4)), "float32"), p1: T.Buffer((T.int64(18), T.int64(1), T.int64(5), T.int64(5), T.int64(1), T.int64(4)), "float32"), p2: T.Buffer((T.int64(1), T.int64(18), T.int64(1), T.int64(1), T.int64(4)), "float32"), T_relu: T.Buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        PaddedInput = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(60), T.int64(60), T.int64(4)))
+        DepthwiseConv2d = T.alloc_buffer((T.int64(1), T.int64(18), T.int64(28), T.int64(28), T.int64(4)))
+        for b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_fused_fused in T.parallel(T.int64(36), annotations={"pragma_auto_unroll_max_step": 512, "pragma_unroll_explicit": 1}):
+            for ax0, ax1, ax2, ax3 in T.grid(T.int64(1), T.int64(1), T.int64(31), T.int64(59)):
+                for ax4_fused in T.vectorized(T.int64(4)):
+                    with T.block("PaddedInput"):
+                        v_i0 = T.axis.spatial(T.int64(1), ax0)
+                        v_i1 = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_fused_fused // T.int64(2) + ax1)
+                        v_i2 = T.axis.spatial(T.int64(60), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_fused_fused % T.int64(2) * T.int64(28) + ax2)
+                        v_i3 = T.axis.spatial(T.int64(60), ax3)
+                        v_i4 = T.axis.spatial(T.int64(4), ax4_fused)
+                        T.reads(p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4])
+                        T.writes(PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4])
+                        PaddedInput[v_i0, v_i1, v_i2, v_i3, v_i4] = T.if_then_else(T.int64(2) <= v_i2 and v_i2 < T.int64(58) and T.int64(2) <= v_i3 and v_i3 < T.int64(58), p0[v_i0, v_i1, v_i2 - T.int64(2), v_i3 - T.int64(2), v_i4], T.float32(0))
+            for ow_1, oci_1 in T.grid(T.int64(1), T.int64(1)):
+                for b_2_init, oco_2_init, oh_2_init, ow_2_init, oci_2_init, b_3_init, oco_3_init, oh_3_init, ow_3_init in T.grid(T.int64(1), T.int64(1), T.int64(2), T.int64(1), T.int64(1), T.int64(1), T.int64(1), T.int64(7), T.int64(28)):
+                    for oci_3_fused_init in T.vectorized(T.int64(4)):
+                        with T.block("DepthwiseConv2d_init"):
+                            v_b = T.axis.spatial(T.int64(1), b_2_init + b_3_init)
+                            v_oco = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_fused_fused // T.int64(2) + oco_2_init + oco_3_init)
+                            v_oh = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_fused_fused % T.int64(2) * T.int64(14) + oh_2_init * T.int64(7) + oh_3_init)
+                            v_ow = T.axis.spatial(T.int64(28), ow_1 * T.int64(28) + ow_2_init * T.int64(28) + ow_3_init)
+                            v_oci = T.axis.spatial(T.int64(4), oci_1 * T.int64(4) + oci_2_init * T.int64(4) + oci_3_fused_init)
+                            T.reads()
+                            T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                            T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                            DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = T.float32(0)
+                for kh_0, kw_0, b_2, oco_2, oh_2, ow_2, oci_2, kh_1, kw_1, b_3, oco_3, oh_3, ow_3 in T.grid(T.int64(1), T.int64(5), T.int64(1), T.int64(1), T.int64(2), T.int64(1), T.int64(1), T.int64(5), T.int64(1), T.int64(1), T.int64(1), T.int64(7), T.int64(28)):
+                    for oci_3_fused in T.vectorized(T.int64(4)):
+                        with T.block("DepthwiseConv2d_update"):
+                            v_b = T.axis.spatial(T.int64(1), b_2 + b_3)
+                            v_oco = T.axis.spatial(T.int64(18), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_fused_fused // T.int64(2) + oco_2 + oco_3)
+                            v_oh = T.axis.spatial(T.int64(28), b_0_oco_0_oh_0_ow_0_oci_0_b_1_oco_1_oh_1_fused_fused % T.int64(2) * T.int64(14) + oh_2 * T.int64(7) + oh_3)
+                            v_ow = T.axis.spatial(T.int64(28), ow_1 * T.int64(28) + ow_2 * T.int64(28) + ow_3)
+                            v_oci = T.axis.spatial(T.int64(4), oci_1 * T.int64(4) + oci_2 * T.int64(4) + oci_3_fused)
+                            v_kh = T.axis.reduce(T.int64(5), kh_0 * T.int64(5) + kh_1)
+                            v_kw = T.axis.reduce(T.int64(5), kw_0 + kw_1)
+                            T.reads(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci], PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)], p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci])
+                            T.writes(DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci])
+                            T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                            DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] = DepthwiseConv2d[v_b, v_oco, v_oh, v_ow, v_oci] + PaddedInput[v_b, v_oci // T.int64(4) + v_oco, v_oh * T.int64(2) + v_kh, v_ow * T.int64(2) + v_kw, v_oci % T.int64(4)] * p1[v_oco, T.int64(0), v_kh, v_kw, T.int64(0), v_oci]
+        for ax0_ax1_ax2_ax3_ax4_fused_0 in T.parallel(T.int64(882)):
+            for ax0_ax1_ax2_ax3_ax4_fused_1 in T.vectorized(T.int64(64)):
+                with T.block("T_relu"):
+                    v_ax0 = T.axis.spatial(T.int64(1), T.int64(0))
+                    v_ax1 = T.axis.spatial(T.int64(18), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) // T.int64(3136))
+                    v_ax2 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(3136) // T.int64(112))
+                    v_ax3 = T.axis.spatial(T.int64(28), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(112) // T.int64(4))
+                    v_ax4 = T.axis.spatial(T.int64(4), (ax0_ax1_ax2_ax3_ax4_fused_0 * T.int64(64) + ax0_ax1_ax2_ax3_ax4_fused_1) % T.int64(4))
+                    T.reads(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4], p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4])
+                    T.writes(T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4])
+                    T_relu[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] = T.max(DepthwiseConv2d[v_ax0, v_ax1, v_ax2, v_ax3, v_ax4] + p2[v_ax0, v_ax1, T.int64(0), T.int64(0), v_ax4], T.float32(0))
+b0 = sch.get_block(name="PaddedInput", func_name="main")
+b1 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+b2 = sch.get_block(name="T_add", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.compute_inline(block=b2)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l4, l5, l6, l7, l8, l9, l10 = sch.get_loops(block=b1)
+v11, v12, v13, v14 = sch.sample_perfect_tile(loop=l4, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l15, l16, l17, l18 = sch.split(loop=l4, factors=[v11, v12, v13, v14], preserve_unit_iters=True)
+v19, v20, v21, v22 = sch.sample_perfect_tile(loop=l5, n=4, max_innermost_factor=64, decision=[1, 18, 1, 1])
+l23, l24, l25, l26 = sch.split(loop=l5, factors=[v19, v20, v21, v22], preserve_unit_iters=True)
+v27, v28, v29, v30 = sch.sample_perfect_tile(loop=l6, n=4, max_innermost_factor=64, decision=[1, 2, 2, 7])
+l31, l32, l33, l34 = sch.split(loop=l6, factors=[v27, v28, v29, v30], preserve_unit_iters=True)
+v35, v36, v37, v38 = sch.sample_perfect_tile(loop=l7, n=4, max_innermost_factor=64, decision=[1, 1, 1, 28])
+l39, l40, l41, l42 = sch.split(loop=l7, factors=[v35, v36, v37, v38], preserve_unit_iters=True)
+v43, v44, v45, v46 = sch.sample_perfect_tile(loop=l8, n=4, max_innermost_factor=64, decision=[1, 1, 1, 4])
+l47, l48, l49, l50 = sch.split(loop=l8, factors=[v43, v44, v45, v46], preserve_unit_iters=True)
+v51, v52 = sch.sample_perfect_tile(loop=l9, n=2, max_innermost_factor=64, decision=[1, 5])
+l53, l54 = sch.split(loop=l9, factors=[v51, v52], preserve_unit_iters=True)
+v55, v56 = sch.sample_perfect_tile(loop=l10, n=2, max_innermost_factor=64, decision=[5, 1])
+l57, l58 = sch.split(loop=l10, factors=[v55, v56], preserve_unit_iters=True)
+sch.reorder(l15, l23, l31, l39, l47, l16, l24, l32, l40, l48, l53, l57, l17, l25, l33, l41, l49, l54, l58, l18, l26, l34, l42, l50)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v59 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=3)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v59)
+l60 = sch.sample_compute_location(block=b0, decision=7)
+sch.compute_at(block=b0, loop=l60, preserve_unit_loops=True, index=-1)
+sch.enter_postproc()
+b61 = sch.get_block(name="root", func_name="main")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.parallel")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.vectorize")
+sch.unannotate(block_or_loop=b61, ann_key="meta_schedule.unroll_explicit")
+b62, b63, b64 = sch.get_child_blocks(b61)
+l65, l66, l67, l68, l69, l70, l71, l72, l73, l74, l75, l76, l77 = sch.get_loops(block=b62)
+l78 = sch.fuse(l65, l66, l67, l68, l69, l70, l71, l72, preserve_unit_iters=True)
+sch.parallel(loop=l78)
+l79 = sch.fuse(l77, preserve_unit_iters=True)
+sch.vectorize(loop=l79)
+l80, l81, l82, l83, l84, l85, l86, l87, l88, l89, l90, l91, l92, l93, l94, l95, l96 = sch.get_loops(block=b63)
+l97 = sch.fuse(l80, preserve_unit_iters=True)
+sch.parallel(loop=l97)
+l98 = sch.fuse(l96, preserve_unit_iters=True)
+sch.vectorize(loop=l98)
+sch.annotate(block_or_loop=l97, ann_key="pragma_auto_unroll_max_step", ann_val=512)
+sch.annotate(block_or_loop=l97, ann_key="pragma_unroll_explicit", ann_val=1)
+l99, l100, l101, l102, l103 = sch.get_loops(block=b64)
+l104 = sch.fuse(l99, l100, l101, l102, l103, preserve_unit_iters=True)
+l105, l106 = sch.split(loop=l104, factors=[None, 64], preserve_unit_iters=True)
+sch.parallel(loop=l105)
+sch.vectorize(loop=l106)
+b107 = sch.get_block(name="DepthwiseConv2d", func_name="main")
+l108, l109, l110, l111, l112, l113, l114, l115, l116, l117, l118, l119, l120, l121, l122, l123, l124 = sch.get_loops(block=b107)
+b125 = sch.decompose_reduction(block=b107, loop=l111)
+2024-04-29 03:11:25 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #64: GFLOPs: 9.5672. Time: 306.8094 us. Best GFLOPs: 63.9671
+2024-04-29 04:52:57 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-04-29 04:52:58 [INFO] [evolutionary_search.cc:715] Picked top 56 candidate(s) from database
+2024-04-29 04:53:04 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 04:53:04 [INFO] [evolutionary_search.cc:723] Sampled 456 candidate(s)
+2024-04-29 04:53:17 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 04:53:31 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 04:53:44 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 04:53:58 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x5eee868)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x534b9e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x3283578)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x4109918)]: 0 failure(s)
+2024-04-29 04:54:05 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	0.9125  0.8566  0.8276  0.7836  0.7834  0.7819  0.7768  0.7743  0.7715  0.7715  0.7697  0.7690  0.7663  0.7622  0.7617  0.7584
+[17 : 32]:	0.7578  0.7578  0.7578  0.7576  0.7576  0.7576  0.7569  0.7530  0.7511  0.7480  0.7468  0.7451  0.7364  0.7330  0.7330  0.7310
+[33 : 48]:	0.7309  0.7295  0.7295  0.7290  0.7281  0.7271  0.7262  0.7242  0.7239  0.7239  0.7189  0.7180  0.7175  0.7175  0.7175  0.7172
+[49 : 64]:	0.7168  0.7168  0.7135  0.7119  0.7119  0.7119  0.7111  0.7090  0.7090  0.7089  0.7089  0.7089  0.7089  0.7089  0.7089  0.7078
+2024-04-29 04:54:05 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-04-29 04:54:06 [INFO] [evolutionary_search.cc:730] Sending 64 candidates(s) for measurement
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #65: GFLOPs: 32.0630. Time: 91.5477 us. Best GFLOPs: 63.9671
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #66: GFLOPs: 32.6615. Time: 89.8703 us. Best GFLOPs: 63.9671
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #67: GFLOPs: 40.6652. Time: 72.1820 us. Best GFLOPs: 63.9671
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #68: GFLOPs: 79.7056. Time: 36.8267 us. Best GFLOPs: 79.7056
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #69: GFLOPs: 83.1415. Time: 35.3048 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #70: GFLOPs: 70.0811. Time: 41.8843 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #71: GFLOPs: 74.1911. Time: 39.5640 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #72: GFLOPs: 49.0426. Time: 59.8519 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #73: GFLOPs: 25.1627. Time: 116.6528 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #74: GFLOPs: 25.7940. Time: 113.7978 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #75: GFLOPs: 44.2444. Time: 66.3427 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #76: GFLOPs: 67.2499. Time: 43.6476 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #77: GFLOPs: 61.4306. Time: 47.7823 us. Best GFLOPs: 83.1415
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #78: GFLOPs: 116.6634. Time: 25.1604 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #79: GFLOPs: 42.9338. Time: 68.3679 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #80: GFLOPs: 23.5481. Time: 124.6512 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #81: GFLOPs: 65.7919. Time: 44.6148 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #82: GFLOPs: 53.7562. Time: 54.6038 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #83: GFLOPs: 52.2741. Time: 56.1520 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #84: GFLOPs: 112.8752. Time: 26.0048 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #85: GFLOPs: 107.0099. Time: 27.4301 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #86: GFLOPs: 78.9801. Time: 37.1650 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #87: GFLOPs: 58.1048. Time: 50.5172 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #88: GFLOPs: 62.2335. Time: 47.1659 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #89: GFLOPs: 40.3425. Time: 72.7594 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #90: GFLOPs: 56.3716. Time: 52.0705 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #91: GFLOPs: 23.7355. Time: 123.6669 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #92: GFLOPs: 51.3078. Time: 57.2095 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #93: GFLOPs: 40.4703. Time: 72.5297 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #94: GFLOPs: 42.9006. Time: 68.4209 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #95: GFLOPs: 41.0261. Time: 71.5471 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #96: GFLOPs: 72.8593. Time: 40.2872 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #97: GFLOPs: 50.4801. Time: 58.1476 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #98: GFLOPs: 41.7497. Time: 70.3070 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #99: GFLOPs: 27.3306. Time: 107.3995 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #100: GFLOPs: 52.6393. Time: 55.7624 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #101: GFLOPs: 69.3768. Time: 42.3094 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #102: GFLOPs: 113.7631. Time: 25.8018 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #103: GFLOPs: 42.8251. Time: 68.5414 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #104: GFLOPs: 49.1501. Time: 59.7211 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #105: GFLOPs: 50.0666. Time: 58.6279 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #106: GFLOPs: 47.1524. Time: 62.2512 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #107: GFLOPs: 55.8934. Time: 52.5160 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #108: GFLOPs: 55.2793. Time: 53.0994 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #109: GFLOPs: 49.8338. Time: 58.9017 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #110: GFLOPs: 65.1061. Time: 45.0848 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #111: GFLOPs: 56.3943. Time: 52.0495 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #112: GFLOPs: 60.5777. Time: 48.4551 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #113: GFLOPs: 48.9654. Time: 59.9463 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #114: GFLOPs: 49.9731. Time: 58.7375 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #115: GFLOPs: 73.2955. Time: 40.0474 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #116: GFLOPs: 60.4550. Time: 48.5534 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #117: GFLOPs: 53.4618. Time: 54.9045 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #118: GFLOPs: 50.9818. Time: 57.5754 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #119: GFLOPs: 52.3687. Time: 56.0506 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #120: GFLOPs: 47.4361. Time: 61.8789 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #121: GFLOPs: 53.2222. Time: 55.1518 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #122: GFLOPs: 61.1040. Time: 48.0377 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #123: GFLOPs: 53.1088. Time: 55.2695 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #124: GFLOPs: 52.9888. Time: 55.3947 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #125: GFLOPs: 61.0083. Time: 48.1130 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #126: GFLOPs: 39.7338. Time: 73.8740 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #127: GFLOPs: 2.8700. Time: 1022.7422 us. Best GFLOPs: 116.6634
+2024-04-29 04:55:28 [INFO] [task_scheduler.cc:131] [Task #10: fused_nn_contrib_depthwise_conv2d_NCHWc_add_nn_relu_3] Trial #128: GFLOPs: 19.1884. Time: 152.9723 us. Best GFLOPs: 116.6634

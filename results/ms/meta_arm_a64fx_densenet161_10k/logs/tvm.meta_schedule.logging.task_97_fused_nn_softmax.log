@@ -1,0 +1,877 @@
+2024-04-29 02:34:13 [INFO] [task_scheduler.cc:160] Initializing Task #97: "fused_nn_softmax"
+2024-04-29 02:34:13 [INFO] [task_scheduler.cc:35] 
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+        T_softmax_exp = T.alloc_buffer((T.int64(1), T.int64(1000)))
+        T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+        for i0, k in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_softmax_maxelem"):
+                v_i0, v_k = T.axis.remap("SR", [i0, k])
+                T.reads(p0[v_i0, v_k])
+                T.writes(T_softmax_maxelem[v_i0])
+                with T.init():
+                    T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], p0[v_i0, v_k])
+        for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_softmax_exp"):
+                v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0])
+                T.writes(T_softmax_exp[v_i0, v_i1])
+                T_softmax_exp[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0])
+        for i0, k in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_softmax_expsum"):
+                v_i0, v_k = T.axis.remap("SR", [i0, k])
+                T.reads(T_softmax_exp[v_i0, v_k])
+                T.writes(T_softmax_expsum[v_i0])
+                with T.init():
+                    T_softmax_expsum[v_i0] = T.float32(0)
+                T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_exp[v_i0, v_k]
+        for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_softmax_norm"):
+                v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                T.reads(T_softmax_exp[v_i0, v_i1], T_softmax_expsum[v_i0])
+                T.writes(T_softmax_norm[v_i0, v_i1])
+                T.block_attr({"axis": 1})
+                T_softmax_norm[v_i0, v_i1] = T_softmax_exp[v_i0, v_i1] / T_softmax_expsum[v_i0]
+2024-04-29 02:34:13 [INFO] [task_scheduler.cc:164] Total 9 design space(s) generated
+2024-04-29 02:34:13 [INFO] [task_scheduler.cc:170] Design space #0:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 64, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum_rf = T.alloc_buffer((T.int64(1), T.int64(250)))
+            T_softmax_maxelem_rf = T.alloc_buffer((T.int64(1), T.int64(50)))
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                for ax0, ax1, ax2 in T.grid(T.int64(50), T.int64(1), T.int64(20)):
+                    with T.block("T_softmax_maxelem_rf"):
+                        vk_0, v_i0, vk_1 = T.axis.remap("SSR", [ax0, ax1, ax2])
+                        T.reads(p0[v_i0, vk_0 * T.int64(20) + vk_1])
+                        T.writes(T_softmax_maxelem_rf[v_i0, vk_0])
+                        with T.init():
+                            T_softmax_maxelem_rf[v_i0, vk_0] = T.float32(-3.4028234663852886e+38)
+                        T_softmax_maxelem_rf[v_i0, vk_0] = T.max(T_softmax_maxelem_rf[v_i0, vk_0], p0[v_i0, vk_0 * T.int64(20) + vk_1])
+                for ax0, ax1 in T.grid(T.int64(50), T.int64(1)):
+                    with T.block("T_softmax_maxelem"):
+                        vk_0, v_i0 = T.axis.remap("RS", [ax0, ax1])
+                        T.reads(T_softmax_maxelem_rf[v_i0, vk_0])
+                        T.writes(T_softmax_maxelem[v_i0])
+                        with T.init():
+                            T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                        T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], T_softmax_maxelem_rf[v_i0, vk_0])
+                for ax0 in range(T.int64(250)):
+                    for ax0_1, ax1, ax2 in T.grid(T.int64(1), T.int64(1), T.int64(4)):
+                        with T.block("T_softmax_expsum_rf"):
+                            vk_0 = T.axis.spatial(T.int64(250), ax0 + ax0_1)
+                            v_i0, vk_1 = T.axis.remap("SR", [ax1, ax2])
+                            T.reads(p0[v_i0, vk_0 * T.int64(4) + vk_1], T_softmax_maxelem[v_i0])
+                            T.writes(T_softmax_expsum_rf[v_i0, vk_0])
+                            with T.init():
+                                T_softmax_expsum_rf[v_i0, vk_0] = T.float32(0)
+                            T_softmax_expsum_rf[v_i0, vk_0] = T_softmax_expsum_rf[v_i0, vk_0] + T.exp(p0[v_i0, vk_0 * T.int64(4) + vk_1] - T_softmax_maxelem[v_i0])
+                    for ax1 in range(T.int64(1)):
+                        with T.block("T_softmax_expsum"):
+                            vk_0, v_i0 = T.axis.remap("RS", [ax0, ax1])
+                            T.reads(T_softmax_expsum_rf[v_i0, vk_0])
+                            T.writes(T_softmax_expsum[v_i0])
+                            with T.init():
+                                T_softmax_expsum[v_i0] = T.float32(0)
+                            T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_expsum_rf[v_i0, vk_0]
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0]) / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+l4, l5 = sch.get_loops(block=b2)
+v6, v7 = sch.sample_perfect_tile(loop=l5, n=2, max_innermost_factor=64, decision=[250, 4])
+l8, l9 = sch.split(loop=l5, factors=[v6, v7], preserve_unit_iters=True)
+b10 = sch.rfactor(loop=l8, factor_axis=1)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+l11, l12 = sch.get_loops(block=b0)
+v13, v14 = sch.sample_perfect_tile(loop=l12, n=2, max_innermost_factor=64, decision=[50, 20])
+l15, l16 = sch.split(loop=l12, factors=[v13, v14], preserve_unit_iters=True)
+b17 = sch.rfactor(loop=l15, factor_axis=1)
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=2)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+b19, = sch.get_producers(block=b2)
+sch.unannotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer")
+l20 = sch.sample_compute_location(block=b2, decision=1)
+sch.compute_at(block=b2, loop=l20, preserve_unit_loops=True, index=-1)
+l21 = sch.sample_compute_location(block=b19, decision=2)
+sch.compute_at(block=b19, loop=l21, preserve_unit_loops=True, index=-1)
+l22 = sch.sample_compute_location(block=b1, decision=-2)
+sch.compute_at(block=b1, loop=l22, preserve_unit_loops=True, index=-1)
+b23, = sch.get_producers(block=b0)
+sch.unannotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer")
+l24 = sch.sample_compute_location(block=b0, decision=1)
+sch.compute_at(block=b0, loop=l24, preserve_unit_loops=True, index=-1)
+l25 = sch.sample_compute_location(block=b23, decision=1)
+sch.compute_at(block=b23, loop=l25, preserve_unit_loops=True, index=-1)
+2024-04-29 02:34:13 [INFO] [task_scheduler.cc:170] Design space #1:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 0, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_exp = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum_rf = T.alloc_buffer((T.int64(1), T.int64(250)))
+            T_softmax_maxelem_rf = T.alloc_buffer((T.int64(1), T.int64(20)))
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                for ax0 in range(T.int64(20)):
+                    for ax0_1, ax1, ax2 in T.grid(T.int64(1), T.int64(1), T.int64(50)):
+                        with T.block("T_softmax_maxelem_rf"):
+                            vk_1 = T.axis.spatial(T.int64(20), ax0 + ax0_1)
+                            v_i0, vk_0 = T.axis.remap("SR", [ax1, ax2])
+                            T.reads(p0[v_i0, vk_0 * T.int64(20) + vk_1])
+                            T.writes(T_softmax_maxelem_rf[v_i0, vk_1])
+                            with T.init():
+                                T_softmax_maxelem_rf[v_i0, vk_1] = T.float32(-3.4028234663852886e+38)
+                            T_softmax_maxelem_rf[v_i0, vk_1] = T.max(T_softmax_maxelem_rf[v_i0, vk_1], p0[v_i0, vk_0 * T.int64(20) + vk_1])
+                    for ax1 in range(T.int64(1)):
+                        with T.block("T_softmax_maxelem"):
+                            vk_1, v_i0 = T.axis.remap("RS", [ax0, ax1])
+                            T.reads(T_softmax_maxelem_rf[v_i0, vk_1])
+                            T.writes(T_softmax_maxelem[v_i0])
+                            with T.init():
+                                T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                            T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], T_softmax_maxelem_rf[v_i0, vk_1])
+                with T.block("T_softmax_exp"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0])
+                    T.writes(T_softmax_exp[v_i0, v_i1])
+                    T_softmax_exp[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0])
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                for ax0 in range(T.int64(250)):
+                    for ax0_1, ax1, ax2 in T.grid(T.int64(1), T.int64(1), T.int64(4)):
+                        with T.block("T_softmax_expsum_rf"):
+                            vk_0 = T.axis.spatial(T.int64(250), ax0 + ax0_1)
+                            v_i0, vk_1 = T.axis.remap("SR", [ax1, ax2])
+                            T.reads(T_softmax_exp[v_i0, vk_0 * T.int64(4) + vk_1])
+                            T.writes(T_softmax_expsum_rf[v_i0, vk_0])
+                            with T.init():
+                                T_softmax_expsum_rf[v_i0, vk_0] = T.float32(0)
+                            T_softmax_expsum_rf[v_i0, vk_0] = T_softmax_expsum_rf[v_i0, vk_0] + T_softmax_exp[v_i0, vk_0 * T.int64(4) + vk_1]
+                    for ax1 in range(T.int64(1)):
+                        with T.block("T_softmax_expsum"):
+                            vk_0, v_i0 = T.axis.remap("RS", [ax0, ax1])
+                            T.reads(T_softmax_expsum_rf[v_i0, vk_0])
+                            T.writes(T_softmax_expsum[v_i0])
+                            with T.init():
+                                T_softmax_expsum[v_i0] = T.float32(0)
+                            T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_expsum_rf[v_i0, vk_0]
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(T_softmax_exp[v_i0, v_i1], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T_softmax_exp[v_i0, v_i1] / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+l4, l5 = sch.get_loops(block=b2)
+v6, v7 = sch.sample_perfect_tile(loop=l5, n=2, max_innermost_factor=64, decision=[250, 4])
+l8, l9 = sch.split(loop=l5, factors=[v6, v7], preserve_unit_iters=True)
+b10 = sch.rfactor(loop=l8, factor_axis=1)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+l11, l12 = sch.get_loops(block=b0)
+v13, v14 = sch.sample_perfect_tile(loop=l12, n=2, max_innermost_factor=64, decision=[50, 20])
+l15, l16 = sch.split(loop=l12, factors=[v13, v14], preserve_unit_iters=True)
+b17 = sch.rfactor(loop=l16, factor_axis=1)
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+b19, = sch.get_producers(block=b2)
+sch.unannotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer")
+l20 = sch.sample_compute_location(block=b2, decision=1)
+sch.compute_at(block=b2, loop=l20, preserve_unit_loops=True, index=-1)
+l21 = sch.sample_compute_location(block=b19, decision=2)
+sch.compute_at(block=b19, loop=l21, preserve_unit_loops=True, index=-1)
+l22 = sch.sample_compute_location(block=b1, decision=-1)
+sch.compute_at(block=b1, loop=l22, preserve_unit_loops=True, index=-1)
+b23, = sch.get_producers(block=b0)
+sch.unannotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer")
+l24 = sch.sample_compute_location(block=b0, decision=1)
+sch.compute_at(block=b0, loop=l24, preserve_unit_loops=True, index=-1)
+l25 = sch.sample_compute_location(block=b23, decision=2)
+sch.compute_at(block=b23, loop=l25, preserve_unit_loops=True, index=-1)
+2024-04-29 02:34:13 [INFO] [task_scheduler.cc:170] Design space #2:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 0, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_exp = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum_rf = T.alloc_buffer((T.int64(1), T.int64(250)))
+            for i0, k in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_softmax_maxelem"):
+                    v_i0, v_k = T.axis.remap("SR", [i0, k])
+                    T.reads(p0[v_i0, v_k])
+                    T.writes(T_softmax_maxelem[v_i0])
+                    with T.init():
+                        T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                    T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], p0[v_i0, v_k])
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_softmax_exp"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0])
+                    T.writes(T_softmax_exp[v_i0, v_i1])
+                    T_softmax_exp[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0])
+            for i0, k_0, k_1 in T.grid(T.int64(1), T.int64(250), T.int64(4)):
+                with T.block("T_softmax_expsum_rf"):
+                    vk_0, v_i0, vk_1 = T.axis.remap("SSR", [k_0, i0, k_1])
+                    T.reads(T_softmax_exp[v_i0, vk_0 * T.int64(4) + vk_1])
+                    T.writes(T_softmax_expsum_rf[v_i0, vk_0])
+                    with T.init():
+                        T_softmax_expsum_rf[v_i0, vk_0] = T.float32(0)
+                    T_softmax_expsum_rf[v_i0, vk_0] = T_softmax_expsum_rf[v_i0, vk_0] + T_softmax_exp[v_i0, vk_0 * T.int64(4) + vk_1]
+            for i0, k_0 in T.grid(T.int64(1), T.int64(250)):
+                with T.block("T_softmax_expsum"):
+                    vk_0, v_i0 = T.axis.remap("RS", [k_0, i0])
+                    T.reads(T_softmax_expsum_rf[v_i0, vk_0])
+                    T.writes(T_softmax_expsum[v_i0])
+                    with T.init():
+                        T_softmax_expsum[v_i0] = T.float32(0)
+                    T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_expsum_rf[v_i0, vk_0]
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(T_softmax_exp[v_i0, v_i1], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T_softmax_exp[v_i0, v_i1] / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+l4, l5 = sch.get_loops(block=b2)
+v6, v7 = sch.sample_perfect_tile(loop=l5, n=2, max_innermost_factor=64, decision=[250, 4])
+l8, l9 = sch.split(loop=l5, factors=[v6, v7], preserve_unit_iters=True)
+b10 = sch.rfactor(loop=l8, factor_axis=1)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v11 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v11)
+b12, = sch.get_producers(block=b2)
+sch.unannotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer")
+l13 = sch.sample_compute_location(block=b2, decision=-1)
+sch.compute_at(block=b2, loop=l13, preserve_unit_loops=True, index=-1)
+l14 = sch.sample_compute_location(block=b12, decision=-1)
+sch.compute_at(block=b12, loop=l14, preserve_unit_loops=True, index=-1)
+l15 = sch.sample_compute_location(block=b1, decision=-1)
+sch.compute_at(block=b1, loop=l15, preserve_unit_loops=True, index=-1)
+l16 = sch.sample_compute_location(block=b0, decision=-1)
+sch.compute_at(block=b0, loop=l16, preserve_unit_loops=True, index=-1)
+2024-04-29 02:34:13 [INFO] [task_scheduler.cc:170] Design space #3:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 64, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum_rf = T.alloc_buffer((T.int64(1), T.int64(4)))
+            T_softmax_maxelem_rf = T.alloc_buffer((T.int64(1), T.int64(125)))
+            for i0, k_0, k_1 in T.grid(T.int64(1), T.int64(125), T.int64(8)):
+                with T.block("T_softmax_maxelem_rf"):
+                    vk_0, v_i0, vk_1 = T.axis.remap("SSR", [k_0, i0, k_1])
+                    T.reads(p0[v_i0, vk_0 * T.int64(8) + vk_1])
+                    T.writes(T_softmax_maxelem_rf[v_i0, vk_0])
+                    with T.init():
+                        T_softmax_maxelem_rf[v_i0, vk_0] = T.float32(-3.4028234663852886e+38)
+                    T_softmax_maxelem_rf[v_i0, vk_0] = T.max(T_softmax_maxelem_rf[v_i0, vk_0], p0[v_i0, vk_0 * T.int64(8) + vk_1])
+            for i0, k_0 in T.grid(T.int64(1), T.int64(125)):
+                with T.block("T_softmax_maxelem"):
+                    vk_0, v_i0 = T.axis.remap("RS", [k_0, i0])
+                    T.reads(T_softmax_maxelem_rf[v_i0, vk_0])
+                    T.writes(T_softmax_maxelem[v_i0])
+                    with T.init():
+                        T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                    T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], T_softmax_maxelem_rf[v_i0, vk_0])
+            for i0, k_0, k_1 in T.grid(T.int64(1), T.int64(250), T.int64(4)):
+                with T.block("T_softmax_expsum_rf"):
+                    vk_1, v_i0, vk_0 = T.axis.remap("SSR", [k_1, i0, k_0])
+                    T.reads(p0[v_i0, vk_0 * T.int64(4) + vk_1], T_softmax_maxelem[v_i0])
+                    T.writes(T_softmax_expsum_rf[v_i0, vk_1])
+                    with T.init():
+                        T_softmax_expsum_rf[v_i0, vk_1] = T.float32(0)
+                    T_softmax_expsum_rf[v_i0, vk_1] = T_softmax_expsum_rf[v_i0, vk_1] + T.exp(p0[v_i0, vk_0 * T.int64(4) + vk_1] - T_softmax_maxelem[v_i0])
+            for i0, k_1 in T.grid(T.int64(1), T.int64(4)):
+                with T.block("T_softmax_expsum"):
+                    vk_1, v_i0 = T.axis.remap("RS", [k_1, i0])
+                    T.reads(T_softmax_expsum_rf[v_i0, vk_1])
+                    T.writes(T_softmax_expsum[v_i0])
+                    with T.init():
+                        T_softmax_expsum[v_i0] = T.float32(0)
+                    T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_expsum_rf[v_i0, vk_1]
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0]) / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+l4, l5 = sch.get_loops(block=b2)
+v6, v7 = sch.sample_perfect_tile(loop=l5, n=2, max_innermost_factor=64, decision=[250, 4])
+l8, l9 = sch.split(loop=l5, factors=[v6, v7], preserve_unit_iters=True)
+b10 = sch.rfactor(loop=l9, factor_axis=1)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+l11, l12 = sch.get_loops(block=b0)
+v13, v14 = sch.sample_perfect_tile(loop=l12, n=2, max_innermost_factor=64, decision=[125, 8])
+l15, l16 = sch.split(loop=l12, factors=[v13, v14], preserve_unit_iters=True)
+b17 = sch.rfactor(loop=l15, factor_axis=1)
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=2)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+b19, = sch.get_producers(block=b2)
+sch.unannotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer")
+l20 = sch.sample_compute_location(block=b2, decision=-1)
+sch.compute_at(block=b2, loop=l20, preserve_unit_loops=True, index=-1)
+l21 = sch.sample_compute_location(block=b19, decision=-1)
+sch.compute_at(block=b19, loop=l21, preserve_unit_loops=True, index=-1)
+l22 = sch.sample_compute_location(block=b1, decision=-2)
+sch.compute_at(block=b1, loop=l22, preserve_unit_loops=True, index=-1)
+b23, = sch.get_producers(block=b0)
+sch.unannotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer")
+l24 = sch.sample_compute_location(block=b0, decision=-1)
+sch.compute_at(block=b0, loop=l24, preserve_unit_loops=True, index=-1)
+l25 = sch.sample_compute_location(block=b23, decision=-1)
+sch.compute_at(block=b23, loop=l25, preserve_unit_loops=True, index=-1)
+2024-04-29 02:34:13 [INFO] [task_scheduler.cc:170] Design space #4:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 16, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum_rf = T.alloc_buffer((T.int64(1), T.int64(4)))
+            T_softmax_maxelem_rf = T.alloc_buffer((T.int64(1), T.int64(8)))
+            for i0, k_0, k_1 in T.grid(T.int64(1), T.int64(125), T.int64(8)):
+                with T.block("T_softmax_maxelem_rf"):
+                    vk_1, v_i0, vk_0 = T.axis.remap("SSR", [k_1, i0, k_0])
+                    T.reads(p0[v_i0, vk_0 * T.int64(8) + vk_1])
+                    T.writes(T_softmax_maxelem_rf[v_i0, vk_1])
+                    with T.init():
+                        T_softmax_maxelem_rf[v_i0, vk_1] = T.float32(-3.4028234663852886e+38)
+                    T_softmax_maxelem_rf[v_i0, vk_1] = T.max(T_softmax_maxelem_rf[v_i0, vk_1], p0[v_i0, vk_0 * T.int64(8) + vk_1])
+            for i0, k_1 in T.grid(T.int64(1), T.int64(8)):
+                with T.block("T_softmax_maxelem"):
+                    vk_1, v_i0 = T.axis.remap("RS", [k_1, i0])
+                    T.reads(T_softmax_maxelem_rf[v_i0, vk_1])
+                    T.writes(T_softmax_maxelem[v_i0])
+                    with T.init():
+                        T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                    T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], T_softmax_maxelem_rf[v_i0, vk_1])
+            for i0, k_0, k_1 in T.grid(T.int64(1), T.int64(250), T.int64(4)):
+                with T.block("T_softmax_expsum_rf"):
+                    vk_1, v_i0, vk_0 = T.axis.remap("SSR", [k_1, i0, k_0])
+                    T.reads(p0[v_i0, vk_0 * T.int64(4) + vk_1], T_softmax_maxelem[v_i0])
+                    T.writes(T_softmax_expsum_rf[v_i0, vk_1])
+                    with T.init():
+                        T_softmax_expsum_rf[v_i0, vk_1] = T.float32(0)
+                    T_softmax_expsum_rf[v_i0, vk_1] = T_softmax_expsum_rf[v_i0, vk_1] + T.exp(p0[v_i0, vk_0 * T.int64(4) + vk_1] - T_softmax_maxelem[v_i0])
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                for ax0, ax1 in T.grid(T.int64(4), T.int64(1)):
+                    with T.block("T_softmax_expsum"):
+                        vk_1, v_i0 = T.axis.remap("RS", [ax0, ax1])
+                        T.reads(T_softmax_expsum_rf[v_i0, vk_1])
+                        T.writes(T_softmax_expsum[v_i0])
+                        with T.init():
+                            T_softmax_expsum[v_i0] = T.float32(0)
+                        T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_expsum_rf[v_i0, vk_1]
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0]) / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+l4, l5 = sch.get_loops(block=b2)
+v6, v7 = sch.sample_perfect_tile(loop=l5, n=2, max_innermost_factor=64, decision=[250, 4])
+l8, l9 = sch.split(loop=l5, factors=[v6, v7], preserve_unit_iters=True)
+b10 = sch.rfactor(loop=l9, factor_axis=1)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+l11, l12 = sch.get_loops(block=b0)
+v13, v14 = sch.sample_perfect_tile(loop=l12, n=2, max_innermost_factor=64, decision=[125, 8])
+l15, l16 = sch.split(loop=l12, factors=[v13, v14], preserve_unit_iters=True)
+b17 = sch.rfactor(loop=l16, factor_axis=1)
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v18 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v18)
+b19, = sch.get_producers(block=b2)
+sch.unannotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer")
+l20 = sch.sample_compute_location(block=b2, decision=1)
+sch.compute_at(block=b2, loop=l20, preserve_unit_loops=True, index=-1)
+l21 = sch.sample_compute_location(block=b19, decision=-1)
+sch.compute_at(block=b19, loop=l21, preserve_unit_loops=True, index=-1)
+l22 = sch.sample_compute_location(block=b1, decision=-2)
+sch.compute_at(block=b1, loop=l22, preserve_unit_loops=True, index=-1)
+b23, = sch.get_producers(block=b0)
+sch.unannotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer")
+l24 = sch.sample_compute_location(block=b0, decision=-1)
+sch.compute_at(block=b0, loop=l24, preserve_unit_loops=True, index=-1)
+l25 = sch.sample_compute_location(block=b23, decision=-1)
+sch.compute_at(block=b23, loop=l25, preserve_unit_loops=True, index=-1)
+2024-04-29 02:34:14 [INFO] [task_scheduler.cc:170] Design space #5:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 0, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_exp = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            T_softmax_expsum_rf = T.alloc_buffer((T.int64(1), T.int64(4)))
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                for ax0, ax1 in T.grid(T.int64(1), T.int64(1000)):
+                    with T.block("T_softmax_maxelem"):
+                        v_i0, v_k = T.axis.remap("SR", [ax0, ax1])
+                        T.reads(p0[v_i0, v_k])
+                        T.writes(T_softmax_maxelem[v_i0])
+                        with T.init():
+                            T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                        T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], p0[v_i0, v_k])
+                for ax0, ax1 in T.grid(T.int64(1), T.int64(1000)):
+                    with T.block("T_softmax_exp"):
+                        v_i0, v_i1 = T.axis.remap("SS", [ax0, ax1])
+                        T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0])
+                        T.writes(T_softmax_exp[v_i0, v_i1])
+                        T_softmax_exp[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0])
+                for ax0 in range(T.int64(4)):
+                    for ax0_1, ax1, ax2 in T.grid(T.int64(1), T.int64(1), T.int64(250)):
+                        with T.block("T_softmax_expsum_rf"):
+                            vk_1 = T.axis.spatial(T.int64(4), ax0 + ax0_1)
+                            v_i0, vk_0 = T.axis.remap("SR", [ax1, ax2])
+                            T.reads(T_softmax_exp[v_i0, vk_0 * T.int64(4) + vk_1])
+                            T.writes(T_softmax_expsum_rf[v_i0, vk_1])
+                            with T.init():
+                                T_softmax_expsum_rf[v_i0, vk_1] = T.float32(0)
+                            T_softmax_expsum_rf[v_i0, vk_1] = T_softmax_expsum_rf[v_i0, vk_1] + T_softmax_exp[v_i0, vk_0 * T.int64(4) + vk_1]
+                    for ax1 in range(T.int64(1)):
+                        with T.block("T_softmax_expsum"):
+                            vk_1, v_i0 = T.axis.remap("RS", [ax0, ax1])
+                            T.reads(T_softmax_expsum_rf[v_i0, vk_1])
+                            T.writes(T_softmax_expsum[v_i0])
+                            with T.init():
+                                T_softmax_expsum[v_i0] = T.float32(0)
+                            T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_expsum_rf[v_i0, vk_1]
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(T_softmax_exp[v_i0, v_i1], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T_softmax_exp[v_i0, v_i1] / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+l4, l5 = sch.get_loops(block=b2)
+v6, v7 = sch.sample_perfect_tile(loop=l5, n=2, max_innermost_factor=64, decision=[250, 4])
+l8, l9 = sch.split(loop=l5, factors=[v6, v7], preserve_unit_iters=True)
+b10 = sch.rfactor(loop=l9, factor_axis=1)
+sch.annotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v11 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v11)
+b12, = sch.get_producers(block=b2)
+sch.unannotate(block_or_loop=b2, ann_key="meta_schedule.random_compute_producer")
+l13 = sch.sample_compute_location(block=b2, decision=1)
+sch.compute_at(block=b2, loop=l13, preserve_unit_loops=True, index=-1)
+l14 = sch.sample_compute_location(block=b12, decision=2)
+sch.compute_at(block=b12, loop=l14, preserve_unit_loops=True, index=-1)
+l15 = sch.sample_compute_location(block=b1, decision=1)
+sch.compute_at(block=b1, loop=l15, preserve_unit_loops=True, index=-1)
+l16 = sch.sample_compute_location(block=b0, decision=1)
+sch.compute_at(block=b0, loop=l16, preserve_unit_loops=True, index=-1)
+2024-04-29 02:34:14 [INFO] [task_scheduler.cc:170] Design space #6:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 64, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_exp = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            T_softmax_maxelem_rf = T.alloc_buffer((T.int64(1), T.int64(50)))
+            for i0, k_0, k_1 in T.grid(T.int64(1), T.int64(50), T.int64(20)):
+                with T.block("T_softmax_maxelem_rf"):
+                    vk_0, v_i0, vk_1 = T.axis.remap("SSR", [k_0, i0, k_1])
+                    T.reads(p0[v_i0, vk_0 * T.int64(20) + vk_1])
+                    T.writes(T_softmax_maxelem_rf[v_i0, vk_0])
+                    with T.init():
+                        T_softmax_maxelem_rf[v_i0, vk_0] = T.float32(-3.4028234663852886e+38)
+                    T_softmax_maxelem_rf[v_i0, vk_0] = T.max(T_softmax_maxelem_rf[v_i0, vk_0], p0[v_i0, vk_0 * T.int64(20) + vk_1])
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                for ax0, ax1 in T.grid(T.int64(50), T.int64(1)):
+                    with T.block("T_softmax_maxelem"):
+                        vk_0, v_i0 = T.axis.remap("RS", [ax0, ax1])
+                        T.reads(T_softmax_maxelem_rf[v_i0, vk_0])
+                        T.writes(T_softmax_maxelem[v_i0])
+                        with T.init():
+                            T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                        T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], T_softmax_maxelem_rf[v_i0, vk_0])
+                with T.block("T_softmax_exp"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0])
+                    T.writes(T_softmax_exp[v_i0, v_i1])
+                    T_softmax_exp[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0])
+            for i0, k in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_softmax_expsum"):
+                    v_i0, v_k = T.axis.remap("SR", [i0, k])
+                    T.reads(T_softmax_exp[v_i0, v_k])
+                    T.writes(T_softmax_expsum[v_i0])
+                    with T.init():
+                        T_softmax_expsum[v_i0] = T.float32(0)
+                    T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_exp[v_i0, v_k]
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(T_softmax_exp[v_i0, v_i1], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T_softmax_exp[v_i0, v_i1] / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+l4, l5 = sch.get_loops(block=b0)
+v6, v7 = sch.sample_perfect_tile(loop=l5, n=2, max_innermost_factor=64, decision=[50, 20])
+l8, l9 = sch.split(loop=l5, factors=[v6, v7], preserve_unit_iters=True)
+b10 = sch.rfactor(loop=l8, factor_axis=1)
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v11 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=2)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v11)
+l12 = sch.sample_compute_location(block=b2, decision=-1)
+sch.compute_at(block=b2, loop=l12, preserve_unit_loops=True, index=-1)
+l13 = sch.sample_compute_location(block=b1, decision=-1)
+sch.compute_at(block=b1, loop=l13, preserve_unit_loops=True, index=-1)
+b14, = sch.get_producers(block=b0)
+sch.unannotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer")
+l15 = sch.sample_compute_location(block=b0, decision=1)
+sch.compute_at(block=b0, loop=l15, preserve_unit_loops=True, index=-1)
+l16 = sch.sample_compute_location(block=b14, decision=-1)
+sch.compute_at(block=b14, loop=l16, preserve_unit_loops=True, index=-1)
+2024-04-29 02:34:14 [INFO] [task_scheduler.cc:170] Design space #7:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 16, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_exp = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            T_softmax_maxelem_rf = T.alloc_buffer((T.int64(1), T.int64(20)))
+            for i0, k_0, k_1 in T.grid(T.int64(1), T.int64(50), T.int64(20)):
+                with T.block("T_softmax_maxelem_rf"):
+                    vk_1, v_i0, vk_0 = T.axis.remap("SSR", [k_1, i0, k_0])
+                    T.reads(p0[v_i0, vk_0 * T.int64(20) + vk_1])
+                    T.writes(T_softmax_maxelem_rf[v_i0, vk_1])
+                    with T.init():
+                        T_softmax_maxelem_rf[v_i0, vk_1] = T.float32(-3.4028234663852886e+38)
+                    T_softmax_maxelem_rf[v_i0, vk_1] = T.max(T_softmax_maxelem_rf[v_i0, vk_1], p0[v_i0, vk_0 * T.int64(20) + vk_1])
+            for i0, k_1 in T.grid(T.int64(1), T.int64(20)):
+                with T.block("T_softmax_maxelem"):
+                    vk_1, v_i0 = T.axis.remap("RS", [k_1, i0])
+                    T.reads(T_softmax_maxelem_rf[v_i0, vk_1])
+                    T.writes(T_softmax_maxelem[v_i0])
+                    with T.init():
+                        T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                    T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], T_softmax_maxelem_rf[v_i0, vk_1])
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                for ax0, ax1 in T.grid(T.int64(1), T.int64(1000)):
+                    with T.block("T_softmax_exp"):
+                        v_i0, v_i1 = T.axis.remap("SS", [ax0, ax1])
+                        T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0])
+                        T.writes(T_softmax_exp[v_i0, v_i1])
+                        T_softmax_exp[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0])
+                for ax0, ax1 in T.grid(T.int64(1), T.int64(1000)):
+                    with T.block("T_softmax_expsum"):
+                        v_i0, v_k = T.axis.remap("SR", [ax0, ax1])
+                        T.reads(T_softmax_exp[v_i0, v_k])
+                        T.writes(T_softmax_expsum[v_i0])
+                        with T.init():
+                            T_softmax_expsum[v_i0] = T.float32(0)
+                        T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_exp[v_i0, v_k]
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(T_softmax_exp[v_i0, v_i1], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T_softmax_exp[v_i0, v_i1] / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+l4, l5 = sch.get_loops(block=b0)
+v6, v7 = sch.sample_perfect_tile(loop=l5, n=2, max_innermost_factor=64, decision=[50, 20])
+l8, l9 = sch.split(loop=l5, factors=[v6, v7], preserve_unit_iters=True)
+b10 = sch.rfactor(loop=l9, factor_axis=1)
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer", ann_val=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v11 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=1)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v11)
+l12 = sch.sample_compute_location(block=b2, decision=1)
+sch.compute_at(block=b2, loop=l12, preserve_unit_loops=True, index=-1)
+l13 = sch.sample_compute_location(block=b1, decision=1)
+sch.compute_at(block=b1, loop=l13, preserve_unit_loops=True, index=-1)
+b14, = sch.get_producers(block=b0)
+sch.unannotate(block_or_loop=b0, ann_key="meta_schedule.random_compute_producer")
+l15 = sch.sample_compute_location(block=b0, decision=-1)
+sch.compute_at(block=b0, loop=l15, preserve_unit_loops=True, index=-1)
+l16 = sch.sample_compute_location(block=b14, decision=-1)
+sch.compute_at(block=b14, loop=l16, preserve_unit_loops=True, index=-1)
+2024-04-29 02:34:14 [INFO] [task_scheduler.cc:170] Design space #8:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_softmax_norm: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 64, "meta_schedule.vectorize": 64})
+            T_softmax_maxelem = T.alloc_buffer((T.int64(1),))
+            T_softmax_exp = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            T_softmax_expsum = T.alloc_buffer((T.int64(1),))
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                for ax0, ax1 in T.grid(T.int64(1), T.int64(1000)):
+                    with T.block("T_softmax_maxelem"):
+                        v_i0, v_k = T.axis.remap("SR", [ax0, ax1])
+                        T.reads(p0[v_i0, v_k])
+                        T.writes(T_softmax_maxelem[v_i0])
+                        with T.init():
+                            T_softmax_maxelem[v_i0] = T.float32(-3.4028234663852886e+38)
+                        T_softmax_maxelem[v_i0] = T.max(T_softmax_maxelem[v_i0], p0[v_i0, v_k])
+                with T.block("T_softmax_exp"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(p0[v_i0, v_i1], T_softmax_maxelem[v_i0])
+                    T.writes(T_softmax_exp[v_i0, v_i1])
+                    T_softmax_exp[v_i0, v_i1] = T.exp(p0[v_i0, v_i1] - T_softmax_maxelem[v_i0])
+            for i0, k in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_softmax_expsum"):
+                    v_i0, v_k = T.axis.remap("SR", [i0, k])
+                    T.reads(T_softmax_exp[v_i0, v_k])
+                    T.writes(T_softmax_expsum[v_i0])
+                    with T.init():
+                        T_softmax_expsum[v_i0] = T.float32(0)
+                    T_softmax_expsum[v_i0] = T_softmax_expsum[v_i0] + T_softmax_exp[v_i0, v_k]
+            for i0, i1 in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_softmax_norm"):
+                    v_i0, v_i1 = T.axis.remap("SS", [i0, i1])
+                    T.reads(T_softmax_exp[v_i0, v_i1], T_softmax_expsum[v_i0])
+                    T.writes(T_softmax_norm[v_i0, v_i1])
+                    T.block_attr({"axis": 1})
+                    T_softmax_norm[v_i0, v_i1] = T_softmax_exp[v_i0, v_i1] / T_softmax_expsum[v_i0]
+b0 = sch.get_block(name="T_softmax_maxelem", func_name="main")
+b1 = sch.get_block(name="T_softmax_exp", func_name="main")
+b2 = sch.get_block(name="T_softmax_expsum", func_name="main")
+b3 = sch.get_block(name="root", func_name="main")
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.vectorize", ann_val=64)
+v4 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=2)
+sch.annotate(block_or_loop=b3, ann_key="meta_schedule.unroll_explicit", ann_val=v4)
+l5 = sch.sample_compute_location(block=b2, decision=-1)
+sch.compute_at(block=b2, loop=l5, preserve_unit_loops=True, index=-1)
+l6 = sch.sample_compute_location(block=b1, decision=-1)
+sch.compute_at(block=b1, loop=l6, preserve_unit_loops=True, index=-1)
+l7 = sch.sample_compute_location(block=b0, decision=1)
+sch.compute_at(block=b0, loop=l7, preserve_unit_loops=True, index=-1)
+2024-04-29 05:02:21 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-04-29 05:02:21 [INFO] [evolutionary_search.cc:715] Picked top 0 candidate(s) from database
+2024-04-29 05:02:22 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0xdaae968)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0xc190a98)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x149765c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x155de2c8)]: 0 failure(s)
+2024-04-29 05:02:22 [INFO] [evolutionary_search.cc:723] Sampled 512 candidate(s)
+2024-04-29 05:02:23 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0xdaae968)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0xc190a98)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x149765c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x155de2c8)]: 0 failure(s)
+2024-04-29 05:02:24 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0xdaae968)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0xc190a98)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x149765c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x155de2c8)]: 0 failure(s)
+2024-04-29 05:02:26 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0xdaae968)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0xc190a98)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x149765c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x155de2c8)]: 0 failure(s)
+2024-04-29 05:02:27 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0xdaae968)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0xc190a98)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x149765c8)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0x155de2c8)]: 0 failure(s)
+2024-04-29 05:02:28 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	0.9999  0.9993  0.9951  0.9949  0.9943  0.9938  0.9936  0.9934  0.9934  0.9933  0.9916  0.9913  0.9908  0.9894  0.9892  0.9890
+[17 : 32]:	0.9887  0.9884  0.9882  0.9862  0.9860  0.9852  0.9835  0.9834  0.9834  0.9831  0.9829  0.9821  0.9820  0.9817  0.9815  0.9813
+[33 : 48]:	0.9805  0.9804  0.9795  0.9795  0.9789  0.9789  0.9773  0.9767  0.9762  0.9758  0.9754  0.9751  0.9749  0.9749  0.9748  0.9725
+[49 : 64]:	0.9716  0.9713  0.9708  0.9675  0.9670  0.9664  0.9660  0.9657  0.9652  0.9651  0.9636  0.9632  0.9614  0.9610  0.9609  0.9593
+2024-04-29 05:02:28 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-04-29 05:02:28 [INFO] [evolutionary_search.cc:730] Sending 64 candidates(s) for measurement
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #1: GFLOPs: 0.0476. Time: 84.0443 us. Best GFLOPs: 0.0476
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #2: GFLOPs: 0.0340. Time: 117.5768 us. Best GFLOPs: 0.0476
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #3: GFLOPs: 0.0409. Time: 97.7998 us. Best GFLOPs: 0.0476
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #4: GFLOPs: 0.0413. Time: 96.9194 us. Best GFLOPs: 0.0476
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #5: GFLOPs: 0.1016. Time: 39.3686 us. Best GFLOPs: 0.1016
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #6: GFLOPs: 0.1243. Time: 32.1920 us. Best GFLOPs: 0.1243
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #7: GFLOPs: 0.0320. Time: 124.9444 us. Best GFLOPs: 0.1243
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #8: GFLOPs: 0.1699. Time: 23.5459 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #9: GFLOPs: 0.0965. Time: 41.4595 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #10: GFLOPs: 0.0113. Time: 354.2837 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #11: GFLOPs: 0.1420. Time: 28.1640 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #12: GFLOPs: 0.0059. Time: 679.4678 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #13: GFLOPs: 0.0193. Time: 206.8849 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #14: GFLOPs: 0.0001. Time: 44509.4950 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #15: GFLOPs: 0.0052. Time: 762.1095 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #16: GFLOPs: 0.1132. Time: 35.3221 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #17: GFLOPs: 0.0118. Time: 338.0174 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #18: GFLOPs: 0.0793. Time: 50.4722 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #19: GFLOPs: 0.0111. Time: 359.3652 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #20: GFLOPs: 0.0934. Time: 42.8214 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #21: GFLOPs: 0.0842. Time: 47.5059 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #22: GFLOPs: 0.0000. Time: 94113.7237 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #23: GFLOPs: 0.0280. Time: 142.8571 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #24: GFLOPs: 0.0229. Time: 174.5538 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #25: GFLOPs: 0.0094. Time: 426.5062 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #26: GFLOPs: 0.0968. Time: 41.3397 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #27: GFLOPs: 0.0100. Time: 398.7685 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #28: GFLOPs: 0.0335. Time: 119.5085 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #29: GFLOPs: 0.1153. Time: 34.6982 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #30: GFLOPs: 0.0000. Time: 94148.3210 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #31: GFLOPs: 0.0789. Time: 50.7223 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #32: GFLOPs: 0.0858. Time: 46.5946 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #33: GFLOPs: 0.0204. Time: 196.2714 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #34: GFLOPs: 0.0931. Time: 42.9730 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #35: GFLOPs: 0.0971. Time: 41.1825 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #36: GFLOPs: 0.0056. Time: 716.7907 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #37: GFLOPs: 0.1144. Time: 34.9589 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #38: GFLOPs: 0.0700. Time: 57.1657 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #39: GFLOPs: 0.0056. Time: 715.2911 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #40: GFLOPs: 0.0000. Time: 94327.2827 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #41: GFLOPs: 0.0115. Time: 346.8809 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #42: GFLOPs: 0.0173. Time: 230.8031 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #43: GFLOPs: 0.0827. Time: 48.3399 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #44: GFLOPs: 0.0001. Time: 59776.3453 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #45: GFLOPs: 0.0423. Time: 94.6084 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #46: GFLOPs: 0.0750. Time: 53.3347 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #47: GFLOPs: 0.0945. Time: 42.3405 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #48: GFLOPs: 0.0751. Time: 53.2351 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #49: GFLOPs: 0.0658. Time: 60.8292 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #50: GFLOPs: 0.0057. Time: 698.8651 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #51: GFLOPs: 0.0434. Time: 92.1022 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #52: GFLOPs: 0.0474. Time: 84.3059 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #53: GFLOPs: 0.0122. Time: 328.0801 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #54: GFLOPs: 0.0467. Time: 85.6829 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #55: GFLOPs: 0.1115. Time: 35.8822 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #56: GFLOPs: 0.0084. Time: 474.5251 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #57: GFLOPs: 0.0626. Time: 63.8838 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #58: GFLOPs: 0.0551. Time: 72.6197 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #59: GFLOPs: 0.1035. Time: 38.6421 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #60: GFLOPs: 0.0313. Time: 127.8054 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #61: GFLOPs: 0.0066. Time: 609.6760 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #62: GFLOPs: 0.0866. Time: 46.1746 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #63: GFLOPs: 0.1620. Time: 24.6913 us. Best GFLOPs: 0.1699
+2024-04-29 05:14:16 [INFO] [task_scheduler.cc:131] [Task #97: fused_nn_softmax] Trial #64: GFLOPs: 0.0402. Time: 99.5365 us. Best GFLOPs: 0.1699
