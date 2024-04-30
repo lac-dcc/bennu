@@ -135,8 +135,8 @@ class Space:
                 interval = self.power_of_two(1, 6)
                 for i in range(len(tile_val)):
                     # don't optimize tile with size 1
-                    if tile_val[i] == 1:
-                        continue
+                    # if tile_val[i] == 1:
+                    #    continue
                     idx += 1
                     key = f"sp_{counter}_{idx}"
                     sp = tile_val[i]
