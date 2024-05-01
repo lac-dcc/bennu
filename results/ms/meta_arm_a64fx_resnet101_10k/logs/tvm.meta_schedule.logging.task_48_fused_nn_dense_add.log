@@ -1,0 +1,272 @@
+2024-04-29 07:27:49 [INFO] [task_scheduler.cc:160] Initializing Task #48: "fused_nn_dense_add"
+2024-04-29 07:27:49 [INFO] [task_scheduler.cc:35] 
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(2048)), "float32"), p1: T.Buffer((T.int64(1000), T.int64(2048)), "float32"), p2: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_add: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"layout_free_buffers": [1], "tir.noalias": T.bool(True)})
+        # with T.block("root"):
+        T_matmul_NT = T.alloc_buffer((T.int64(1), T.int64(1000)))
+        for i0, i1, k in T.grid(T.int64(1), T.int64(1000), T.int64(2048)):
+            with T.block("T_matmul_NT"):
+                v_i0, v_i1, v_k = T.axis.remap("SSR", [i0, i1, k])
+                T.reads(p0[v_i0, v_k], p1[v_i1, v_k])
+                T.writes(T_matmul_NT[v_i0, v_i1])
+                with T.init():
+                    T_matmul_NT[v_i0, v_i1] = T.float32(0)
+                T_matmul_NT[v_i0, v_i1] = T_matmul_NT[v_i0, v_i1] + p0[v_i0, v_k] * p1[v_i1, v_k]
+        for ax0, ax1 in T.grid(T.int64(1), T.int64(1000)):
+            with T.block("T_add"):
+                v_ax0, v_ax1 = T.axis.remap("SS", [ax0, ax1])
+                T.reads(T_matmul_NT[v_ax0, v_ax1], p2[v_ax0, v_ax1])
+                T.writes(T_add[v_ax0, v_ax1])
+                T_add[v_ax0, v_ax1] = T_matmul_NT[v_ax0, v_ax1] + p2[v_ax0, v_ax1]
+2024-04-29 07:27:49 [INFO] [task_scheduler.cc:164] Total 3 design space(s) generated
+2024-04-29 07:27:49 [INFO] [task_scheduler.cc:170] Design space #0:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(2048)), "float32"), p1: T.Buffer((T.int64(1000), T.int64(2048)), "float32"), p2: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_add: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"layout_free_buffers": [1], "tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 16, "meta_schedule.vectorize": 64})
+            T_matmul_NT = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            for i0_0, i1_0, i0_1, i1_1, k_0, i0_2, i1_2, k_1, i0_3, i1_3 in T.grid(T.int64(1), T.int64(5), T.int64(1), T.int64(1), T.int64(32), T.int64(1), T.int64(50), T.int64(64), T.int64(1), T.int64(4)):
+                with T.block("T_matmul_NT"):
+                    v_i0 = T.axis.spatial(T.int64(1), i0_0 + i0_1 + i0_2 + i0_3)
+                    v_i1 = T.axis.spatial(T.int64(1000), i1_0 * T.int64(200) + i1_1 * T.int64(200) + i1_2 * T.int64(4) + i1_3)
+                    v_k = T.axis.reduce(T.int64(2048), k_0 * T.int64(64) + k_1)
+                    T.reads(p0[v_i0, v_k], p1[v_i1, v_k])
+                    T.writes(T_matmul_NT[v_i0, v_i1])
+                    T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                    with T.init():
+                        T_matmul_NT[v_i0, v_i1] = T.float32(0)
+                    T_matmul_NT[v_i0, v_i1] = T_matmul_NT[v_i0, v_i1] + p0[v_i0, v_k] * p1[v_i1, v_k]
+            for ax0, ax1 in T.grid(T.int64(1), T.int64(1000)):
+                with T.block("T_add"):
+                    v_ax0, v_ax1 = T.axis.remap("SS", [ax0, ax1])
+                    T.reads(T_matmul_NT[v_ax0, v_ax1], p2[v_ax0, v_ax1])
+                    T.writes(T_add[v_ax0, v_ax1])
+                    T_add[v_ax0, v_ax1] = T_matmul_NT[v_ax0, v_ax1] + p2[v_ax0, v_ax1]
+b0 = sch.get_block(name="T_matmul_NT", func_name="main")
+b1 = sch.get_block(name="root", func_name="main")
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l2, l3, l4 = sch.get_loops(block=b0)
+v5, v6, v7, v8 = sch.sample_perfect_tile(loop=l2, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l9, l10, l11, l12 = sch.split(loop=l2, factors=[v5, v6, v7, v8], preserve_unit_iters=True)
+v13, v14, v15, v16 = sch.sample_perfect_tile(loop=l3, n=4, max_innermost_factor=64, decision=[5, 1, 50, 4])
+l17, l18, l19, l20 = sch.split(loop=l3, factors=[v13, v14, v15, v16], preserve_unit_iters=True)
+v21, v22 = sch.sample_perfect_tile(loop=l4, n=2, max_innermost_factor=64, decision=[32, 64])
+l23, l24 = sch.split(loop=l4, factors=[v21, v22], preserve_unit_iters=True)
+sch.reorder(l9, l17, l10, l18, l23, l11, l19, l24, l12, l20)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.vectorize", ann_val=64)
+v25 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=1)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.unroll_explicit", ann_val=v25)
+2024-04-29 07:27:49 [INFO] [task_scheduler.cc:170] Design space #1:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(2048)), "float32"), p1: T.Buffer((T.int64(1000), T.int64(2048)), "float32"), p2: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_add: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"layout_free_buffers": [1], "tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 16, "meta_schedule.vectorize": 64})
+            T_matmul_NT = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            for i0_0, i1_0, i0_1, i1_1 in T.grid(T.int64(1), T.int64(5), T.int64(1), T.int64(1)):
+                for k_0, i0_2, i1_2, k_1, i0_3, i1_3 in T.grid(T.int64(32), T.int64(1), T.int64(50), T.int64(64), T.int64(1), T.int64(4)):
+                    with T.block("T_matmul_NT"):
+                        v_i0 = T.axis.spatial(T.int64(1), i0_0 + i0_1 + i0_2 + i0_3)
+                        v_i1 = T.axis.spatial(T.int64(1000), i1_0 * T.int64(200) + i1_1 * T.int64(200) + i1_2 * T.int64(4) + i1_3)
+                        v_k = T.axis.reduce(T.int64(2048), k_0 * T.int64(64) + k_1)
+                        T.reads(p0[v_i0, v_k], p1[v_i1, v_k])
+                        T.writes(T_matmul_NT[v_i0, v_i1])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        with T.init():
+                            T_matmul_NT[v_i0, v_i1] = T.float32(0)
+                        T_matmul_NT[v_i0, v_i1] = T_matmul_NT[v_i0, v_i1] + p0[v_i0, v_k] * p1[v_i1, v_k]
+                for ax0, ax1 in T.grid(T.int64(1), T.int64(200)):
+                    with T.block("T_add"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1000), i1_0 * T.int64(200) + ax1)
+                        T.reads(T_matmul_NT[v_ax0, v_ax1], p2[v_ax0, v_ax1])
+                        T.writes(T_add[v_ax0, v_ax1])
+                        T_add[v_ax0, v_ax1] = T_matmul_NT[v_ax0, v_ax1] + p2[v_ax0, v_ax1]
+b0 = sch.get_block(name="T_matmul_NT", func_name="main")
+b1 = sch.get_block(name="root", func_name="main")
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l2, l3, l4 = sch.get_loops(block=b0)
+v5, v6, v7, v8 = sch.sample_perfect_tile(loop=l2, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l9, l10, l11, l12 = sch.split(loop=l2, factors=[v5, v6, v7, v8], preserve_unit_iters=True)
+v13, v14, v15, v16 = sch.sample_perfect_tile(loop=l3, n=4, max_innermost_factor=64, decision=[5, 1, 50, 4])
+l17, l18, l19, l20 = sch.split(loop=l3, factors=[v13, v14, v15, v16], preserve_unit_iters=True)
+v21, v22 = sch.sample_perfect_tile(loop=l4, n=2, max_innermost_factor=64, decision=[32, 64])
+l23, l24 = sch.split(loop=l4, factors=[v21, v22], preserve_unit_iters=True)
+sch.reorder(l9, l17, l10, l18, l23, l11, l19, l24, l12, l20)
+b25, = sch.get_consumers(block=b0)
+sch.reverse_compute_at(block=b25, loop=l18, preserve_unit_loops=True, index=-1)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.vectorize", ann_val=64)
+v26 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=1)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.unroll_explicit", ann_val=v26)
+2024-04-29 07:27:49 [INFO] [task_scheduler.cc:170] Design space #2:
+# from tvm.script import ir as I
+# from tvm.script import tir as T
+
+@I.ir_module
+class Module:
+    @T.prim_func
+    def main(p0: T.Buffer((T.int64(1), T.int64(2048)), "float32"), p1: T.Buffer((T.int64(1000), T.int64(2048)), "float32"), p2: T.Buffer((T.int64(1), T.int64(1000)), "float32"), T_add: T.Buffer((T.int64(1), T.int64(1000)), "float32")):
+        T.func_attr({"layout_free_buffers": [1], "tir.noalias": T.bool(True)})
+        with T.block("root"):
+            T.reads()
+            T.writes()
+            T.block_attr({"meta_schedule.parallel": 768, "meta_schedule.unroll_explicit": 0, "meta_schedule.vectorize": 64})
+            T_matmul_NT = T.alloc_buffer((T.int64(1), T.int64(1000)))
+            for i0_0, i1_0 in T.grid(T.int64(1), T.int64(5)):
+                for i0_1, i1_1, k_0, i0_2, i1_2, k_1, i0_3, i1_3 in T.grid(T.int64(1), T.int64(1), T.int64(32), T.int64(1), T.int64(50), T.int64(64), T.int64(1), T.int64(4)):
+                    with T.block("T_matmul_NT"):
+                        v_i0 = T.axis.spatial(T.int64(1), i0_0 + i0_1 + i0_2 + i0_3)
+                        v_i1 = T.axis.spatial(T.int64(1000), i1_0 * T.int64(200) + i1_1 * T.int64(200) + i1_2 * T.int64(4) + i1_3)
+                        v_k = T.axis.reduce(T.int64(2048), k_0 * T.int64(64) + k_1)
+                        T.reads(p0[v_i0, v_k], p1[v_i1, v_k])
+                        T.writes(T_matmul_NT[v_i0, v_i1])
+                        T.block_attr({"meta_schedule.tiling_structure": "SSRSRS"})
+                        with T.init():
+                            T_matmul_NT[v_i0, v_i1] = T.float32(0)
+                        T_matmul_NT[v_i0, v_i1] = T_matmul_NT[v_i0, v_i1] + p0[v_i0, v_k] * p1[v_i1, v_k]
+                for ax0, ax1 in T.grid(T.int64(1), T.int64(200)):
+                    with T.block("T_add"):
+                        v_ax0 = T.axis.spatial(T.int64(1), ax0)
+                        v_ax1 = T.axis.spatial(T.int64(1000), i1_0 * T.int64(200) + ax1)
+                        T.reads(T_matmul_NT[v_ax0, v_ax1], p2[v_ax0, v_ax1])
+                        T.writes(T_add[v_ax0, v_ax1])
+                        T_add[v_ax0, v_ax1] = T_matmul_NT[v_ax0, v_ax1] + p2[v_ax0, v_ax1]
+b0 = sch.get_block(name="T_matmul_NT", func_name="main")
+b1 = sch.get_block(name="root", func_name="main")
+sch.annotate(block_or_loop=b0, ann_key="meta_schedule.tiling_structure", ann_val="SSRSRS")
+l2, l3, l4 = sch.get_loops(block=b0)
+v5, v6, v7, v8 = sch.sample_perfect_tile(loop=l2, n=4, max_innermost_factor=64, decision=[1, 1, 1, 1])
+l9, l10, l11, l12 = sch.split(loop=l2, factors=[v5, v6, v7, v8], preserve_unit_iters=True)
+v13, v14, v15, v16 = sch.sample_perfect_tile(loop=l3, n=4, max_innermost_factor=64, decision=[5, 1, 50, 4])
+l17, l18, l19, l20 = sch.split(loop=l3, factors=[v13, v14, v15, v16], preserve_unit_iters=True)
+v21, v22 = sch.sample_perfect_tile(loop=l4, n=2, max_innermost_factor=64, decision=[32, 64])
+l23, l24 = sch.split(loop=l4, factors=[v21, v22], preserve_unit_iters=True)
+sch.reorder(l9, l17, l10, l18, l23, l11, l19, l24, l12, l20)
+b25, = sch.get_consumers(block=b0)
+sch.reverse_compute_at(block=b25, loop=l17, preserve_unit_loops=True, index=-1)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.parallel", ann_val=768)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.vectorize", ann_val=64)
+v26 = sch.sample_categorical(candidates=[0, 16, 64, 512], probs=[0.25, 0.25, 0.25, 0.25], decision=0)
+sch.annotate(block_or_loop=b1, ann_key="meta_schedule.unroll_explicit", ann_val=v26)
+2024-04-29 08:17:15 [INFO] [evolutionary_search.cc:713] Generating candidates......
+2024-04-29 08:17:15 [INFO] [evolutionary_search.cc:715] Picked top 0 candidate(s) from database
+2024-04-29 08:17:16 [INFO] [evolutionary_search.cc:533] Sample-Init-Population summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x11682a78)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x389f1e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x14a66238)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0xa90c4e8)]: 0 failure(s)
+2024-04-29 08:17:16 [INFO] [evolutionary_search.cc:723] Sampled 512 candidate(s)
+2024-04-29 08:17:17 [INFO] [evolutionary_search.cc:621] Evolve iter #0 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x11682a78)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x389f1e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x14a66238)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0xa90c4e8)]: 0 failure(s)
+2024-04-29 08:17:18 [INFO] [evolutionary_search.cc:621] Evolve iter #1 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x11682a78)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x389f1e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x14a66238)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0xa90c4e8)]: 0 failure(s)
+2024-04-29 08:17:20 [INFO] [evolutionary_search.cc:621] Evolve iter #2 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x11682a78)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x389f1e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x14a66238)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0xa90c4e8)]: 0 failure(s)
+2024-04-29 08:17:21 [INFO] [evolutionary_search.cc:621] Evolve iter #3 done. Summary:
+Postproc #0 [meta_schedule.DisallowDynamicLoop(0x11682a78)]: 0 failure(s)
+Postproc #1 [meta_schedule.RewriteParallelVectorizeUnroll(0x389f1e8)]: 0 failure(s)
+Postproc #2 [meta_schedule.RewriteReductionBlock(0x14a66238)]: 0 failure(s)
+Postproc #3 [meta_schedule.RewriteLayout(0xa90c4e8)]: 0 failure(s)
+2024-04-29 08:17:22 [INFO] [evolutionary_search.cc:649] Scores of the best 64 candidates:
+[1 : 16]:	0.9977  0.9977  0.9971  0.9963  0.9962  0.9960  0.9958  0.9956  0.9955  0.9951  0.9938  0.9929  0.9925  0.9924  0.9924  0.9920
+[17 : 32]:	0.9919  0.9915  0.9914  0.9897  0.9886  0.9886  0.9885  0.9879  0.9879  0.9874  0.9871  0.9871  0.9868  0.9867  0.9863  0.9858
+[33 : 48]:	0.9856  0.9855  0.9852  0.9834  0.9830  0.9825  0.9824  0.9818  0.9818  0.9799  0.9791  0.9784  0.9780  0.9776  0.9775  0.9768
+[49 : 64]:	0.9763  0.9761  0.9758  0.9754  0.9752  0.9751  0.9747  0.9742  0.9742  0.9736  0.9734  0.9728  0.9717  0.9715  0.9714  0.9707
+2024-04-29 08:17:22 [INFO] [evolutionary_search.cc:727] Got 64 candidate(s) with evolutionary search
+2024-04-29 08:17:22 [INFO] [evolutionary_search.cc:730] Sending 64 candidates(s) for measurement
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #1: GFLOPs: 12.2807. Time: 333.6125 us. Best GFLOPs: 12.2807
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #2: GFLOPs: 8.8263. Time: 464.1818 us. Best GFLOPs: 12.2807
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #3: GFLOPs: 50.0827. Time: 81.8046 us. Best GFLOPs: 50.0827
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #4: GFLOPs: 43.4779. Time: 94.2317 us. Best GFLOPs: 50.0827
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #5: GFLOPs: 20.2307. Time: 202.5143 us. Best GFLOPs: 50.0827
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #6: GFLOPs: 34.6841. Time: 118.1233 us. Best GFLOPs: 50.0827
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #7: GFLOPs: 40.4339. Time: 101.3258 us. Best GFLOPs: 50.0827
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #8: GFLOPs: 6.1820. Time: 662.7359 us. Best GFLOPs: 50.0827
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #9: GFLOPs: 68.4167. Time: 59.8831 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #10: GFLOPs: 3.0592. Time: 1339.2448 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #11: GFLOPs: 54.8130. Time: 74.7451 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #12: GFLOPs: 12.8783. Time: 318.1308 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #13: GFLOPs: 10.6212. Time: 385.7372 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #14: GFLOPs: 3.1164. Time: 1314.6563 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #15: GFLOPs: 49.4595. Time: 82.8355 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #16: GFLOPs: 42.6140. Time: 96.1422 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #17: GFLOPs: 36.9493. Time: 110.8816 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #18: GFLOPs: 7.3667. Time: 556.1478 us. Best GFLOPs: 68.4167
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #19: GFLOPs: 73.8511. Time: 55.4765 us. Best GFLOPs: 73.8511
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #20: GFLOPs: 3.7312. Time: 1098.0386 us. Best GFLOPs: 73.8511
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #21: GFLOPs: 33.2913. Time: 123.0652 us. Best GFLOPs: 73.8511
+2024-04-29 08:22:35 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #22: GFLOPs: 79.3352. Time: 51.6416 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #23: GFLOPs: 6.9470. Time: 589.7476 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #24: GFLOPs: 1.1416. Time: 3588.9321 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #25: GFLOPs: 0.4039. Time: 10142.5274 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #26: GFLOPs: 3.9646. Time: 1033.3977 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #27: GFLOPs: 73.2778. Time: 55.9105 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #28: GFLOPs: 51.6769. Time: 79.2810 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #29: GFLOPs: 45.5785. Time: 89.8888 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #30: GFLOPs: 28.0804. Time: 145.9025 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #31: GFLOPs: 48.9696. Time: 83.6642 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #32: GFLOPs: 13.8082. Time: 296.7078 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #33: GFLOPs: 10.9627. Time: 373.7206 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #34: GFLOPs: 28.1516. Time: 145.5336 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #35: GFLOPs: 79.2870. Time: 51.6730 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #36: GFLOPs: 64.3120. Time: 63.7051 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #37: GFLOPs: 3.9707. Time: 1031.8167 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #38: GFLOPs: 71.0902. Time: 57.6310 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #39: GFLOPs: 3.9826. Time: 1028.7265 us. Best GFLOPs: 79.3352
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #40: GFLOPs: 104.4844. Time: 39.2116 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #41: GFLOPs: 50.7969. Time: 80.6545 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #42: GFLOPs: 7.8386. Time: 522.6713 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #43: GFLOPs: 1.2986. Time: 3154.8538 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #44: GFLOPs: 6.8317. Time: 599.7004 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #45: GFLOPs: 5.9028. Time: 694.0730 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #46: GFLOPs: 39.9146. Time: 102.6442 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #47: GFLOPs: 103.0918. Time: 39.7413 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #48: GFLOPs: 46.4748. Time: 88.1553 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #49: GFLOPs: 19.1794. Time: 213.6150 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #50: GFLOPs: 15.3428. Time: 267.0302 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #51: GFLOPs: 15.4065. Time: 265.9267 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #52: GFLOPs: 4.7879. Time: 855.7042 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #53: GFLOPs: 27.2617. Time: 150.2843 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #54: GFLOPs: 16.6691. Time: 245.7837 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #55: GFLOPs: 41.0389. Time: 99.8320 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #56: GFLOPs: 13.4270. Time: 305.1312 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #57: GFLOPs: 32.7619. Time: 125.0536 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #58: GFLOPs: 6.0589. Time: 676.1905 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #59: GFLOPs: 16.9837. Time: 241.2307 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #60: GFLOPs: 64.2054. Time: 63.8108 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #61: GFLOPs: 1.9152. Time: 2139.1806 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #62: GFLOPs: 2.9525. Time: 1387.6309 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #63: GFLOPs: 16.3692. Time: 250.2877 us. Best GFLOPs: 104.4844
+2024-04-29 08:22:36 [INFO] [task_scheduler.cc:131] [Task #48: fused_nn_dense_add] Trial #64: GFLOPs: 20.2282. Time: 202.5395 us. Best GFLOPs: 104.4844
