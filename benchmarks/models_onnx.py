@@ -48,8 +48,6 @@ def generate_ansor_template(bench, logfile, target, trials):
 
 def generate_meta_template(bench, logfile, target_name, trials):
     target = tvm.target.Target(target_name)
-    if target_name == "cuda":
-        target = "cuda -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
     mod, params = from_onnx(onnx.load(bench))
 
     start = time.time()
@@ -244,11 +242,13 @@ if __name__ == "__main__":
     top = args.top
 
     if arch == "x86":
-        target_name = "llvm"
+        target_name = f"llvm -num-cores {num_threads // 2}"
         target = tvm.target.Target("llvm")
         dev = tvm.cpu()
     elif arch == "cuda":
-        target_name = "cuda"
+        target_name = (
+            "cuda -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
+        )
         target = tvm.target.Target("cuda")
         dev = tvm.cuda()
     elif arch == "arm":
