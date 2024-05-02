@@ -46,8 +46,7 @@ def generate_ansor_template(bench, logfile, target, trials):
     print("time search:", end - start)
 
 
-def generate_meta_template(bench, logfile, target_name, trials):
-    target = tvm.target.Target(target_name)
+def generate_meta_template(bench, logfile, target, trials):
     mod, params = from_onnx(onnx.load(bench))
 
     start = time.time()
@@ -84,9 +83,8 @@ def generate_meta_template(bench, logfile, target_name, trials):
     print(profiler.table())
 
 
-def build_meta_template(bench, logfile, target_name, top, trials):
+def build_meta_template(bench, logfile, target, top, trials):
     mod, params = from_onnx(onnx.load(bench))
-    target = tvm.target.Target(target_name)
 
     ms_tuning_file = logfile + "/database_tuning_record.json"
     ms_workload_file = logfile + "/database_workload.json"
@@ -242,14 +240,12 @@ if __name__ == "__main__":
     top = args.top
 
     if arch == "x86":
-        target_name = f"llvm -num-cores {num_threads // 2}"
-        target = tvm.target.Target("llvm")
+        target = tvm.target.Target(f"llvm -num-cores {num_threads // 2}")
         dev = tvm.cpu()
     elif arch == "cuda":
-        target_name = (
+        target = tvm.target.Target(
             "cuda -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
         )
-        target = tvm.target.Target("cuda")
         dev = tvm.cuda()
     elif arch == "arm":
         target_name = "llvm -num-cores 48 -mcpu=a64fx"
@@ -264,8 +260,8 @@ if __name__ == "__main__":
     elif method == "dpansor":
         build_template(bench, logfile, index, target, trials, top, method)
     elif method == "dpmeta":
-        build_meta_template(bench, logfile, target_name, top, trials)
+        build_meta_template(bench, logfile, target, top, trials)
     elif method == "meta":
-        generate_meta_template(bench, logfile, target_name, trials)
+        generate_meta_template(bench, logfile, target, trials)
     elif method == "run":
         run(logfile, target, dev)
