@@ -248,7 +248,6 @@ if __name__ == "__main__":
         )
         dev = tvm.cuda()
     elif arch == "arm":
-        target_name = "llvm -num-cores 48 -mcpu=a64fx"
         target = tvm.target.Target("llvm -mcpu=a64fx -num-cores 48")
         dev = tvm.cpu()
     else:
@@ -256,7 +255,7 @@ if __name__ == "__main__":
         exit(0)
 
     if method == "ansor":
-        generate_ansor_template(bench, logfile, target_name, trials)
+        generate_ansor_template(bench, logfile, target, trials)
     elif method == "dpansor":
         build_template(bench, logfile, index, target, trials, top, method)
     elif method == "dpmeta":
