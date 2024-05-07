@@ -91,7 +91,7 @@ class Space:
 
     def power_of_two(self, min: int, max: int) -> list:
         """Return power of two array in interval"""
-        return [2**i for i in range(min, max + 1)]
+        return [1 << i for i in range(min, max + 1)]
 
     def get_index(self, array: list, value: int):
         for i in range(len(array)):
@@ -115,6 +115,10 @@ class Space:
                     interval = self.power_of_two(4, 8)
                 elif ann_key == ["pragma_auto_unroll_max_step"]:
                     interval = self.power_of_two(7, 11)
+                elif ann_key == ["meta_schedule.thread_extent_low_inclusive"]:
+                    interval = self.power_of_two(5, 6)
+                elif ann_key == ["meta_schedule.thread_extent_high_inclusive"]:
+                    interval = self.power_of_two(8, 12)
                 else:
                     continue
                 idx += 1
@@ -128,15 +132,11 @@ class Space:
                 # TODO: study this opt
                 pass
             elif opt == "SamplePerfectTile":
-                # print(counter, config)
                 tile = config[0][1]
                 tile_idx = self.get_index(tile, counter)
                 tile_val = tile[tile_idx][1]
                 interval = self.power_of_two(1, 6)
                 for i in range(len(tile_val)):
-                    # don't optimize tile with size 1
-                    # if tile_val[i] == 1:
-                    #    continue
                     idx += 1
                     key = f"sp_{counter}_{idx}"
                     sp = tile_val[i]
@@ -227,52 +227,40 @@ class Space:
         )
 
         results = np.full(len(json_file_list), [10000], dtype=list)
-        records = []
+        records, mods = [], []
         for i, cfg in enumerate(json_file_list):
-            # print(cfg)
             try:
-                records.append(
-                    TuningRecord.from_json(json.loads(json.dumps(cfg)), self.workload)
+                record = TuningRecord.from_json(
+                    json.loads(json.dumps(cfg)), self.workload
                 )
+                sch = Schedule(self.workload.mod)
+                # In some layers this is a heavy impact in time cost, so
+                # I applied this only 25% of the samples.
+                remove_postproc = True if rd.random() > 0.75 else False
+                record.trace.apply_to_schedule(sch, remove_postproc=remove_postproc)
+                mods.append(sch.mod)
+                records.append(record)
             except:
                 # TODO: Verify layer 22 of squeezenet has issue:
                 # InternalError: Check failed: old_outputs.size() == new_outputs.size() (13 vs. 12)
                 continue
-
-        mods = []
-        for record in records:
-            sch = Schedule(self.workload.mod)
-            # In some layers this is a heavy impact in time cost, so
-            # I applied this only 25% of the samples.
-            remove_postproc = True if rd.random() > 0.75 else False
-            record.trace.apply_to_schedule(sch, remove_postproc=remove_postproc)
-            # print(record.as_json())
-            mods.append(sch.mod)
 
         builder_res = builder.build(
             [ms.builder.BuilderInput(mod, self.target) for mod in mods]
         )
 
         for i, record in enumerate(records):
-            # print("test")
             try:
                 inp = ms.runner.RunnerInput(
                     builder_res[i].artifact_path,
                     device_type=self.dev,
                     args_info=ms.arg_info.TensorInfo.from_prim_func(mods[i]["main"]),
                 )
-            except:
-                # TODO: Study why this happen for some case
-                # print(i, record.as_json())
-                continue
-
-            # run
-            (runner_future,) = runner.run([inp])
-            runner_res = runner_future.result()
-            try:
+                runner_res = runner.run([inp])[0].result()
                 results[i] = [v.value for v in runner_res.run_secs]
             except:
                 results[i] = [10000]
+                continue
 
             # save the solution in json file
             self.save_log(final_log, record, results[i])
