@@ -201,7 +201,6 @@ class Space:
             # TODO: Need to fix on 'TransformLayout' opt brings bug in Record's as_json function
             # print(record)
             return
-        # update time
         new_json[1][1] = results
         write_file([new_json], path, "a")
 

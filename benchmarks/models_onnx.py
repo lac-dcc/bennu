@@ -130,12 +130,13 @@ def build_meta_template(bench, logfile, target_name, top, trials):
         std_time = np.std(dp_time)
 
         total_time_ms = min(top, ms_10k_trials) * each_sample_time + ms_time_tuning
+        total_10k_ms = ms_10k_trials * each_sample_time
 
         speedup = mean_ms_time / mean_time
         speedup_10k = mean_ms_10k_time / mean_time
 
         print(
-            f"{layer}, {mean_time:.10f}, {std_time:.10f}, {dp_trials}, {ms_time_tuning:.2f}, {total_time_ms:.2f}, {mean_ms_time:.10f}, {std_ms_time:.10f}, {ms_trials}, {mean_ms_10k_time:.10f}, {std_ms_10k_time:.10f}, {ms_10k_trials}, {speedup:.2f}, {speedup_10k:.2f}"
+            f"{layer}, {mean_time:.10f}, {std_time:.10f}, {dp_trials}, {ms_time_tuning:.3f}, {total_time_ms:.3f}, {mean_ms_time:.10f}, {std_ms_time:.10f}, {ms_trials}, {mean_ms_10k_time:.10f}, {std_ms_10k_time:.10f}, {ms_10k_trials}, {total_10k_ms:.3f}, {speedup:.2f}, {speedup_10k:.2f}"
         )
 
 
@@ -251,8 +252,8 @@ if __name__ == "__main__":
         target = tvm.target.Target("cuda")
         dev = tvm.cuda()
     elif arch == "arm":
-        target_name = "llvm -mcpu=a64fx"
-        target = tvm.target.Target("llvm -mcpu=a64fx")
+        target_name = "llvm -num-cores 48 -mcpu=a64fx"
+        target = tvm.target.Target("llvm -mcpu=a64fx -num-cores 48")
         dev = tvm.cpu()
     else:
         print("Archtecture doesn't support.")

@@ -40,7 +40,7 @@ Optimize Ansor template using Droplet Search with 100 trials:
   python3 benchmarks/mm.py -m droplet -a x86 -l results/x86_mm.json -t 100
 ```
 
-## Running ONNX models
+## Running ONNX models using Ansor (TVM 0.13)
 
 Generating the Ansor template with 10k trials for a specific machine architecture.
 
@@ -52,4 +52,18 @@ Optimize Ansor template using Droplet Search with 100 trials:
 
 ```
 python3 benchmarks/models_onnx.py -m droplet -a x86 -t 100 -l results/x86_resnet18_10k.json -b models/resnet18.onnx
+```
+
+## Running ONNX models using MetaSchedule (TVM 0.16)
+
+Generating the MetaSchedule template with 10k trials for a specific machine architecture.
+
+```
+python3 benchmarks/models_onnx.py -m meta -a x86 -t 10000 -l results/ms/x86_resnet18_10k -b models/resnet18.onnx
+```
+
+Optimize MetaSchedule template using Droplet Search with 100 trials:
+
+```
+python3 benchmarks/models_onnx.py -m dpmeta -a x86 -t 100 -l results/ms/x86_resnet18_10k -b models/resnet18.onnx
 ```
