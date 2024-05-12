@@ -46,6 +46,7 @@ class DropletMeta:
 
     def next_batch(self, batch_size):
         i, json_file_list = 0, []
+        # print("size next", len(self.next))
         while i < len(self.next):
             if batch_size > 0 and self.count >= self.trials:
                 break
