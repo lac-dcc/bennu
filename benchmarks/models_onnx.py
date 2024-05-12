@@ -106,7 +106,7 @@ def build_meta_template(bench, logfile, target, top, trials):
         # if layer != 11:
         #    continue
 
-        log = f"layer_{layer}.log"
+        log = f"{logfile}/layer_{layer}.log"
         clean_file(log)
 
         m = DropletMeta(ms_cfg, ms_workload, target, log)
@@ -240,9 +240,11 @@ if __name__ == "__main__":
     top = args.top
 
     if arch == "x86":
+        target_name = "llvm"
         target = tvm.target.Target(f"llvm -num-cores {num_threads // 2}")
         dev = tvm.cpu()
     elif arch == "cuda":
+        target_name = "cuda"
         target = tvm.target.Target(
             "cuda -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
         )
@@ -255,7 +257,7 @@ if __name__ == "__main__":
         exit(0)
 
     if method == "ansor":
-        generate_ansor_template(bench, logfile, target, trials)
+        generate_ansor_template(bench, logfile, target_name, trials)
     elif method == "dpansor":
         build_template(bench, logfile, index, target, trials, top, method)
     elif method == "dpmeta":
