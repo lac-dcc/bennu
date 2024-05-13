@@ -21,7 +21,7 @@ def create_file(json_list: list, log="/tmp/file.json") -> str:
 
 def get_time_spent(log: str, log_tuning: str) -> float:
     count = 0
-    with open(log, "r", encoding="utf-8") as outfile:
+    with open(log_tuning, "r", encoding="utf-8") as outfile:
         for out in outfile.readlines():
             count += 1
     each_sample = 0.02574384916
@@ -132,6 +132,38 @@ def read_ms_file(path_tuning_file, path_workload_file, n_trials=100000):
             if layer not in info.keys() or np.mean(info[layer][0]) > np.mean(time):
                 info[layer] = [time, data, workload_list[layer], count[layer]]
     return info
+
+
+def count_layers(path_tuning_file):
+    """Colect the info from meta logfile
+
+    Parameters
+    ----------
+    log: str
+        The input log path with the meta parameter
+
+    Returns
+    -------
+    ret: dict[layer, Union[time, dict]]
+        Returns the best time, total time, and data
+    """
+    count = dict()
+    with open(path_tuning_file, "r", encoding="utf-8") as log_file:
+        for line in log_file.readlines():
+            data = json.loads(line)
+            layer = data[0]
+            params = data[1]
+            template = params[0]
+            time = params[1]
+            tensors = params[2]
+            config = template[0]
+            constraints = template[1]
+
+            if layer not in count.keys():
+                count[layer] = 1
+            else:
+                count[layer] += 1
+    return count
 
 
 def get_data_ms(log):
