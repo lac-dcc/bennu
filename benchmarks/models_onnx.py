@@ -97,11 +97,12 @@ def build_meta_template(bench, logfile, target, top, trials):
     cfg_top = read_ms_file(ms_tuning_file, ms_workload_file, top)
 
     print(
-        f"Layer, DPMeta time(s), DPMeta std(s), DPMeta trials, DPMeta Tuning(min), DPMeta+Meta tuning(min), Meta-{top} time(s), Meta-{top} std(s), trials-{top}, Meta 10k time(s), Meta 10k std(s), trials-10k, speedup-{top}, speedup-10k"
+        f"Layer, DPMeta time(s), DPMeta std(s), DPMeta trials, DPMeta Tuning(min), DPMeta+Meta tuning(min), Meta-{top} time(s), Meta-{top} std(s), trials-{top}, Meta 10k time(s), Meta 10k std(s), trials-10k, tuning-10k(min), speedup-{top}, speedup-10k"
     )
     for layer in cfg_top:
         ms_time, ms_cfg, ms_workload, ms_trials = cfg_top[layer]
-        ms_10k_time, _, _, ms_10k_trials = cfg_10k[layer]
+        ms_10k_time, _, _, _ = cfg_10k[layer]
+        ms_10k_trials = count_layers(ms_tuning_file)[layer]
 
         # if layer != 11:
         #    continue
