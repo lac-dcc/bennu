@@ -46,10 +46,7 @@ def generate_ansor_template(bench, logfile, target, trials):
     print("time search:", end - start)
 
 
-def generate_meta_template(bench, logfile, target_name, trials):
-    target = tvm.target.Target(target_name)
-    if target_name == "cuda":
-        target = "cuda -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
+def generate_meta_template(bench, logfile, target, trials):
     mod, params = from_onnx(onnx.load(bench))
 
     start = time.time()
@@ -86,9 +83,8 @@ def generate_meta_template(bench, logfile, target_name, trials):
     print(profiler.table())
 
 
-def build_meta_template(bench, logfile, target_name, top, trials):
+def build_meta_template(bench, logfile, target, top, trials):
     mod, params = from_onnx(onnx.load(bench))
-    target = tvm.target.Target(target_name)
 
     ms_tuning_file = logfile + "/database_tuning_record.json"
     ms_workload_file = logfile + "/database_workload.json"
@@ -101,16 +97,17 @@ def build_meta_template(bench, logfile, target_name, top, trials):
     cfg_top = read_ms_file(ms_tuning_file, ms_workload_file, top)
 
     print(
-        f"Layer, DPMeta time(s), DPMeta std(s), DPMeta trials, DPMeta Tuning(min), DPMeta+Meta tuning(min), Meta-{top} time(s), Meta-{top} std(s), trials-{top}, Meta 10k time(s), Meta 10k std(s), trials-10k, speedup-{top}, speedup-10k"
+        f"Layer, DPMeta time(s), DPMeta std(s), DPMeta trials, DPMeta Tuning(min), DPMeta+Meta tuning(min), Meta-{top} time(s), Meta-{top} std(s), trials-{top}, Meta 10k time(s), Meta 10k std(s), trials-10k, tuning-10k(min), speedup-{top}, speedup-10k"
     )
     for layer in cfg_top:
         ms_time, ms_cfg, ms_workload, ms_trials = cfg_top[layer]
-        ms_10k_time, _, _, ms_10k_trials = cfg_10k[layer]
+        ms_10k_time, _, _, _ = cfg_10k[layer]
+        ms_10k_trials = count_layers(ms_tuning_file)[layer]
 
         # if layer != 11:
         #    continue
 
-        log = f"layer_{layer}.log"
+        log = f"{logfile}/layer_{layer}.log"
         clean_file(log)
 
         m = DropletMeta(ms_cfg, ms_workload, target, log)
@@ -130,12 +127,13 @@ def build_meta_template(bench, logfile, target_name, top, trials):
         std_time = np.std(dp_time)
 
         total_time_ms = min(top, ms_10k_trials) * each_sample_time + ms_time_tuning
+        total_10k_ms = ms_10k_trials * each_sample_time
 
         speedup = mean_ms_time / mean_time
         speedup_10k = mean_ms_10k_time / mean_time
 
         print(
-            f"{layer}, {mean_time:.10f}, {std_time:.10f}, {dp_trials}, {ms_time_tuning:.2f}, {total_time_ms:.2f}, {mean_ms_time:.10f}, {std_ms_time:.10f}, {ms_trials}, {mean_ms_10k_time:.10f}, {std_ms_10k_time:.10f}, {ms_10k_trials}, {speedup:.2f}, {speedup_10k:.2f}"
+            f"{layer}, {mean_time:.10f}, {std_time:.10f}, {dp_trials}, {ms_time_tuning:.3f}, {total_time_ms:.3f}, {mean_ms_time:.10f}, {std_ms_time:.10f}, {ms_trials}, {mean_ms_10k_time:.10f}, {std_ms_10k_time:.10f}, {ms_10k_trials}, {total_10k_ms:.3f}, {speedup:.2f}, {speedup_10k:.2f}"
         )
 
 
@@ -244,15 +242,16 @@ if __name__ == "__main__":
 
     if arch == "x86":
         target_name = "llvm"
-        target = tvm.target.Target("llvm")
+        target = tvm.target.Target(f"llvm -num-cores {num_threads // 2}")
         dev = tvm.cpu()
     elif arch == "cuda":
         target_name = "cuda"
-        target = tvm.target.Target("cuda")
+        target = tvm.target.Target(
+            "cuda -max_threads_per_block 1024 -max_shared_memory_per_block 49152"
+        )
         dev = tvm.cuda()
     elif arch == "arm":
-        target_name = "llvm -mcpu=a64fx"
-        target = tvm.target.Target("llvm -mcpu=a64fx")
+        target = tvm.target.Target("llvm -mcpu=a64fx -num-cores 48")
         dev = tvm.cpu()
     else:
         print("Archtecture doesn't support.")
@@ -263,8 +262,8 @@ if __name__ == "__main__":
     elif method == "dpansor":
         build_template(bench, logfile, index, target, trials, top, method)
     elif method == "dpmeta":
-        build_meta_template(bench, logfile, target_name, top, trials)
+        build_meta_template(bench, logfile, target, top, trials)
     elif method == "meta":
-        generate_meta_template(bench, logfile, target_name, trials)
+        generate_meta_template(bench, logfile, target, trials)
     elif method == "run":
         run(logfile, target, dev)
