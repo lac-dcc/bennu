@@ -104,8 +104,8 @@ def ms_execute(logfile, target, target_name, trials):
 
     best_time = get_ms_time(logfile + "/database_tuning_record.json")
 
-    print(f"Best time (ms): {np.mean(best_time):.10f}")
-    print(f"Best std  (ms): {np.std(best_time):.10f}")
+    print(f"Best time (ms): {np.mean(best_time)*1000:.10f}")
+    print(f"Best std  (ms): {np.std(best_time)*1000:.10f}")
     print(f"Tuning Time (min): {(end-start)/60:.2f}")
 
 
